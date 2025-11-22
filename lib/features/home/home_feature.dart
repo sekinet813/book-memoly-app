@@ -55,12 +55,7 @@ class HomePage extends StatelessWidget {
                       description: '読んだ本を\n管理',
                       color: Colors.green,
                       onTap: () {
-                        // TODO: 実装後にナビゲーションを追加
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('準備中です'),
-                          ),
-                        );
+                        context.push('/reading-speed');
                       },
                     ),
                     _FeatureCard(
@@ -78,12 +73,7 @@ class HomePage extends StatelessWidget {
                       description: '読書速度を\n測定・記録',
                       color: Colors.purple,
                       onTap: () {
-                        // TODO: 実装後にナビゲーションを追加
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('準備中です'),
-                          ),
-                        );
+                        context.push('/reading-speed');
                       },
                     ),
                     _FeatureCard(

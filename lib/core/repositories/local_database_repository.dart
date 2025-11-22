@@ -112,6 +112,25 @@ class LocalDatabaseRepository {
     return deleted > 0;
   }
 
+  Future<int> addReadingLog({
+    required int bookId,
+    required int pagesRead,
+    int? durationMinutes,
+  }) {
+    return readingLogs.insertLog(
+      ReadingLogsCompanion.insert(
+        bookId: bookId,
+        startPage: const Value(0),
+        endPage: Value(pagesRead),
+        durationMinutes: Value(durationMinutes),
+      ),
+    );
+  }
+
+  Future<List<ReadingLogRow>> getReadingLogs() {
+    return readingLogs.getAllLogs();
+  }
+
   Future<bool> saveBook(
     Book book, {
     BookStatus status = BookStatus.unread,
