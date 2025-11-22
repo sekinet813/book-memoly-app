@@ -24,6 +24,10 @@ class LocalDatabaseRepository {
     return notes.getNotesForBook(bookId);
   }
 
+  Future<List<ActionRow>> getActionsForBook(int bookId) {
+    return actions.getActionsForBook(bookId);
+  }
+
   Future<int> addNote({
     required int bookId,
     required String content,
@@ -54,6 +58,57 @@ class LocalDatabaseRepository {
 
   Future<bool> deleteNote(int noteId) async {
     final deleted = await notes.deleteNote(noteId);
+    return deleted > 0;
+  }
+
+  Future<int> addAction({
+    required int bookId,
+    required String title,
+    String? description,
+    DateTime? dueDate,
+    int? noteId,
+  }) {
+    return actions.insertAction(
+      ActionsCompanion.insert(
+        bookId: Value(bookId),
+        noteId: Value(noteId),
+        title: title,
+        description: Value(description),
+        dueDate: Value(dueDate),
+      ),
+    );
+  }
+
+  Future<bool> updateAction({
+    required int actionId,
+    required String title,
+    String? description,
+    DateTime? dueDate,
+    String? status,
+    int? noteId,
+  }) async {
+    final updated = await actions.updateAction(
+      actionId: actionId,
+      title: title,
+      description: description,
+      dueDate: dueDate,
+      status: status,
+      noteId: noteId,
+    );
+
+    return updated > 0;
+  }
+
+  Future<bool> updateActionStatus({
+    required int actionId,
+    required String status,
+  }) async {
+    final updated = await actions.updateAction(actionId: actionId, status: status);
+    return updated > 0;
+  }
+
+  Future<bool> deleteAction(int actionId) async {
+    final deleted = await actions.deleteAction(actionId);
     return deleted > 0;
   }
 
@@ -123,7 +178,7 @@ class LocalDatabaseRepository {
       ),
     );
 
-    await notes.insertNote(
+    final noteId = await notes.insertNote(
       NotesCompanion.insert(
         bookId: bookId,
         content: 'This is a sample note for drift verification.',
@@ -135,6 +190,7 @@ class LocalDatabaseRepository {
       ActionsCompanion.insert(
         title: 'Capture insights from sample book',
         bookId: Value(bookId),
+        noteId: Value(noteId),
         status: const Value('pending'),
       ),
     );

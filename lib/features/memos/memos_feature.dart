@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../action_plans/action_plans_feature.dart';
 
 final memosNotifierProvider =
     StateNotifierProvider<MemosNotifier, MemoState>((ref) {
@@ -317,6 +318,11 @@ class _MemoActions extends ConsumerWidget {
               : () => _showNoteDialog(context, ref, note: note),
         ),
         IconButton(
+          tooltip: 'アクションを作成',
+          icon: const Icon(Icons.checklist_outlined),
+          onPressed: () => _showActionFromNoteDialog(context, ref, note),
+        ),
+        IconButton(
           tooltip: '削除',
           icon: const Icon(Icons.delete_outline),
           onPressed: selectedBookId == null
@@ -467,6 +473,23 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
       const SnackBar(content: Text('メモを削除しました')),
     );
   }
+}
+
+Future<void> _showActionFromNoteDialog(
+  BuildContext context,
+  WidgetRef ref,
+  NoteRow note,
+) async {
+  await ref
+      .read(actionPlansNotifierProvider.notifier)
+      .ensureBooksLoaded(initialBookId: note.bookId);
+
+  await showActionPlanDialog(
+    context,
+    ref,
+    bookId: note.bookId,
+    note: note,
+  );
 }
 
 class _InfoCard extends StatelessWidget {

@@ -104,6 +104,7 @@ class ActionRow {
   ActionRow({
     required this.id,
     this.bookId,
+    this.noteId,
     required this.title,
     this.description,
     this.dueDate,
@@ -115,6 +116,7 @@ class ActionRow {
 
   final int id;
   final int? bookId;
+  final int? noteId;
   final String title;
   final String? description;
   final DateTime? dueDate;
@@ -207,6 +209,7 @@ class NotesCompanion {
 class ActionsCompanion {
   const ActionsCompanion({
     this.bookId,
+    this.noteId,
     required this.title,
     this.description,
     this.dueDate,
@@ -215,6 +218,7 @@ class ActionsCompanion {
 
   const ActionsCompanion.insert({
     this.bookId,
+    this.noteId,
     required this.title,
     this.description,
     this.dueDate,
@@ -222,6 +226,7 @@ class ActionsCompanion {
   });
 
   final Value<int?>? bookId;
+  final Value<int?>? noteId;
   final String title;
   final Value<String?>? description;
   final Value<DateTime?>? dueDate;
@@ -399,6 +404,7 @@ class ActionDao {
       ActionRow(
         id: newId,
         bookId: entry.bookId?.value,
+        noteId: entry.noteId?.value,
         title: entry.title,
         description: entry.description?.value,
         dueDate: entry.dueDate?.value,
@@ -411,6 +417,47 @@ class ActionDao {
 
   Future<List<ActionRow>> getPendingActions() async {
     return db._actionRows.where((action) => action.status == 'pending').toList();
+  }
+
+  Future<List<ActionRow>> getActionsForBook(int bookId) async {
+    return db._actionRows
+        .where((action) => action.bookId == bookId)
+        .toList(growable: false);
+  }
+
+  Future<int> updateAction({
+    required int actionId,
+    String? title,
+    String? description,
+    DateTime? dueDate,
+    String? status,
+    int? noteId,
+  }) async {
+    final index = db._actionRows.indexWhere((action) => action.id == actionId);
+    if (index == -1) {
+      return 0;
+    }
+
+    final existing = db._actionRows[index];
+    db._actionRows[index] = ActionRow(
+      id: existing.id,
+      bookId: existing.bookId,
+      noteId: noteId ?? existing.noteId,
+      title: title ?? existing.title,
+      description: description ?? existing.description,
+      dueDate: dueDate ?? existing.dueDate,
+      status: status ?? existing.status,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    return 1;
+  }
+
+  Future<int> deleteAction(int actionId) async {
+    final beforeLength = db._actionRows.length;
+    db._actionRows.removeWhere((action) => action.id == actionId);
+    return beforeLength == db._actionRows.length ? 0 : 1;
   }
 }
 

@@ -35,6 +35,9 @@ class Actions extends Table {
   IntColumn get bookId => integer()
       .nullable()
       .references(Books, #id, onDelete: KeyAction.cascade)();
+  IntColumn get noteId => integer()
+      .nullable()
+      .references(Notes, #id, onDelete: KeyAction.cascade)();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
   DateTimeColumn get dueDate => dateTime().nullable()();
