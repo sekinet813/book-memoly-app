@@ -353,7 +353,38 @@ class NoteDao {
   }
 
   Future<List<NoteRow>> getNotesForBook(int bookId) async {
-    return db._noteRows.where((note) => note.bookId == bookId).toList();
+    return db._noteRows
+        .where((note) => note.bookId == bookId)
+        .toList(growable: false);
+  }
+
+  Future<int> updateNote({
+    required int noteId,
+    required String content,
+    int? pageNumber,
+  }) async {
+    final index = db._noteRows.indexWhere((note) => note.id == noteId);
+    if (index == -1) {
+      return 0;
+    }
+
+    final existing = db._noteRows[index];
+    db._noteRows[index] = NoteRow(
+      id: existing.id,
+      bookId: existing.bookId,
+      content: content,
+      pageNumber: pageNumber,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    return 1;
+  }
+
+  Future<int> deleteNote(int noteId) async {
+    final beforeLength = db._noteRows.length;
+    db._noteRows.removeWhere((note) => note.id == noteId);
+    return beforeLength == db._noteRows.length ? 0 : 1;
   }
 }
 
