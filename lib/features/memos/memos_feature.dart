@@ -5,6 +5,8 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../action_plans/action_plans_feature.dart';
+import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_card.dart';
 
 final memosNotifierProvider =
     StateNotifierProvider<MemosNotifier, MemoState>((ref) {
@@ -259,40 +261,37 @@ class _MemoCard extends ConsumerWidget {
       alwaysUse24HourFormat: true,
     );
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (note.pageNumber != null) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Chip(
-                    label: Text('p.${note.pageNumber}'),
-                    avatar: const Icon(Icons.bookmark_border, size: 18),
-                  ),
-                  _MemoActions(note: note),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ] else
-              Align(
-                alignment: Alignment.centerRight,
-                child: _MemoActions(note: note),
-              ),
-            Text(
-              note.content,
-              style: Theme.of(context).textTheme.bodyLarge,
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (note.pageNumber != null) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Chip(
+                  label: Text('p.${note.pageNumber}'),
+                  avatar: const Icon(Icons.bookmark_border, size: 18),
+                ),
+                _MemoActions(note: note),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              '作成: $createdDate $createdTime',
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 8),
+          ] else
+            Align(
+              alignment: Alignment.centerRight,
+              child: _MemoActions(note: note),
             ),
-          ],
-        ),
+          Text(
+            note.content,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '作成: $createdDate $createdTime',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -382,13 +381,13 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('キャンセル'),
           ),
-          ElevatedButton(
+          AppButton.primary(
             onPressed: () {
               if (formKey.currentState?.validate() ?? false) {
                 Navigator.of(context).pop(true);
               }
             },
-            child: const Text('保存'),
+            label: '保存',
           ),
         ],
       );
@@ -446,9 +445,9 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('キャンセル'),
           ),
-          ElevatedButton(
+          AppButton.primary(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('削除'),
+            label: '削除',
           ),
         ],
       );
@@ -500,21 +499,18 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+    return AppCard(
+      child: Row(
+        children: [
+          Icon(icon, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

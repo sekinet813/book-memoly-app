@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/constants/app_constants.dart';
+import '../../shared/widgets/app_card.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -22,16 +23,15 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'ようこそ',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               Text(
                 '読書記録とメモを管理しましょう',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 32),
               Expanded(
@@ -44,7 +44,7 @@ class HomePage extends StatelessWidget {
                       icon: Icons.search,
                       title: '書籍検索',
                       description: 'Google Books APIで\n書籍を検索',
-                      color: Colors.blue,
+                      color: Theme.of(context).colorScheme.primary,
                       onTap: () {
                         context.push('/search');
                       },
@@ -53,7 +53,7 @@ class HomePage extends StatelessWidget {
                       icon: Icons.library_books,
                       title: '読書記録',
                       description: '読んだ本を\n管理',
-                      color: Colors.green,
+                      color: Theme.of(context).colorScheme.secondary,
                       onTap: () {
                         context.push('/reading-speed');
                       },
@@ -62,7 +62,7 @@ class HomePage extends StatelessWidget {
                       icon: Icons.note,
                       title: 'メモ',
                       description: '読書メモを\n作成・管理',
-                      color: Colors.orange,
+                      color: Theme.of(context).colorScheme.tertiary,
                       onTap: () {
                         context.push('/memos');
                       },
@@ -71,7 +71,7 @@ class HomePage extends StatelessWidget {
                       icon: Icons.speed,
                       title: '読書速度',
                       description: '読書速度を\n測定・記録',
-                      color: Colors.purple,
+                      color: Theme.of(context).colorScheme.primary,
                       onTap: () {
                         context.push('/reading-speed');
                       },
@@ -80,7 +80,7 @@ class HomePage extends StatelessWidget {
                       icon: Icons.checklist,
                       title: 'アクションプラン',
                       description: '読書後の\nアクションを管理',
-                      color: Colors.teal,
+                      color: Theme.of(context).colorScheme.secondary,
                       onTap: () {
                         context.push('/actions');
                       },
@@ -113,50 +113,39 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 32,
+              color: color,
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
