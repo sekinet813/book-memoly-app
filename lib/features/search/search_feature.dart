@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -7,7 +8,14 @@ import '../../shared/constants/app_constants.dart';
 
 final _dioProvider = Provider<Dio>((ref) {
   return Dio(
-    BaseOptions(baseUrl: AppConstants.googleBooksApiBaseUrl),
+    BaseOptions(
+      baseUrl: AppConstants.googleBooksApiBaseUrl,
+      // クエリパラメータのエンコーディングを明示的に設定
+      queryParameters: {},
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    ),
   );
 });
 
@@ -20,51 +28,120 @@ class BookSearchRepository {
 
   final Dio _dio;
 
-  Future<List<Book>> searchBooks({String? title, String? isbn}) async {
-    final cleanedTitle = title?.trim() ?? '';
-    final cleanedIsbn = isbn?.trim() ?? '';
+  Future<List<Book>> searchBooks(String keyword) async {
+    final cleanedKeyword = keyword.trim();
 
-    if (cleanedTitle.isEmpty && cleanedIsbn.isEmpty) {
+    if (cleanedKeyword.isEmpty) {
       return const [];
     }
 
-    final queryParts = <String>[];
+    // ISBNの形式（数字とハイフンのみ）の場合は、isbn:プレフィックスを付ける
+    final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
+    String query;
 
-    if (cleanedTitle.isNotEmpty) {
-      queryParts.add(cleanedTitle);
+    if (isIsbn) {
+      query = 'isbn:$cleanedKeyword';
+    } else {
+      // タイトルと著者の両方で検索するため、intitle:とinauthor:の両方を使用
+      // OR条件で検索するため、複数のクエリを試す
+      // まずは通常のキーワード検索を試し、次に著者名検索も試す
+      query = cleanedKeyword;
     }
 
-    if (cleanedIsbn.isNotEmpty) {
-      queryParts.add('isbn:$cleanedIsbn');
+    debugPrint('Google Books API query: $query');
+
+    try {
+      // まず通常のキーワード検索を試す
+      var response =
+          await _dio.get<Map<String, dynamic>>("/volumes", queryParameters: {
+        'q': query,
+        'maxResults': 20,
+      });
+
+      final totalItems = response.data?['totalItems'] as int? ?? 0;
+      debugPrint('Google Books API response: $totalItems items found');
+
+      // 結果が少ない場合、著者名検索も試す
+      if (totalItems < 5 && !isIsbn) {
+        final authorQuery = 'inauthor:"$cleanedKeyword"';
+        debugPrint('Trying author search: $authorQuery');
+
+        try {
+          final authorResponse = await _dio
+              .get<Map<String, dynamic>>("/volumes", queryParameters: {
+            'q': authorQuery,
+            'maxResults': 20,
+          });
+
+          final authorTotalItems =
+              authorResponse.data?['totalItems'] as int? ?? 0;
+          debugPrint('Author search response: $authorTotalItems items found');
+
+          // 著者名検索の結果の方が多い場合は、そちらを使用
+          if (authorTotalItems > totalItems) {
+            response = authorResponse;
+          }
+        } catch (e) {
+          debugPrint('Author search failed: $e');
+          // 著者名検索が失敗しても、通常の検索結果を返す
+        }
+      }
+
+      final items = response.data?['items'] as List<dynamic>?;
+      if (items == null || items.isEmpty) {
+        debugPrint('No items found in response');
+        return const [];
+      }
+
+      debugPrint('Found ${items.length} books');
+
+      final books = <Book>[];
+      for (var i = 0; i < items.length; i++) {
+        try {
+          final rawItem = items[i] as Map<String, dynamic>;
+          final item = rawItem;
+          final volumeInfo = item['volumeInfo'] as Map<String, dynamic>? ?? {};
+          final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>?;
+          final authors = volumeInfo['authors'] as List<dynamic>?;
+
+          final industryIdentifiers =
+              volumeInfo['industryIdentifiers'] as List<dynamic>?;
+          String? identifier;
+          if (industryIdentifiers?.isNotEmpty == true) {
+            final firstIdentifier =
+                industryIdentifiers!.first as Map<String, dynamic>?;
+            identifier = firstIdentifier?['identifier'] as String?;
+          }
+
+          final book = Book(
+            id: item['id'] as String? ?? identifier ?? '',
+            title: volumeInfo['title'] as String? ?? 'タイトル不明',
+            authors: authors?.join(', '),
+            description: volumeInfo['description'] as String?,
+            thumbnailUrl: (imageLinks?['thumbnail'] as String?)
+                ?.replaceFirst('http://', 'https://'),
+            publishedDate: volumeInfo['publishedDate'] as String?,
+            pageCount: (volumeInfo['pageCount'] as num?)?.toInt(),
+          );
+
+          books.add(book);
+          if (i < 3) {
+            debugPrint(
+                'Book ${i + 1}: ${book.title} by ${book.authors ?? "Unknown"}');
+          }
+        } catch (e, stackTrace) {
+          debugPrint('Error parsing book at index $i: $e');
+          debugPrint('Stack trace: $stackTrace');
+        }
+      }
+
+      debugPrint('Successfully parsed ${books.length} books');
+      return books;
+    } catch (e, stackTrace) {
+      debugPrint('Error searching books: $e');
+      debugPrint('Stack trace: $stackTrace');
+      rethrow;
     }
-
-    final response = await _dio.get<Map<String, dynamic>>("/volumes", queryParameters: {
-      'q': queryParts.join('+'),
-      'maxResults': 20,
-    });
-
-    final items = response.data?['items'] as List<dynamic>?;
-    if (items == null || items.isEmpty) {
-      return const [];
-    }
-
-    return items.map<Book>((dynamic rawItem) {
-      final item = rawItem as Map<String, dynamic>;
-      final volumeInfo = item['volumeInfo'] as Map<String, dynamic>? ?? {};
-      final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>?;
-      final authors = volumeInfo['authors'] as List<dynamic>?;
-
-      return Book(
-        id: item['id'] as String? ?? volumeInfo['industryIdentifiers']?.first?['identifier'] as String? ?? '',
-        title: volumeInfo['title'] as String? ?? 'タイトル不明',
-        authors: authors?.join(', '),
-        description: volumeInfo['description'] as String?,
-        thumbnailUrl: (imageLinks?['thumbnail'] as String?)
-            ?.replaceFirst('http://', 'https://'),
-        publishedDate: volumeInfo['publishedDate'] as String?,
-        pageCount: (volumeInfo['pageCount'] as num?)?.toInt(),
-      );
-    }).toList();
   }
 }
 
@@ -100,11 +177,12 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
 
   final BookSearchRepository _repository;
 
-  Future<void> search({String? title, String? isbn}) async {
-    state = state.copyWith(results: const AsyncValue.loading(), hasSearched: true);
+  Future<void> search(String keyword) async {
+    state =
+        state.copyWith(results: const AsyncValue.loading(), hasSearched: true);
 
     try {
-      final books = await _repository.searchBooks(title: title, isbn: isbn);
+      final books = await _repository.searchBooks(keyword);
       state = state.copyWith(results: AsyncValue.data(books));
     } catch (error, stackTrace) {
       state = state.copyWith(results: AsyncValue.error(error, stackTrace));
@@ -120,20 +198,17 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
-  late final TextEditingController _titleController;
-  late final TextEditingController _isbnController;
+  late final TextEditingController _keywordController;
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController();
-    _isbnController = TextEditingController();
+    _keywordController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _isbnController.dispose();
+    _keywordController.dispose();
     super.dispose();
   }
 
@@ -154,24 +229,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: _titleController,
+                    controller: _keywordController,
                     decoration: const InputDecoration(
-                      labelText: 'タイトル',
-                      hintText: '例: Effective Dart',
-                      prefixIcon: Icon(Icons.title),
+                      labelText: 'キーワード',
+                      hintText: 'タイトルや著者名を入力（例: Effective Dart、村上春樹）',
+                      prefixIcon: Icon(Icons.search),
                     ),
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _triggerSearch(),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _isbnController,
-                    decoration: const InputDecoration(
-                      labelText: 'ISBN',
-                      hintText: '例: 978-0134685991',
-                      prefixIcon: Icon(Icons.qr_code),
-                    ),
-                    keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _triggerSearch(),
                   ),
@@ -204,10 +267,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _triggerSearch() {
-    ref.read(searchNotifierProvider.notifier).search(
-          title: _titleController.text,
-          isbn: _isbnController.text,
-        );
+    ref.read(searchNotifierProvider.notifier).search(_keywordController.text);
   }
 }
 
@@ -224,7 +284,7 @@ class _SearchResults extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!hasSearched) {
       return const Center(
-        child: Text('タイトルまたはISBNを入力して検索してください'),
+        child: Text('キーワードを入力して検索してください'),
       );
     }
 
