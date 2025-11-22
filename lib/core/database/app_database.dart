@@ -108,6 +108,7 @@ class ActionRow {
     required this.title,
     this.description,
     this.dueDate,
+    this.remindAt,
     this.status = 'pending',
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -120,6 +121,7 @@ class ActionRow {
   final String title;
   final String? description;
   final DateTime? dueDate;
+  final DateTime? remindAt;
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -213,6 +215,7 @@ class ActionsCompanion {
     required this.title,
     this.description,
     this.dueDate,
+    this.remindAt,
     this.status = const Value('pending'),
   });
 
@@ -222,6 +225,7 @@ class ActionsCompanion {
     required this.title,
     this.description,
     this.dueDate,
+    this.remindAt,
     this.status = const Value('pending'),
   });
 
@@ -230,6 +234,7 @@ class ActionsCompanion {
   final String title;
   final Value<String?>? description;
   final Value<DateTime?>? dueDate;
+  final Value<DateTime?>? remindAt;
   final Value<String> status;
 }
 
@@ -412,6 +417,7 @@ class ActionDao {
         title: entry.title,
         description: entry.description?.value,
         dueDate: entry.dueDate?.value,
+        remindAt: entry.remindAt?.value,
         status: entry.status.value,
       ),
     );
@@ -434,6 +440,7 @@ class ActionDao {
     String? title,
     String? description,
     DateTime? dueDate,
+    Value<DateTime?>? remindAt,
     String? status,
     int? noteId,
   }) async {
@@ -450,6 +457,7 @@ class ActionDao {
       title: title ?? existing.title,
       description: description ?? existing.description,
       dueDate: dueDate ?? existing.dueDate,
+      remindAt: remindAt != null ? remindAt.value : existing.remindAt,
       status: status ?? existing.status,
       createdAt: existing.createdAt,
       updatedAt: DateTime.now(),

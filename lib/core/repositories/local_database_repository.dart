@@ -70,6 +70,7 @@ class LocalDatabaseRepository {
     required String title,
     String? description,
     DateTime? dueDate,
+    DateTime? remindAt,
     int? noteId,
   }) {
     return actions.insertAction(
@@ -79,6 +80,7 @@ class LocalDatabaseRepository {
         title: title,
         description: Value(description),
         dueDate: Value(dueDate),
+        remindAt: Value(remindAt),
       ),
     );
   }
@@ -88,6 +90,7 @@ class LocalDatabaseRepository {
     required String title,
     String? description,
     DateTime? dueDate,
+    Value<DateTime?>? remindAt,
     String? status,
     int? noteId,
   }) async {
@@ -96,6 +99,7 @@ class LocalDatabaseRepository {
       title: title,
       description: description,
       dueDate: dueDate,
+      remindAt: remindAt,
       status: status,
       noteId: noteId,
     );
