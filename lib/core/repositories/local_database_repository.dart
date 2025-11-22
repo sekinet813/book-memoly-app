@@ -24,6 +24,10 @@ class LocalDatabaseRepository {
     return notes.getNotesForBook(bookId);
   }
 
+  Future<List<NoteRow>> getAllNotes() {
+    return notes.getAllNotes();
+  }
+
   Future<List<ActionRow>> getActionsForBook(int bookId) {
     return actions.getActionsForBook(bookId);
   }
@@ -110,6 +114,50 @@ class LocalDatabaseRepository {
   Future<bool> deleteAction(int actionId) async {
     final deleted = await actions.deleteAction(actionId);
     return deleted > 0;
+  }
+
+  Future<List<LocalSearchResult>> searchBooksAndNotes(
+    String keyword, {
+    BookStatus? statusFilter,
+  }) async {
+    final trimmedKeyword = keyword.trim();
+    if (trimmedKeyword.isEmpty) {
+      return const [];
+    }
+
+    final lowerKeyword = trimmedKeyword.toLowerCase();
+    final allBooks = await getAllBooks();
+    final allNotes = await getAllNotes();
+
+    final results = <LocalSearchResult>[];
+
+    for (final book in allBooks) {
+      if (statusFilter != null && book.status != statusFilter.toDbValue) {
+        continue;
+      }
+
+      final matchesTitle = book.title.toLowerCase().contains(lowerKeyword);
+      final matchesAuthors =
+          (book.authors ?? '').toLowerCase().contains(lowerKeyword);
+      final matchesDescription =
+          (book.description ?? '').toLowerCase().contains(lowerKeyword);
+
+      final matchingNotes = allNotes
+          .where((note) => note.bookId == book.id)
+          .where((note) => note.content.toLowerCase().contains(lowerKeyword))
+          .toList();
+
+      if (matchesTitle || matchesAuthors || matchesDescription || matchingNotes.isNotEmpty) {
+        results.add(
+          LocalSearchResult(
+            book: book,
+            matchingNotes: matchingNotes,
+          ),
+        );
+      }
+    }
+
+    return results;
   }
 
   Future<int> addReadingLog({
@@ -249,4 +297,14 @@ class SampleDataResult {
   final List<NoteRow> notes;
   final List<ActionRow> actions;
   final List<ReadingLogRow> readingLogs;
+}
+
+class LocalSearchResult {
+  LocalSearchResult({
+    required this.book,
+    required this.matchingNotes,
+  });
+
+  final BookRow book;
+  final List<NoteRow> matchingNotes;
 }

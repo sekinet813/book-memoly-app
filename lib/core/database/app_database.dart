@@ -343,6 +343,10 @@ class NoteDao {
 
   final AppDatabase db;
 
+  Future<List<NoteRow>> getAllNotes() async {
+    return List.unmodifiable(db._noteRows);
+  }
+
   Future<int> insertNote(NotesCompanion entry) async {
     final newId = ++db._noteId;
     db._noteRows.add(
