@@ -10,6 +10,8 @@ import '../../core/models/book.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../shared/constants/app_constants.dart';
+import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_card.dart';
 
 final _dioProvider = Provider<Dio>((ref) {
   return Dio(
@@ -342,13 +344,11 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
                 onSubmitted: (_) => _triggerSearch(),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _triggerSearch,
-                  icon: const Icon(Icons.search),
-                  label: const Text('検索する'),
-                ),
+              AppButton.primary(
+                onPressed: _triggerSearch,
+                icon: Icons.search,
+                label: '検索する',
+                expand: true,
               ),
             ],
           ),
@@ -447,13 +447,11 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _triggerSearch,
-                  icon: const Icon(Icons.manage_search),
-                  label: const Text('ローカルを検索'),
-                ),
+              AppButton.primary(
+                onPressed: _triggerSearch,
+                icon: Icons.manage_search,
+                label: 'ローカルを検索',
+                expand: true,
               ),
             ],
           ),
@@ -544,82 +542,99 @@ class _LocalSearchResults extends StatelessWidget {
       itemBuilder: (context, index) {
         final result = results[index];
         final status = bookStatusFromDbValue(result.book.status);
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        result.book.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      result.book.title,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    Chip(
-                      label: Text(status.label),
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.1),
-                      labelStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                  ),
+                  Chip(
+                    label: Text(status.label),
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withOpacity(0.1),
+                    labelStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  ],
-                ),
-                if (result.book.authors?.isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    result.book.authors!,
-                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
-                const SizedBox(height: 8),
-                if (result.matchingNotes.isNotEmpty) ...[
+              ),
+              if (result.book.authors?.isNotEmpty == true) ...[
+                const SizedBox(height: 4),
+                Text(
+                  result.book.authors!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              if (result.matchingNotes.isNotEmpty) ...[
+                Text(
+                  '一致したメモ (${result.matchingNotes.length})',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                ...result.matchingNotes.take(3).map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(
+                          child: Text(
+                            note.content,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (result.matchingNotes.length > 3)
                   Text(
-                    '一致したメモ (${result.matchingNotes.length})',
+                    '他 ${result.matchingNotes.length - 3} 件のメモが一致',
                     style: Theme.of(context)
                         .textTheme
-                        .labelLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                        .bodySmall
+                        ?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-                  const SizedBox(height: 4),
-                  ...result.matchingNotes.take(3).map(
-                    (note) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('• '),
-                          Expanded(
-                            child: Text(
-                              note.content,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
+              ] else
+                Text(
+                  'タイトルや著者で一致しました',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    ),
-                  ),
-                  if (result.matchingNotes.length > 3)
-                    Text(
-                      '他 ${result.matchingNotes.length - 3} 件のメモが一致',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ] else
-                  Text(
-                    'タイトルや著者で一致しました',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         );
       },
@@ -634,32 +649,61 @@ class _BookListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: _BookThumbnail(url: book.thumbnailUrl),
-        title: Text(book.title),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (book.authors?.isNotEmpty == true)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(book.authors!),
-              ),
-            if (book.publishedDate != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('出版日: ${book.publishedDate}'),
-              ),
-          ],
-        ),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => BookDetailPage(book: book),
+    return AppCard(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookDetailPage(book: book),
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          _BookThumbnail(url: book.thumbnailUrl),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  book.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (book.authors?.isNotEmpty == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      book.authors!,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                if (book.publishedDate != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '出版日: ${book.publishedDate}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+              ],
             ),
-          );
-        },
+          ),
+          const Icon(Icons.chevron_right),
+        ],
       ),
     );
   }
@@ -960,58 +1004,52 @@ class _BookRegistrationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  '読書ステータス',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '読書ステータス',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              if (isRegistered)
+                Chip(
+                  label: Text('登録済み'),
+                  avatar: const Icon(Icons.check, size: 18),
                 ),
-                if (isRegistered)
-                  Chip(
-                    label: Text('登録済み'),
-                    avatar: const Icon(Icons.check, size: 18),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<BookStatus>(
+            value: selectedStatus,
+            decoration: const InputDecoration(
+              labelText: 'ステータスを選択',
+            ),
+            items: BookStatus.values
+                .map(
+                  (status) => DropdownMenuItem(
+                    value: status,
+                    child: Text(status.label),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<BookStatus>(
-              value: selectedStatus,
-              decoration: const InputDecoration(
-                labelText: 'ステータスを選択',
-                border: OutlineInputBorder(),
-              ),
-              items: BookStatus.values
-                  .map(
-                    (status) => DropdownMenuItem(
-                      value: status,
-                      child: Text(status.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (status) {
-                if (status != null) {
-                  onStatusChanged(status);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: isLoading ? null : onSave,
-                icon: Icon(isRegistered ? Icons.save : Icons.library_add),
-                label: Text(isRegistered ? 'ステータスを更新' : '本を登録'),
-              ),
-            ),
-          ],
-        ),
+                )
+                .toList(),
+            onChanged: (status) {
+              if (status != null) {
+                onStatusChanged(status);
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          AppButton.primary(
+            onPressed: isLoading ? null : onSave,
+            icon: isRegistered ? Icons.save : Icons.library_add,
+            label: isRegistered ? 'ステータスを更新' : '本を登録',
+            expand: true,
+          ),
+        ],
       ),
     );
   }
@@ -1036,32 +1074,29 @@ class _ReadingPeriodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '読書期間',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _DatePickerRow(
-              label: '開始日',
-              date: startedAt,
-              onTap: onTapStartDate,
-              onClear: onClearStartDate,
-            ),
-            const SizedBox(height: 12),
-            _DatePickerRow(
-              label: '終了日',
-              date: finishedAt,
-              onTap: onTapEndDate,
-              onClear: onClearEndDate,
-            ),
-          ],
-        ),
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '読書期間',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _DatePickerRow(
+            label: '開始日',
+            date: startedAt,
+            onTap: onTapStartDate,
+            onClear: onClearStartDate,
+          ),
+          const SizedBox(height: 12),
+          _DatePickerRow(
+            label: '終了日',
+            date: finishedAt,
+            onTap: onTapEndDate,
+            onClear: onClearEndDate,
+          ),
+        ],
       ),
     );
   }
