@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -9,31 +8,19 @@ import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
-import '../../shared/constants/app_constants.dart';
+import '../../core/services/google_books_api_client.dart';
+import '../../core/models/google_books/google_books_volume.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 
-final _dioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      baseUrl: AppConstants.googleBooksApiBaseUrl,
-      // クエリパラメータのエンコーディングを明示的に設定
-      queryParameters: {},
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    ),
-  );
-});
-
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
-  return BookSearchRepository(ref.read(_dioProvider));
+  return BookSearchRepository(ref.read(googleBooksApiClientProvider));
 });
 
 class BookSearchRepository {
-  BookSearchRepository(this._dio);
+  BookSearchRepository(this._client);
 
-  final Dio _dio;
+  final GoogleBooksApiClient _client;
 
   Future<List<Book>> searchBooks(String keyword) async {
     final cleanedKeyword = keyword.trim();
@@ -59,88 +46,44 @@ class BookSearchRepository {
 
     try {
       // まず通常のキーワード検索を試す
-      var response =
-          await _dio.get<Map<String, dynamic>>("/volumes", queryParameters: {
-        'q': query,
-        'maxResults': 20,
-      });
+      var response = await _client.searchVolumes(query: query);
 
-      final totalItems = response.data?['totalItems'] as int? ?? 0;
-      debugPrint('Google Books API response: $totalItems items found');
+      debugPrint('Google Books API response: ${response.totalItems} items found');
 
       // 結果が少ない場合、著者名検索も試す
-      if (totalItems < 5 && !isIsbn) {
+      if (response.totalItems < 5 && !isIsbn) {
         final authorQuery = 'inauthor:"$cleanedKeyword"';
         debugPrint('Trying author search: $authorQuery');
 
         try {
-          final authorResponse = await _dio
-              .get<Map<String, dynamic>>("/volumes", queryParameters: {
-            'q': authorQuery,
-            'maxResults': 20,
-          });
+          final authorResponse =
+              await _client.searchVolumes(query: authorQuery);
 
-          final authorTotalItems =
-              authorResponse.data?['totalItems'] as int? ?? 0;
-          debugPrint('Author search response: $authorTotalItems items found');
+          debugPrint(
+              'Author search response: ${authorResponse.totalItems} items found');
 
           // 著者名検索の結果の方が多い場合は、そちらを使用
-          if (authorTotalItems > totalItems) {
+          if (authorResponse.totalItems > response.totalItems) {
             response = authorResponse;
           }
-        } catch (e) {
-          debugPrint('Author search failed: $e');
+        } on GoogleBooksApiException catch (error) {
+          debugPrint('Author search failed: $error');
           // 著者名検索が失敗しても、通常の検索結果を返す
         }
       }
 
-      final items = response.data?['items'] as List<dynamic>?;
-      if (items == null || items.isEmpty) {
+      final items = response.items;
+      if (items.isEmpty) {
         debugPrint('No items found in response');
         return const [];
       }
 
       debugPrint('Found ${items.length} books');
 
-      final books = <Book>[];
-      for (var i = 0; i < items.length; i++) {
-        try {
-          final rawItem = items[i] as Map<String, dynamic>;
-          final item = rawItem;
-          final volumeInfo = item['volumeInfo'] as Map<String, dynamic>? ?? {};
-          final imageLinks = volumeInfo['imageLinks'] as Map<String, dynamic>?;
-          final authors = volumeInfo['authors'] as List<dynamic>?;
-
-          final industryIdentifiers =
-              volumeInfo['industryIdentifiers'] as List<dynamic>?;
-          String? identifier;
-          if (industryIdentifiers?.isNotEmpty == true) {
-            final firstIdentifier =
-                industryIdentifiers!.first as Map<String, dynamic>?;
-            identifier = firstIdentifier?['identifier'] as String?;
-          }
-
-          final book = Book(
-            id: item['id'] as String? ?? identifier ?? '',
-            title: volumeInfo['title'] as String? ?? 'タイトル不明',
-            authors: authors?.join(', '),
-            description: volumeInfo['description'] as String?,
-            thumbnailUrl: (imageLinks?['thumbnail'] as String?)
-                ?.replaceFirst('http://', 'https://'),
-            publishedDate: volumeInfo['publishedDate'] as String?,
-            pageCount: (volumeInfo['pageCount'] as num?)?.toInt(),
-          );
-
-          books.add(book);
-          if (i < 3) {
-            debugPrint(
-                'Book ${i + 1}: ${book.title} by ${book.authors ?? "Unknown"}');
-          }
-        } catch (e, stackTrace) {
-          debugPrint('Error parsing book at index $i: $e');
-          debugPrint('Stack trace: $stackTrace');
-        }
-      }
+      final books = items
+          .map((volume) => volume.toBook())
+          .where((book) => book.id.isNotEmpty)
+          .toList();
 
       debugPrint('Successfully parsed ${books.length} books');
       return books;
