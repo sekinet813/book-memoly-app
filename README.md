@@ -52,6 +52,43 @@ flutter create . --org com.bookmemoly --project-name book_memoly_app
 flutter pub get
 ```
 
+### 2.5 Supabase の設定
+
+Supabase の URL と anon key はリポジトリに含めず、起動時に `--dart-define` で注入してください。
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=your_project_url \
+  --dart-define=SUPABASE_ANON_KEY=your_public_anon_key
+```
+
+アプリ起動時に Supabase を初期化し、`health_checks` テーブルへの軽量なクエリで API 応答を確認します。
+
+本番ビルドでも同様に `--dart-define` で値を渡します。CI などで秘密情報として保持し、ビルドコマンドに注入してください（例）。
+
+```bash
+# Android AppBundle
+flutter build appbundle \
+  --dart-define=SUPABASE_URL=your_project_url \
+  --dart-define=SUPABASE_ANON_KEY=your_public_anon_key
+
+# iOS Archive
+flutter build ipa \
+  --dart-define=SUPABASE_URL=your_project_url \
+  --dart-define=SUPABASE_ANON_KEY=your_public_anon_key
+```
+
+`flutter build` は `--dart-define-from-file` もサポートするため、CI では一時ファイルにシークレットを書き出して指定しても構いません。
+
+```bash
+cat > /tmp/supabase.env <<'EOF'
+SUPABASE_URL=your_project_url
+SUPABASE_ANON_KEY=your_public_anon_key
+EOF
+
+flutter build appbundle --dart-define-from-file=/tmp/supabase.env
+```
+
 ### 3. コード生成
 
 FreezedとDriftのコード生成を実行：

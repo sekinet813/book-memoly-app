@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-void main() {
+import 'core/services/supabase_service.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final supabaseService = SupabaseService();
+  await supabaseService.initialize();
+
   runApp(
-    const ProviderScope(
-      child: BookMemolyApp(),
+    ProviderScope(
+      overrides: [supabaseServiceProvider.overrideWithValue(supabaseService)],
+      child: const BookMemolyApp(),
     ),
   );
 }
