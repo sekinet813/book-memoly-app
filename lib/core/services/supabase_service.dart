@@ -33,7 +33,7 @@ class SupabaseService {
     try {
       final response = await Supabase.instance.client
           .from(_config.healthCheckTable)
-          .select<Map<String, dynamic>>()
+          .select()
           .limit(1);
 
       debugPrint('Supabase health check returned ${response.length} rows.');

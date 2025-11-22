@@ -5,15 +5,19 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'package:book_memoly_app/main.dart';
 
 void main() {
   testWidgets('BookMemolyApp renders app title text',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const BookMemolyApp());
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: BookMemolyApp(),
+      ),
+    );
 
     expect(find.text('Book Memoly App'), findsOneWidget);
   });
