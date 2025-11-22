@@ -37,6 +37,25 @@ class BookDao extends DatabaseAccessor<AppDatabase> with _$BookDaoMixin {
   Future<List<BookRow>> getAllBooks() => select(books).get();
 
   Stream<List<BookRow>> watchAllBooks() => select(books).watch();
+
+  Future<BookRow?> getBookByGoogleId(String googleBooksId) {
+    return (select(books)..where((tbl) => tbl.googleBooksId.equals(googleBooksId)))
+        .getSingleOrNull();
+  }
+
+  Stream<BookRow?> watchBookByGoogleId(String googleBooksId) {
+    return (select(books)..where((tbl) => tbl.googleBooksId.equals(googleBooksId)))
+        .watchSingleOrNull();
+  }
+
+  Future<int> updateBookStatus(String googleBooksId, int status) {
+    return (update(books)..where((tbl) => tbl.googleBooksId.equals(googleBooksId))).write(
+      BooksCompanion(
+        status: Value(status),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 }
 
 @DriftAccessor(tables: [Notes])
