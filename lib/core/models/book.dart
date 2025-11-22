@@ -26,3 +26,26 @@ enum BookStatus {
   reading,
   finished,
 }
+
+extension BookStatusX on BookStatus {
+  int get toDbValue => index;
+
+  String get label {
+    switch (this) {
+      case BookStatus.unread:
+        return '未読';
+      case BookStatus.reading:
+        return '読書中';
+      case BookStatus.finished:
+        return '読了';
+    }
+  }
+}
+
+BookStatus bookStatusFromDbValue(int value) {
+  if (value < 0 || value >= BookStatus.values.length) {
+    return BookStatus.unread;
+  }
+
+  return BookStatus.values[value];
+}

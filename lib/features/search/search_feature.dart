@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
+import '../../core/providers/database_providers.dart';
 import '../../shared/constants/app_constants.dart';
 
 final _dioProvider = Provider<Dio>((ref) {
@@ -416,13 +418,47 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-class BookDetailPage extends StatelessWidget {
+class BookDetailPage extends ConsumerStatefulWidget {
   const BookDetailPage({required this.book, super.key});
 
   final Book book;
 
   @override
+  ConsumerState<BookDetailPage> createState() => _BookDetailPageState();
+}
+
+class _BookDetailPageState extends ConsumerState<BookDetailPage> {
+  late BookStatus _selectedStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStatus = widget.book.status;
+
+    ref.listen<AsyncValue<BookRow?>>(
+      bookByGoogleIdProvider(widget.book.id),
+      (_, next) {
+        next.whenData((bookRow) {
+          if (bookRow == null) {
+            return;
+          }
+
+          final status = bookStatusFromDbValue(bookRow.status);
+          if (status != _selectedStatus) {
+            setState(() {
+              _selectedStatus = status;
+            });
+          }
+        });
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final bookRowAsync = ref.watch(bookByGoogleIdProvider(widget.book.id));
+    final existingBook = bookRowAsync.valueOrNull;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('書籍詳細'),
@@ -434,24 +470,24 @@ class BookDetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: _BookThumbnail(url: book.thumbnailUrl),
+                child: _BookThumbnail(url: widget.book.thumbnailUrl),
               ),
               const SizedBox(height: 16),
               Text(
-                book.title,
+                widget.book.title,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              if (book.authors?.isNotEmpty == true) ...[
+              if (widget.book.authors?.isNotEmpty == true) ...[
                 const SizedBox(height: 8),
-                Text('著者: ${book.authors}'),
+                Text('著者: ${widget.book.authors}'),
               ],
-              if (book.publishedDate != null) ...[
+              if (widget.book.publishedDate != null) ...[
                 const SizedBox(height: 8),
-                Text('出版日: ${book.publishedDate}'),
+                Text('出版日: ${widget.book.publishedDate}'),
               ],
-              if (book.pageCount != null) ...[
+              if (widget.book.pageCount != null) ...[
                 const SizedBox(height: 8),
-                Text('ページ数: ${book.pageCount}'),
+                Text('ページ数: ${widget.book.pageCount}'),
               ],
               const SizedBox(height: 16),
               const Text(
@@ -460,11 +496,131 @@ class BookDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                book.description ?? '説明がありません',
+                widget.book.description ?? '説明がありません',
                 style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 24),
+              _BookRegistrationCard(
+                selectedStatus: _selectedStatus,
+                onStatusChanged: (status) => setState(() {
+                  _selectedStatus = status;
+                }),
+                onSave: () => _handleSave(existingBook),
+                isRegistered: existingBook != null,
+                isLoading: bookRowAsync.isLoading,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleSave(BookRow? existingBook) async {
+    final repository = ref.read(localDatabaseRepositoryProvider);
+
+    try {
+      if (existingBook == null) {
+        final inserted = await repository.saveBook(
+          widget.book,
+          status: _selectedStatus,
+        );
+
+        if (!mounted) return;
+        if (inserted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('本を登録しました')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('この本は既に登録されています')),
+          );
+        }
+      } else {
+        await repository.updateBookStatus(widget.book.id, _selectedStatus);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ステータスを更新しました')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('登録に失敗しました: $e')),
+      );
+    }
+  }
+}
+
+class _BookRegistrationCard extends StatelessWidget {
+  const _BookRegistrationCard({
+    required this.selectedStatus,
+    required this.onStatusChanged,
+    required this.onSave,
+    required this.isRegistered,
+    required this.isLoading,
+  });
+
+  final BookStatus selectedStatus;
+  final ValueChanged<BookStatus> onStatusChanged;
+  final VoidCallback onSave;
+  final bool isRegistered;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '読書ステータス',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (isRegistered)
+                  Chip(
+                    label: Text('登録済み'),
+                    avatar: const Icon(Icons.check, size: 18),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<BookStatus>(
+              value: selectedStatus,
+              decoration: const InputDecoration(
+                labelText: 'ステータスを選択',
+                border: OutlineInputBorder(),
+              ),
+              items: BookStatus.values
+                  .map(
+                    (status) => DropdownMenuItem(
+                      value: status,
+                      child: Text(status.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (status) {
+                if (status != null) {
+                  onStatusChanged(status);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isLoading ? null : onSave,
+                icon: Icon(isRegistered ? Icons.save : Icons.library_add),
+                label: Text(isRegistered ? 'ステータスを更新' : '本を登録'),
+              ),
+            ),
+          ],
         ),
       ),
     );

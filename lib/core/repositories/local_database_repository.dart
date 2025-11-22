@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
+import '../models/book.dart';
 
 class LocalDatabaseRepository {
   LocalDatabaseRepository(this.db)
@@ -14,6 +15,40 @@ class LocalDatabaseRepository {
   final NoteDao notes;
   final ActionDao actions;
   final ReadingLogDao readingLogs;
+
+  Future<bool> saveBook(Book book, {BookStatus status = BookStatus.unread}) async {
+    final existing = await books.getBookByGoogleId(book.id);
+    if (existing != null) {
+      return false;
+    }
+
+    await books.insertBook(
+      BooksCompanion.insert(
+        googleBooksId: book.id,
+        title: book.title,
+        authors: Value(book.authors),
+        description: Value(book.description),
+        thumbnailUrl: Value(book.thumbnailUrl),
+        publishedDate: Value(book.publishedDate),
+        pageCount: Value(book.pageCount),
+        status: Value(status.toDbValue),
+      ),
+    );
+
+    return true;
+  }
+
+  Future<BookRow?> findBookByGoogleId(String googleBooksId) {
+    return books.getBookByGoogleId(googleBooksId);
+  }
+
+  Stream<BookRow?> watchBookByGoogleId(String googleBooksId) {
+    return books.watchBookByGoogleId(googleBooksId);
+  }
+
+  Future<void> updateBookStatus(String googleBooksId, BookStatus status) {
+    return books.updateBookStatus(googleBooksId, status.toDbValue);
+  }
 
   /// Seeds the database with sample data and returns what was inserted to
   /// verify SELECT/INSERT flow works end-to-end.
