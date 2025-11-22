@@ -1,9 +1,12 @@
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+
+enum ActionStatusFilter { all, pending, done }
 
 final actionPlansNotifierProvider =
     StateNotifierProvider<ActionPlansNotifier, ActionPlansState>((ref) {
@@ -16,6 +19,7 @@ class ActionPlansState {
     required this.books,
     required this.actions,
     required this.notes,
+    this.statusFilter = ActionStatusFilter.all,
     this.selectedBookId,
     this.isLoadingBooks = false,
   });
@@ -23,6 +27,7 @@ class ActionPlansState {
   final List<BookRow> books;
   final AsyncValue<List<ActionRow>> actions;
   final List<NoteRow> notes;
+  final ActionStatusFilter statusFilter;
   final int? selectedBookId;
   final bool isLoadingBooks;
 
@@ -30,6 +35,7 @@ class ActionPlansState {
     List<BookRow>? books,
     AsyncValue<List<ActionRow>>? actions,
     List<NoteRow>? notes,
+    ActionStatusFilter? statusFilter,
     int? selectedBookId,
     bool? isLoadingBooks,
   }) {
@@ -37,6 +43,7 @@ class ActionPlansState {
       books: books ?? this.books,
       actions: actions ?? this.actions,
       notes: notes ?? this.notes,
+      statusFilter: statusFilter ?? this.statusFilter,
       selectedBookId: selectedBookId ?? this.selectedBookId,
       isLoadingBooks: isLoadingBooks ?? this.isLoadingBooks,
     );
@@ -49,6 +56,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
           books: [],
           actions: AsyncValue.data([]),
           notes: [],
+          statusFilter: ActionStatusFilter.all,
           isLoadingBooks: true,
         ));
 
@@ -129,6 +137,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     required String title,
     String? description,
     DateTime? dueDate,
+    DateTime? remindAt,
     int? noteId,
   }) async {
     await _repository.addAction(
@@ -136,9 +145,14 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
       title: title,
       description: description,
       dueDate: dueDate,
+      remindAt: remindAt,
       noteId: noteId,
     );
     await loadActionsForBook(bookId);
+  }
+
+  void setStatusFilter(ActionStatusFilter filter) {
+    state = state.copyWith(statusFilter: filter);
   }
 
   Future<void> updateAction({
@@ -147,6 +161,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     required String title,
     String? description,
     DateTime? dueDate,
+    Value<DateTime?> remindAt = const Value.absent(),
     String? status,
     int? noteId,
   }) async {
@@ -155,6 +170,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
       title: title,
       description: description,
       dueDate: dueDate,
+      remindAt: remindAt,
       status: status,
       noteId: noteId,
     );
@@ -181,6 +197,25 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     );
     await loadActionsForBook(action.bookId!);
   }
+
+  Future<void> updateReminder(ActionRow action, Value<DateTime?> remindAt) async {
+    if (action.bookId == null) {
+      return;
+    }
+
+    await _repository.updateAction(
+      actionId: action.id,
+      bookId: action.bookId!,
+      title: action.title,
+      description: action.description,
+      dueDate: action.dueDate,
+      remindAt: remindAt,
+      status: action.status,
+      noteId: action.noteId,
+    );
+
+    await loadActionsForBook(action.bookId!);
+  }
 }
 
 class ActionPlansPage extends ConsumerWidget {
@@ -201,6 +236,8 @@ class ActionPlansPage extends ConsumerWidget {
             children: [
               _BookSelector(state: state),
               const SizedBox(height: 16),
+              _StatusFilterRow(state: state),
+              const SizedBox(height: 8),
               Expanded(child: _ActionList(state: state)),
             ],
           ),
@@ -268,6 +305,34 @@ class _BookSelector extends ConsumerWidget {
   }
 }
 
+class _StatusFilterRow extends ConsumerWidget {
+  const _StatusFilterRow({required this.state});
+
+  final ActionPlansState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: ActionStatusFilter.values.map((filter) {
+          final isSelected = state.statusFilter == filter;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(_statusFilterLabel(filter)),
+              selected: isSelected,
+              onSelected: (_) => ref
+                  .read(actionPlansNotifierProvider.notifier)
+                  .setStatusFilter(filter),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _ActionList extends ConsumerWidget {
   const _ActionList({required this.state});
 
@@ -281,18 +346,28 @@ class _ActionList extends ConsumerWidget {
 
     return state.actions.when(
       data: (actions) {
-        if (actions.isEmpty) {
-          return const _InfoCard(
+        final filteredActions = actions
+            .where((action) => _matchesFilter(action, state.statusFilter))
+            .toList();
+
+        if (filteredActions.isEmpty) {
+          final message = switch (state.statusFilter) {
+            ActionStatusFilter.pending => '未完了のアクションはありません',
+            ActionStatusFilter.done => '完了済みのアクションはありません',
+            ActionStatusFilter.all => 'この本のアクションはまだありません',
+          };
+
+          return _InfoCard(
             icon: Icons.checklist_rtl,
-            message: 'この本のアクションはまだありません',
+            message: message,
           );
         }
 
         return ListView.separated(
-          itemCount: actions.length,
+          itemCount: filteredActions.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final action = actions[index];
+            final action = filteredActions[index];
             return _ActionTile(action: action, notes: state.notes);
           },
         );
@@ -314,6 +389,7 @@ class _ActionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final note = action.noteId != null
         ? notes.firstWhere(
             (n) => n.id == action.noteId,
@@ -325,6 +401,48 @@ class _ActionTile extends ConsumerWidget {
           )
         : null;
     final isLinkedToNote = note != null && note.id != -1 && note.content.isNotEmpty;
+    final isDone = action.status == 'done';
+    final isOverdue =
+        action.dueDate != null && action.dueDate!.isBefore(DateTime.now());
+    final isReminderDue =
+        action.remindAt != null && action.remindAt!.isBefore(DateTime.now());
+
+    Future<void> _selectReminder() async {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: action.remindAt ?? action.dueDate ?? DateTime.now(),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      );
+
+      if (picked == null) {
+        return;
+      }
+
+      await ref
+          .read(actionPlansNotifierProvider.notifier)
+          .updateReminder(action, Value(picked));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('リマインドを ${_formatDueDate(context, picked)} に更新しました'),
+          ),
+        );
+      }
+    }
+
+    Future<void> _clearReminder() async {
+      await ref
+          .read(actionPlansNotifierProvider.notifier)
+          .updateReminder(action, const Value<DateTime?>(null));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('リマインドを解除しました')),
+        );
+      }
+    }
 
     return Card(
       child: Padding(
@@ -335,7 +453,7 @@ class _ActionTile extends ConsumerWidget {
             Row(
               children: [
                 Checkbox(
-                  value: action.status == 'done',
+                  value: isDone,
                   onChanged: (value) => ref
                       .read(actionPlansNotifierProvider.notifier)
                       .toggleStatus(action, value ?? false),
@@ -346,61 +464,110 @@ class _ActionTile extends ConsumerWidget {
                     children: [
                       Text(
                         action.title,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          decoration:
+                              isDone ? TextDecoration.lineThrough : TextDecoration.none,
+                        ),
                       ),
                       if (action.description?.isNotEmpty ?? false)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             action.description!,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: theme.textTheme.bodyMedium,
                           ),
                         ),
-                      if (action.dueDate != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.event, size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDueDate(context, action.dueDate!),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: Colors.grey[700]),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Chip(
+                            avatar: Icon(
+                              isDone ? Icons.check_circle : Icons.timelapse,
+                              color: isDone
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.secondary,
+                            ),
+                            label: Text(isDone ? '完了' : '進行中'),
+                            backgroundColor:
+                                isDone ? Colors.green[50] : Colors.orange[50],
+                          ),
+                          if (action.dueDate != null)
+                            InputChip(
+                              avatar: const Icon(Icons.event),
+                              label: Text(_formatDueDate(context, action.dueDate!)),
+                              backgroundColor:
+                                  isOverdue ? Colors.red[50] : Colors.grey[200],
+                            ),
+                          if (action.remindAt != null)
+                            InputChip(
+                              avatar: const Icon(Icons.alarm),
+                              label: Text(_formatDueDate(context, action.remindAt!)),
+                              backgroundColor: isReminderDue
+                                  ? Colors.amber[50]
+                                  : Colors.blueGrey[50],
+                            ),
+                          if (isLinkedToNote)
+                            InputChip(
+                              avatar: const Icon(Icons.note_alt_outlined),
+                              label: Text(
+                                note!.content,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
-                        ),
-                      if (isLinkedToNote)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(Icons.note_alt_outlined, size: 16),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  note!.content,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: Colors.grey[700]),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
                 _ActionMenu(action: action),
               ],
             ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!isDone)
+                  FilledButton.icon(
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('完了'),
+                    onPressed: () => ref
+                        .read(actionPlansNotifierProvider.notifier)
+                        .toggleStatus(action, true),
+                  )
+                else
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('未完了に戻す'),
+                    onPressed: () => ref
+                        .read(actionPlansNotifierProvider.notifier)
+                        .toggleStatus(action, false),
+                  ),
+                TextButton.icon(
+                  icon: const Icon(Icons.alarm_add_outlined),
+                  label: Text(action.remindAt == null ? 'リマインド設定' : 'リマインド変更'),
+                  onPressed: _selectReminder,
+                ),
+                if (action.remindAt != null)
+                  IconButton(
+                    tooltip: 'リマインドを解除',
+                    icon: const Icon(Icons.alarm_off),
+                    onPressed: _clearReminder,
+                  ),
+              ],
+            ),
+            if (isReminderDue && !isDone)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'リマインドの時間になりました。進捗を確認しましょう。',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.primary),
+                ),
+              ),
           ],
         ),
       ),
@@ -460,6 +627,7 @@ Future<void> showActionPlanDialog(
     text: action?.description ?? '',
   );
   DateTime? dueDate = action?.dueDate;
+  DateTime? remindAt = action?.remindAt;
   int? selectedNoteId = action?.noteId ?? note?.id;
   final formKey = GlobalKey<FormState>();
 
@@ -478,6 +646,21 @@ Future<void> showActionPlanDialog(
             if (picked != null) {
               setState(() {
                 dueDate = picked;
+              });
+            }
+          }
+
+          Future<void> pickReminderDate() async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: remindAt ?? dueDate ?? DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+
+            if (picked != null) {
+              setState(() {
+                remindAt = picked;
               });
             }
           }
@@ -535,6 +718,33 @@ Future<void> showActionPlanDialog(
                           onPressed: pickDate,
                           icon: const Icon(Icons.event),
                           label: const Text('期日を選択'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            remindAt == null
+                                ? 'リマインド: 未設定'
+                                : 'リマインド: ${_formatDueDate(context, remindAt!)}',
+                          ),
+                        ),
+                        if (remindAt != null)
+                          IconButton(
+                            tooltip: 'リマインドをクリア',
+                            onPressed: () {
+                              setState(() {
+                                remindAt = null;
+                              });
+                            },
+                            icon: const Icon(Icons.alarm_off),
+                          ),
+                        TextButton.icon(
+                          onPressed: pickReminderDate,
+                          icon: const Icon(Icons.alarm),
+                          label: const Text('リマインド'),
                         ),
                       ],
                     ),
@@ -602,6 +812,7 @@ Future<void> showActionPlanDialog(
           ? null
           : descriptionController.text.trim(),
       dueDate: dueDate,
+      remindAt: remindAt,
       noteId: selectedNoteId,
     );
     if (context.mounted) {
@@ -618,6 +829,7 @@ Future<void> showActionPlanDialog(
           ? null
           : descriptionController.text.trim(),
       dueDate: dueDate,
+      remindAt: Value(remindAt),
       status: action.status,
       noteId: selectedNoteId,
     );
@@ -700,4 +912,26 @@ class _InfoCard extends StatelessWidget {
 String _formatDueDate(BuildContext context, DateTime dueDate) {
   final localizations = MaterialLocalizations.of(context);
   return localizations.formatShortDate(dueDate);
+}
+
+String _statusFilterLabel(ActionStatusFilter filter) {
+  switch (filter) {
+    case ActionStatusFilter.all:
+      return 'すべて';
+    case ActionStatusFilter.pending:
+      return '未完了';
+    case ActionStatusFilter.done:
+      return '完了済み';
+  }
+}
+
+bool _matchesFilter(ActionRow action, ActionStatusFilter filter) {
+  switch (filter) {
+    case ActionStatusFilter.all:
+      return true;
+    case ActionStatusFilter.pending:
+      return action.status != 'done';
+    case ActionStatusFilter.done:
+      return action.status == 'done';
+  }
 }
