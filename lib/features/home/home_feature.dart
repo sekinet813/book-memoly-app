@@ -69,12 +69,7 @@ class HomePage extends StatelessWidget {
                       description: '読書メモを\n作成・管理',
                       color: Colors.orange,
                       onTap: () {
-                        // TODO: 実装後にナビゲーションを追加
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('準備中です'),
-                          ),
-                        );
+                        context.push('/memos');
                       },
                     ),
                     _FeatureCard(

@@ -16,6 +16,47 @@ class LocalDatabaseRepository {
   final ActionDao actions;
   final ReadingLogDao readingLogs;
 
+  Future<List<BookRow>> getAllBooks() {
+    return books.getAllBooks();
+  }
+
+  Future<List<NoteRow>> getNotesForBook(int bookId) {
+    return notes.getNotesForBook(bookId);
+  }
+
+  Future<int> addNote({
+    required int bookId,
+    required String content,
+    int? pageNumber,
+  }) {
+    return notes.insertNote(
+      NotesCompanion.insert(
+        bookId: bookId,
+        content: content,
+        pageNumber: Value(pageNumber),
+      ),
+    );
+  }
+
+  Future<bool> updateNote({
+    required int noteId,
+    required String content,
+    int? pageNumber,
+  }) async {
+    final updated = await notes.updateNote(
+      noteId: noteId,
+      content: content,
+      pageNumber: pageNumber,
+    );
+
+    return updated > 0;
+  }
+
+  Future<bool> deleteNote(int noteId) async {
+    final deleted = await notes.deleteNote(noteId);
+    return deleted > 0;
+  }
+
   Future<bool> saveBook(
     Book book, {
     BookStatus status = BookStatus.unread,
