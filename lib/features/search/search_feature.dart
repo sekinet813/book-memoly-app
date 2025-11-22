@@ -557,10 +557,8 @@ class _LocalSearchResults extends StatelessWidget {
                   ),
                   Chip(
                     label: Text(status.label),
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withOpacity(0.1),
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     labelStyle: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -571,10 +569,7 @@ class _LocalSearchResults extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   result.book.authors!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
@@ -590,47 +585,40 @@ class _LocalSearchResults extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 ...result.matchingNotes.take(3).map(
-                  (note) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('• '),
-                        Expanded(
-                          child: Text(
-                            note.content,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                          ),
+                      (note) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('• '),
+                            Expanded(
+                              child: Text(
+                                note.content,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
                 if (result.matchingNotes.length > 3)
                   Text(
                     '他 ${result.matchingNotes.length - 3} 件のメモが一致',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
               ] else
                 Text(
                   'タイトルや著者で一致しました',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
@@ -674,13 +662,9 @@ class _BookListTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       book.authors!,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ),
@@ -689,13 +673,9 @@ class _BookListTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       '出版日: ${book.publishedDate}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ),
@@ -791,45 +771,80 @@ class BookDetailPage extends ConsumerStatefulWidget {
 }
 
 class _BookDetailPageState extends ConsumerState<BookDetailPage> {
-  late BookStatus _selectedStatus;
+  BookStatus? _selectedStatus;
   DateTime? _startedAt;
   DateTime? _finishedAt;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _selectedStatus = widget.book.status;
+  }
 
-    ref.listen<AsyncValue<BookRow?>>(
-      bookByGoogleIdProvider(widget.book.id),
-      (_, next) {
-        next.whenData((bookRow) {
-          if (bookRow == null) {
-            return;
-          }
+  void _initializeFromDatabase(BookRow? bookRow) {
+    if (bookRow == null || _isInitialized) {
+      return;
+    }
 
-          final status = bookStatusFromDbValue(bookRow.status);
-          if (status != _selectedStatus) {
-            setState(() {
-              _selectedStatus = status;
-            });
-          }
+    final status = bookStatusFromDbValue(bookRow.status);
+    setState(() {
+      _selectedStatus = status;
+      _startedAt = bookRow.startedAt;
+      _finishedAt = bookRow.finishedAt;
+      _isInitialized = true;
+    });
+  }
 
-          if (_startedAt != bookRow.startedAt || _finishedAt != bookRow.finishedAt) {
-            setState(() {
-              _startedAt = bookRow.startedAt;
-              _finishedAt = bookRow.finishedAt;
-            });
-          }
-        });
-      },
-    );
+  void _updateFromDatabase(BookRow? bookRow) {
+    if (bookRow == null) {
+      return;
+    }
+
+    final status = bookStatusFromDbValue(bookRow.status);
+    bool needsUpdate = false;
+
+    if (status != _selectedStatus) {
+      _selectedStatus = status;
+      needsUpdate = true;
+    }
+
+    if (_startedAt != bookRow.startedAt || _finishedAt != bookRow.finishedAt) {
+      _startedAt = bookRow.startedAt;
+      _finishedAt = bookRow.finishedAt;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final bookRowAsync = ref.watch(bookByGoogleIdProvider(widget.book.id));
     final existingBook = bookRowAsync.valueOrNull;
+
+    // ref.listenはbuildメソッド内でのみ使用可能
+    ref.listen<AsyncValue<BookRow?>>(
+      bookByGoogleIdProvider(widget.book.id),
+      (previous, next) {
+        next.whenData((bookRow) {
+          if (!_isInitialized) {
+            _initializeFromDatabase(bookRow);
+          } else {
+            _updateFromDatabase(bookRow);
+          }
+        });
+      },
+    );
+
+    // 初期化されていない場合は、既存のデータから初期化
+    if (!_isInitialized && existingBook != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initializeFromDatabase(existingBook);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -894,10 +909,25 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
               ),
               const SizedBox(height: 24),
               _BookRegistrationCard(
-                selectedStatus: _selectedStatus,
-                onStatusChanged: (status) => setState(() {
-                  _selectedStatus = status;
-                }),
+                selectedStatus: _selectedStatus ?? widget.book.status,
+                onStatusChanged: (status) {
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+
+                  setState(() {
+                    _selectedStatus = status;
+
+                    // 読書中になったら、開始日が未設定の場合は今日を設定
+                    if (status == BookStatus.reading && _startedAt == null) {
+                      _startedAt = today;
+                    }
+
+                    // 読了になったら、終了日が未設定の場合は今日を設定
+                    if (status == BookStatus.finished && _finishedAt == null) {
+                      _finishedAt = today;
+                    }
+                  });
+                },
                 onSave: () => _handleSave(existingBook),
                 isRegistered: existingBook != null,
                 isLoading: bookRowAsync.isLoading,
@@ -937,8 +967,26 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   Future<void> _handleSave(BookRow? existingBook) async {
     final repository = ref.read(localDatabaseRepositoryProvider);
 
-    if (_startedAt != null && _finishedAt != null) {
-      if (_finishedAt!.isBefore(_startedAt!)) {
+    // 保存時に状態に応じて日付を自動設定
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final status = _selectedStatus ?? widget.book.status;
+
+    DateTime? startedAt = _startedAt;
+    DateTime? finishedAt = _finishedAt;
+
+    // 読書中になったら、開始日が未設定の場合は今日を設定
+    if (status == BookStatus.reading && startedAt == null) {
+      startedAt = today;
+    }
+
+    // 読了になったら、終了日が未設定の場合は今日を設定
+    if (status == BookStatus.finished && finishedAt == null) {
+      finishedAt = today;
+    }
+
+    if (startedAt != null && finishedAt != null) {
+      if (finishedAt.isBefore(startedAt)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('終了日は開始日以降を選択してください')),
         );
@@ -950,9 +998,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       if (existingBook == null) {
         final inserted = await repository.saveBook(
           widget.book,
-          status: _selectedStatus,
-          startedAt: _startedAt,
-          finishedAt: _finishedAt,
+          status: status,
+          startedAt: startedAt,
+          finishedAt: finishedAt,
         );
 
         if (!mounted) return;
@@ -968,10 +1016,16 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       } else {
         await repository.updateBookReadingInfo(
           widget.book.id,
-          status: _selectedStatus,
-          startedAt: _startedAt,
-          finishedAt: _finishedAt,
+          status: status,
+          startedAt: startedAt,
+          finishedAt: finishedAt,
         );
+
+        // UIの状態も更新
+        setState(() {
+          _startedAt = startedAt;
+          _finishedAt = finishedAt;
+        });
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1044,7 +1098,7 @@ class _BookRegistrationCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           AppButton.primary(
-            onPressed: isLoading ? null : onSave,
+            onPressed: onSave,
             icon: isRegistered ? Icons.save : Icons.library_add,
             label: isRegistered ? 'ステータスを更新' : '本を登録',
             expand: true,
@@ -1118,9 +1172,8 @@ class _DatePickerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = MaterialLocalizations.of(context);
-    final displayDate = date != null
-        ? localizations.formatMediumDate(date!)
-        : '未設定';
+    final displayDate =
+        date != null ? localizations.formatMediumDate(date!) : '未設定';
 
     return Row(
       children: [
