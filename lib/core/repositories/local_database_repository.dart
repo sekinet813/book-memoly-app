@@ -16,7 +16,12 @@ class LocalDatabaseRepository {
   final ActionDao actions;
   final ReadingLogDao readingLogs;
 
-  Future<bool> saveBook(Book book, {BookStatus status = BookStatus.unread}) async {
+  Future<bool> saveBook(
+    Book book, {
+    BookStatus status = BookStatus.unread,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+  }) async {
     final existing = await books.getBookByGoogleId(book.id);
     if (existing != null) {
       return false;
@@ -32,6 +37,8 @@ class LocalDatabaseRepository {
         publishedDate: Value(book.publishedDate),
         pageCount: Value(book.pageCount),
         status: Value(status.toDbValue),
+        startedAt: Value(startedAt),
+        finishedAt: Value(finishedAt),
       ),
     );
 
@@ -48,6 +55,20 @@ class LocalDatabaseRepository {
 
   Future<void> updateBookStatus(String googleBooksId, BookStatus status) {
     return books.updateBookStatus(googleBooksId, status.toDbValue);
+  }
+
+  Future<void> updateBookReadingInfo(
+    String googleBooksId, {
+    required BookStatus status,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+  }) {
+    return books.updateBookReadingInfo(
+      googleBooksId,
+      status: status.toDbValue,
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+    );
   }
 
   /// Seeds the database with sample data and returns what was inserted to

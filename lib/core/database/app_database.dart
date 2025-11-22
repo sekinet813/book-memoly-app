@@ -59,6 +59,8 @@ class BookRow {
     this.publishedDate,
     this.pageCount,
     this.status = 0,
+    this.startedAt,
+    this.finishedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -73,6 +75,8 @@ class BookRow {
   final String? publishedDate;
   final int? pageCount;
   int status;
+  DateTime? startedAt;
+  DateTime? finishedAt;
   final DateTime createdAt;
   DateTime updatedAt;
 }
@@ -153,6 +157,8 @@ class BooksCompanion {
     this.publishedDate,
     this.pageCount,
     this.status = const Value(0),
+    this.startedAt,
+    this.finishedAt,
   });
 
   const BooksCompanion.insert({
@@ -164,6 +170,8 @@ class BooksCompanion {
     this.publishedDate,
     this.pageCount,
     this.status = const Value(0),
+    this.startedAt,
+    this.finishedAt,
   });
 
   final String googleBooksId;
@@ -174,6 +182,8 @@ class BooksCompanion {
   final Value<String?>? publishedDate;
   final Value<int?>? pageCount;
   final Value<int> status;
+  final Value<DateTime?>? startedAt;
+  final Value<DateTime?>? finishedAt;
 }
 
 class NotesCompanion {
@@ -256,6 +266,8 @@ class BookDao {
       publishedDate: entry.publishedDate?.value,
       pageCount: entry.pageCount?.value,
       status: entry.status.value,
+      startedAt: entry.startedAt?.value,
+      finishedAt: entry.finishedAt?.value,
     );
 
     db._bookRows.add(row);
@@ -296,6 +308,25 @@ class BookDao {
     }
 
     book.status = status;
+    book.updatedAt = DateTime.now();
+    db._notifyBooksChanged();
+    return 1;
+  }
+
+  Future<int> updateBookReadingInfo(
+    String googleBooksId, {
+    required int status,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+  }) async {
+    final book = await getBookByGoogleId(googleBooksId);
+    if (book == null) {
+      return 0;
+    }
+
+    book.status = status;
+    book.startedAt = startedAt;
+    book.finishedAt = finishedAt;
     book.updatedAt = DateTime.now();
     db._notifyBooksChanged();
     return 1;

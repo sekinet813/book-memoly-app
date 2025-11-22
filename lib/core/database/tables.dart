@@ -12,6 +12,8 @@ class Books extends Table {
   IntColumn get pageCount => integer().nullable()();
   IntColumn get status => integer()
       .withDefault(const Constant(0))(); // 0: unread, 1: reading, 2: finished
+  DateTimeColumn get startedAt => dateTime().nullable()();
+  DateTimeColumn get finishedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
