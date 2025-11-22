@@ -57,4 +57,24 @@ void main() {
     final updated = await repository.findBookByGoogleId('google-books-id');
     expect(updated?.status, BookStatus.finished.toDbValue);
   });
+
+  test('addReadingLog stores logs for aggregation', () async {
+    await repository.saveBook(_createBook());
+    final book = await repository.findBookByGoogleId('google-books-id');
+
+    expect(book, isNotNull);
+
+    await repository.addReadingLog(
+      bookId: book!.id,
+      pagesRead: 30,
+      durationMinutes: 25,
+    );
+
+    final logs = await repository.getReadingLogs();
+
+    expect(logs.length, 1);
+    expect(logs.first.bookId, book.id);
+    expect((logs.first.endPage ?? 0) - (logs.first.startPage ?? 0), 30);
+    expect(logs.first.durationMinutes, 25);
+  });
 }

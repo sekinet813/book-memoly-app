@@ -4,6 +4,7 @@ import '../../features/home/home_feature.dart';
 import '../../features/memos/memos_feature.dart';
 import '../../features/search/search_feature.dart';
 import '../../features/action_plans/action_plans_feature.dart';
+import '../../features/reading_speed/reading_speed_feature.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -23,6 +24,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/actions',
       builder: (context, state) => const ActionPlansPage(),
+    ),
+    GoRoute(
+      path: '/reading-speed',
+      builder: (context, state) => const ReadingSpeedPage(),
     ),
   ],
 );

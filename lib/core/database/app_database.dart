@@ -486,4 +486,10 @@ class ReadingLogDao {
         .where((log) => log.bookId == bookId)
         .toList(growable: false);
   }
+
+  Future<List<ReadingLogRow>> getAllLogs() async {
+    final logs = List<ReadingLogRow>.from(db._readingLogRows)
+      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    return logs;
+  }
 }
