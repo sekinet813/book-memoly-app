@@ -429,6 +429,8 @@ class BookDetailPage extends ConsumerStatefulWidget {
 
 class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   late BookStatus _selectedStatus;
+  DateTime? _startedAt;
+  DateTime? _finishedAt;
 
   @override
   void initState() {
@@ -447,6 +449,13 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
           if (status != _selectedStatus) {
             setState(() {
               _selectedStatus = status;
+            });
+          }
+
+          if (_startedAt != bookRow.startedAt || _finishedAt != bookRow.finishedAt) {
+            setState(() {
+              _startedAt = bookRow.startedAt;
+              _finishedAt = bookRow.finishedAt;
             });
           }
         });
@@ -500,6 +509,27 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
+              _ReadingPeriodCard(
+                startedAt: _startedAt,
+                finishedAt: _finishedAt,
+                onTapStartDate: () => _pickDate(isStartDate: true),
+                onTapEndDate: () => _pickDate(isStartDate: false),
+                onClearStartDate: _startedAt != null
+                    ? () {
+                        setState(() {
+                          _startedAt = null;
+                        });
+                      }
+                    : null,
+                onClearEndDate: _finishedAt != null
+                    ? () {
+                        setState(() {
+                          _finishedAt = null;
+                        });
+                      }
+                    : null,
+              ),
+              const SizedBox(height: 24),
               _BookRegistrationCard(
                 selectedStatus: _selectedStatus,
                 onStatusChanged: (status) => setState(() {
@@ -516,14 +546,50 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     );
   }
 
+  Future<void> _pickDate({required bool isStartDate}) async {
+    final initialDate = isStartDate
+        ? _startedAt ?? DateTime.now()
+        : _finishedAt ?? _startedAt ?? DateTime.now();
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+
+    if (selectedDate == null) {
+      return;
+    }
+
+    setState(() {
+      if (isStartDate) {
+        _startedAt = selectedDate;
+      } else {
+        _finishedAt = selectedDate;
+      }
+    });
+  }
+
   Future<void> _handleSave(BookRow? existingBook) async {
     final repository = ref.read(localDatabaseRepositoryProvider);
+
+    if (_startedAt != null && _finishedAt != null) {
+      if (_finishedAt!.isBefore(_startedAt!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('終了日は開始日以降を選択してください')),
+        );
+        return;
+      }
+    }
 
     try {
       if (existingBook == null) {
         final inserted = await repository.saveBook(
           widget.book,
           status: _selectedStatus,
+          startedAt: _startedAt,
+          finishedAt: _finishedAt,
         );
 
         if (!mounted) return;
@@ -537,11 +603,16 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
           );
         }
       } else {
-        await repository.updateBookStatus(widget.book.id, _selectedStatus);
+        await repository.updateBookReadingInfo(
+          widget.book.id,
+          status: _selectedStatus,
+          startedAt: _startedAt,
+          finishedAt: _finishedAt,
+        );
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ステータスを更新しました')),
+          const SnackBar(content: Text('読書情報を更新しました')),
         );
       }
     } catch (e) {
@@ -623,6 +694,108 @@ class _BookRegistrationCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReadingPeriodCard extends StatelessWidget {
+  const _ReadingPeriodCard({
+    required this.startedAt,
+    required this.finishedAt,
+    required this.onTapStartDate,
+    required this.onTapEndDate,
+    this.onClearStartDate,
+    this.onClearEndDate,
+  });
+
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+  final VoidCallback onTapStartDate;
+  final VoidCallback onTapEndDate;
+  final VoidCallback? onClearStartDate;
+  final VoidCallback? onClearEndDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '読書期間',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _DatePickerRow(
+              label: '開始日',
+              date: startedAt,
+              onTap: onTapStartDate,
+              onClear: onClearStartDate,
+            ),
+            const SizedBox(height: 12),
+            _DatePickerRow(
+              label: '終了日',
+              date: finishedAt,
+              onTap: onTapEndDate,
+              onClear: onClearEndDate,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DatePickerRow extends StatelessWidget {
+  const _DatePickerRow({
+    required this.label,
+    required this.date,
+    required this.onTap,
+    this.onClear,
+  });
+
+  final String label;
+  final DateTime? date;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = MaterialLocalizations.of(context);
+    final displayDate = date != null
+        ? localizations.formatMediumDate(date!)
+        : '未設定';
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.calendar_today),
+                label: Text(displayDate),
+              ),
+            ],
+          ),
+        ),
+        if (onClear != null) ...[
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'クリア',
+            onPressed: onClear,
+            icon: const Icon(Icons.close),
+          ),
+        ]
+      ],
     );
   }
 }
