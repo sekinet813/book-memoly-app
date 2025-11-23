@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/widgets/app_card.dart';
 import '../../shared/constants/app_icons.dart';
 
 final readingSpeedNotifierProvider =
@@ -582,13 +583,50 @@ class _ReadingLogList extends StatelessWidget {
           final pages =
               max(0, (entry.log.endPage ?? 0) - (entry.log.startPage ?? 0));
 
-          return Card(
-            child: ListTile(
-              title: Text(entry.book?.title ?? '不明な本'),
-              subtitle: Text('$dateLabel · $pages ページ'),
-              trailing: entry.log.durationMinutes != null
-                  ? Text('${entry.log.durationMinutes} 分')
-                  : null,
+          return AppCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.book?.title ?? '不明な本',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (entry.log.durationMinutes != null)
+                      Chip(
+                        label: Text('${entry.log.durationMinutes} 分'),
+                        avatar: const Icon(AppIcons.timelapse,
+                            size: AppIconSizes.small),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      AppIcons.today,
+                      size: AppIconSizes.small,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$dateLabel · $pages ページ',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           );
         }),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_navigation_bar.dart';
+
 class AppPage extends StatelessWidget {
   const AppPage({
     super.key,
@@ -9,6 +11,7 @@ class AppPage extends StatelessWidget {
     this.padding = const EdgeInsets.all(24),
     this.floatingActionButton,
     this.bottomNavigationBar,
+    this.currentDestination,
     this.scrollable = false,
     this.bottom,
   });
@@ -19,6 +22,7 @@ class AppPage extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
+  final AppDestination? currentDestination;
   final bool scrollable;
   final PreferredSizeWidget? bottom;
 
@@ -33,6 +37,10 @@ class AppPage extends StatelessWidget {
           : child,
     );
 
+    final navigationBar = currentDestination != null
+        ? AppNavigationBar(current: currentDestination!)
+        : bottomNavigationBar;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -41,7 +49,7 @@ class AppPage extends StatelessWidget {
         bottom: bottom,
       ),
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: bottomNavigationBar,
+      bottomNavigationBar: navigationBar,
       body: SafeArea(child: pageBody),
     );
   }

@@ -5,6 +5,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/widgets/app_navigation_bar.dart';
+import '../../core/widgets/app_page.dart';
 import '../../shared/constants/app_icons.dart';
 
 enum ActionStatusFilter { all, pending, done }
@@ -227,23 +229,18 @@ class ActionPlansPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(actionPlansNotifierProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('アクションプラン'),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _BookSelector(state: state),
-              const SizedBox(height: 16),
-              _StatusFilterRow(state: state),
-              const SizedBox(height: 8),
-              Expanded(child: _ActionList(state: state)),
-            ],
-          ),
-        ),
+    return AppPage(
+      title: 'アクションプラン',
+      padding: const EdgeInsets.all(16),
+      currentDestination: AppDestination.actions,
+      child: Column(
+        children: [
+          _BookSelector(state: state),
+          const SizedBox(height: 16),
+          _StatusFilterRow(state: state),
+          const SizedBox(height: 8),
+          Expanded(child: _ActionList(state: state)),
+        ],
       ),
       floatingActionButton: state.selectedBookId != null
           ? FloatingActionButton(

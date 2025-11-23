@@ -50,6 +50,12 @@ class AppTheme {
           size: AppIconSizes.medium,
           color: lightColorScheme.onPrimary,
         ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
+        ),
       );
 
   static ThemeData get darkTheme => FlexThemeData.dark(
@@ -69,6 +75,12 @@ class AppTheme {
         primaryIconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onPrimary,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
         ),
       );
 }
