@@ -39,7 +39,6 @@ class AppIcons {
   static const IconData check = SymbolsRounded.check;
   static const IconData noteAlt = SymbolsRounded.note_alt;
   static const IconData settings = SymbolsRounded.settings;
-  static const IconData accountCircle = SymbolsRounded.account_circle;
   static const IconData filter = SymbolsRounded.filter_alt;
   static const IconData manageSearch = SymbolsRounded.manage_search;
   static const IconData today = SymbolsRounded.today;

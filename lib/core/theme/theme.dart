@@ -42,11 +42,11 @@ class AppTheme {
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: lightColorScheme.onSurfaceVariant,
         ),
-        primaryIconTheme: const IconThemeData(
+        primaryIconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: lightColorScheme.onPrimary,
         ),
@@ -62,11 +62,11 @@ class AppTheme {
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onSurfaceVariant,
         ),
-        primaryIconTheme: const IconThemeData(
+        primaryIconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onPrimary,
         ),
