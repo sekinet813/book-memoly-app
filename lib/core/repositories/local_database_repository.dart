@@ -4,7 +4,7 @@ import '../database/app_database.dart';
 import '../models/book.dart';
 
 class LocalDatabaseRepository {
-  LocalDatabaseRepository(this.db)
+  LocalDatabaseRepository(this.db, {required this.userId})
       : books = BookDao(db),
         notes = NoteDao(db),
         actions = ActionDao(db),
@@ -15,21 +15,22 @@ class LocalDatabaseRepository {
   final NoteDao notes;
   final ActionDao actions;
   final ReadingLogDao readingLogs;
+  final String userId;
 
   Future<List<BookRow>> getAllBooks() {
-    return books.getAllBooks();
+    return books.getAllBooks(userId);
   }
 
   Future<List<NoteRow>> getNotesForBook(int bookId) {
-    return notes.getNotesForBook(bookId);
+    return notes.getNotesForBook(userId, bookId);
   }
 
   Future<List<NoteRow>> getAllNotes() {
-    return notes.getAllNotes();
+    return notes.getAllNotes(userId);
   }
 
   Future<List<ActionRow>> getActionsForBook(int bookId) {
-    return actions.getActionsForBook(bookId);
+    return actions.getActionsForBook(userId, bookId);
   }
 
   Future<int> addNote({
@@ -39,6 +40,7 @@ class LocalDatabaseRepository {
   }) {
     return notes.insertNote(
       NotesCompanion.insert(
+        userId: userId,
         bookId: bookId,
         content: content,
         pageNumber: Value(pageNumber),
@@ -52,6 +54,7 @@ class LocalDatabaseRepository {
     int? pageNumber,
   }) async {
     final updated = await notes.updateNote(
+      userId: userId,
       noteId: noteId,
       content: content,
       pageNumber: pageNumber,
@@ -61,7 +64,7 @@ class LocalDatabaseRepository {
   }
 
   Future<bool> deleteNote(int noteId) async {
-    final deleted = await notes.deleteNote(noteId);
+    final deleted = await notes.deleteNote(userId, noteId);
     return deleted > 0;
   }
 
@@ -75,6 +78,7 @@ class LocalDatabaseRepository {
   }) {
     return actions.insertAction(
       ActionsCompanion.insert(
+        userId: userId,
         bookId: Value(bookId),
         noteId: Value(noteId),
         title: title,
@@ -95,6 +99,7 @@ class LocalDatabaseRepository {
     int? noteId,
   }) async {
     final updated = await actions.updateAction(
+      userId: userId,
       actionId: actionId,
       title: title,
       description: description,
@@ -111,12 +116,16 @@ class LocalDatabaseRepository {
     required int actionId,
     required String status,
   }) async {
-    final updated = await actions.updateAction(actionId: actionId, status: status);
+    final updated = await actions.updateAction(
+      userId: userId,
+      actionId: actionId,
+      status: status,
+    );
     return updated > 0;
   }
 
   Future<bool> deleteAction(int actionId) async {
-    final deleted = await actions.deleteAction(actionId);
+    final deleted = await actions.deleteAction(userId, actionId);
     return deleted > 0;
   }
 
@@ -171,6 +180,7 @@ class LocalDatabaseRepository {
   }) {
     return readingLogs.insertLog(
       ReadingLogsCompanion.insert(
+        userId: userId,
         bookId: bookId,
         startPage: const Value(0),
         endPage: Value(pagesRead),
@@ -180,7 +190,7 @@ class LocalDatabaseRepository {
   }
 
   Future<List<ReadingLogRow>> getReadingLogs() {
-    return readingLogs.getAllLogs();
+    return readingLogs.getAllLogs(userId);
   }
 
   Future<bool> saveBook(
@@ -189,13 +199,14 @@ class LocalDatabaseRepository {
     DateTime? startedAt,
     DateTime? finishedAt,
   }) async {
-    final existing = await books.getBookByGoogleId(book.id);
+    final existing = await books.getBookByGoogleId(userId, book.id);
     if (existing != null) {
       return false;
     }
 
     await books.insertBook(
       BooksCompanion.insert(
+        userId: userId,
         googleBooksId: book.id,
         title: book.title,
         authors: Value(book.authors),
@@ -213,15 +224,15 @@ class LocalDatabaseRepository {
   }
 
   Future<BookRow?> findBookByGoogleId(String googleBooksId) {
-    return books.getBookByGoogleId(googleBooksId);
+    return books.getBookByGoogleId(userId, googleBooksId);
   }
 
   Stream<BookRow?> watchBookByGoogleId(String googleBooksId) {
-    return books.watchBookByGoogleId(googleBooksId);
+    return books.watchBookByGoogleId(userId, googleBooksId);
   }
 
   Future<void> updateBookStatus(String googleBooksId, BookStatus status) {
-    return books.updateBookStatus(googleBooksId, status.toDbValue);
+    return books.updateBookStatus(userId, googleBooksId, status.toDbValue);
   }
 
   Future<void> updateBookReadingInfo(
@@ -231,6 +242,7 @@ class LocalDatabaseRepository {
     DateTime? finishedAt,
   }) {
     return books.updateBookReadingInfo(
+      userId,
       googleBooksId,
       status: status.toDbValue,
       startedAt: startedAt,
@@ -243,6 +255,7 @@ class LocalDatabaseRepository {
   Future<SampleDataResult> insertAndReadSampleData() async {
     final bookId = await books.insertBook(
       BooksCompanion.insert(
+        userId: userId,
         googleBooksId: 'sample-google-books-id',
         title: 'Sample Drift Book',
         authors: const Value('Sample Author'),
@@ -251,6 +264,7 @@ class LocalDatabaseRepository {
 
     final noteId = await notes.insertNote(
       NotesCompanion.insert(
+        userId: userId,
         bookId: bookId,
         content: 'This is a sample note for drift verification.',
         pageNumber: const Value(12),
@@ -259,6 +273,7 @@ class LocalDatabaseRepository {
 
     await actions.insertAction(
       ActionsCompanion.insert(
+        userId: userId,
         title: 'Capture insights from sample book',
         bookId: Value(bookId),
         noteId: Value(noteId),
@@ -268,6 +283,7 @@ class LocalDatabaseRepository {
 
     await readingLogs.insertLog(
       ReadingLogsCompanion.insert(
+        userId: userId,
         bookId: bookId,
         startPage: const Value(1),
         endPage: const Value(18),
@@ -275,10 +291,10 @@ class LocalDatabaseRepository {
       ),
     );
 
-    final booksResult = await books.getAllBooks();
-    final notesResult = await notes.getNotesForBook(bookId);
-    final actionsResult = await actions.getPendingActions();
-    final logsResult = await readingLogs.getLogsForBook(bookId);
+    final booksResult = await books.getAllBooks(userId);
+    final notesResult = await notes.getNotesForBook(userId, bookId);
+    final actionsResult = await actions.getPendingActions(userId);
+    final logsResult = await readingLogs.getLogsForBook(userId, bookId);
 
     return SampleDataResult(
       book: booksResult.firstWhere((row) => row.id == bookId),

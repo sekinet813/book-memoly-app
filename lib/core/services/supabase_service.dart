@@ -66,4 +66,6 @@ class SupabaseService {
   }
 
   SupabaseClient get client => Supabase.instance.client;
+
+  SupabaseConfig get config => _config;
 }
