@@ -14,6 +14,7 @@ class AppPage extends StatelessWidget {
     this.currentDestination,
     this.scrollable = false,
     this.bottom,
+    this.backgroundColor,
   });
 
   final String title;
@@ -25,6 +26,7 @@ class AppPage extends StatelessWidget {
   final AppDestination? currentDestination;
   final bool scrollable;
   final PreferredSizeWidget? bottom;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,7 @@ class AppPage extends StatelessWidget {
       ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: navigationBar,
+      backgroundColor: backgroundColor,
       body: SafeArea(child: pageBody),
     );
   }
