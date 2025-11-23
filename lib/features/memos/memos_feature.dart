@@ -5,6 +5,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../action_plans/action_plans_feature.dart';
+import '../../shared/constants/app_icons.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 
@@ -155,7 +156,7 @@ class MemosPage extends ConsumerWidget {
       floatingActionButton: state.selectedBookId != null
           ? FloatingActionButton(
               onPressed: () => _showNoteDialog(context, ref),
-              child: const Icon(Icons.add),
+              child: const Icon(AppIcons.add),
             )
           : null,
     );
@@ -175,14 +176,14 @@ class _BookSelector extends ConsumerWidget {
 
     if (state.books.isEmpty) {
       return const _InfoCard(
-        icon: Icons.menu_book,
+        icon: AppIcons.menuBook,
         message: 'まずは本を登録してメモを追加しましょう',
       );
     }
 
     return Row(
       children: [
-        const Icon(Icons.menu_book_outlined),
+        const Icon(AppIcons.menuBook),
         const SizedBox(width: 12),
         Expanded(
           child: DropdownButton<int>(
@@ -223,7 +224,7 @@ class _MemoList extends ConsumerWidget {
       data: (notes) {
         if (notes.isEmpty) {
           return const _InfoCard(
-            icon: Icons.note_alt_outlined,
+            icon: AppIcons.note,
             message: 'この本のメモはまだありません',
           );
         }
@@ -239,7 +240,7 @@ class _MemoList extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => _InfoCard(
-        icon: Icons.error_outline,
+        icon: AppIcons.error,
         message: 'メモの読み込み中にエラーが発生しました\n$error',
       ),
     );
@@ -271,7 +272,8 @@ class _MemoCard extends ConsumerWidget {
               children: [
                 Chip(
                   label: Text('p.${note.pageNumber}'),
-                  avatar: const Icon(Icons.bookmark_border, size: 18),
+                  avatar:
+                      const Icon(AppIcons.bookmarkBorder, size: AppIconSizes.small),
                 ),
                 _MemoActions(note: note),
               ],
@@ -311,19 +313,19 @@ class _MemoActions extends ConsumerWidget {
       children: [
         IconButton(
           tooltip: '編集',
-          icon: const Icon(Icons.edit_outlined),
+          icon: const Icon(AppIcons.edit),
           onPressed: selectedBookId == null
               ? null
               : () => _showNoteDialog(context, ref, note: note),
         ),
         IconButton(
           tooltip: 'アクションを作成',
-          icon: const Icon(Icons.checklist_outlined),
+          icon: const Icon(AppIcons.checklist),
           onPressed: () => _showActionFromNoteDialog(context, ref, note),
         ),
         IconButton(
           tooltip: '削除',
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(AppIcons.deleteOutline),
           onPressed: selectedBookId == null
               ? null
               : () => _confirmDelete(context, ref, noteId: note.id),

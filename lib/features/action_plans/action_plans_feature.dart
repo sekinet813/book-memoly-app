@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../shared/constants/app_icons.dart';
 
 enum ActionStatusFilter { all, pending, done }
 
@@ -251,7 +252,7 @@ class ActionPlansPage extends ConsumerWidget {
                 ref,
                 bookId: state.selectedBookId!,
               ),
-              child: const Icon(Icons.add_task),
+              child: const Icon(AppIcons.addTask),
             )
           : null,
     );
@@ -271,14 +272,14 @@ class _BookSelector extends ConsumerWidget {
 
     if (state.books.isEmpty) {
       return const _InfoCard(
-        icon: Icons.menu_book,
+        icon: AppIcons.menuBook,
         message: 'まずは本を登録してアクションを追加しましょう',
       );
     }
 
     return Row(
       children: [
-        const Icon(Icons.menu_book_outlined),
+        const Icon(AppIcons.menuBook),
         const SizedBox(width: 12),
         Expanded(
           child: DropdownButton<int>(
@@ -359,7 +360,7 @@ class _ActionList extends ConsumerWidget {
           };
 
           return _InfoCard(
-            icon: Icons.checklist_rtl,
+            icon: AppIcons.checklistRtl,
             message: message,
           );
         }
@@ -375,7 +376,7 @@ class _ActionList extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => _InfoCard(
-        icon: Icons.error_outline,
+        icon: AppIcons.error,
         message: 'アクションの読み込み中にエラーが発生しました\n$error',
       ),
     );
@@ -488,7 +489,7 @@ class _ActionTile extends ConsumerWidget {
                         children: [
                           Chip(
                             avatar: Icon(
-                              isDone ? Icons.check_circle : Icons.timelapse,
+                              isDone ? AppIcons.checkCircle : AppIcons.timelapse,
                               color: isDone
                                   ? theme.colorScheme.primary
                                   : theme.colorScheme.secondary,
@@ -499,7 +500,7 @@ class _ActionTile extends ConsumerWidget {
                           ),
                           if (action.dueDate != null)
                             InputChip(
-                              avatar: const Icon(Icons.event),
+                              avatar: const Icon(AppIcons.calendar),
                               label: Text(
                                   _formatDueDate(context, action.dueDate!)),
                               backgroundColor:
@@ -507,7 +508,7 @@ class _ActionTile extends ConsumerWidget {
                             ),
                           if (action.remindAt != null)
                             InputChip(
-                              avatar: const Icon(Icons.alarm),
+                              avatar: const Icon(AppIcons.alarm),
                               label: Text(
                                   _formatDueDate(context, action.remindAt!)),
                               backgroundColor: isReminderDue
@@ -516,7 +517,7 @@ class _ActionTile extends ConsumerWidget {
                             ),
                           if (isLinkedToNote)
                             InputChip(
-                              avatar: const Icon(Icons.note_alt_outlined),
+                              avatar: const Icon(AppIcons.note),
                               label: Text(
                                 note.content,
                                 maxLines: 1,
@@ -538,7 +539,7 @@ class _ActionTile extends ConsumerWidget {
               children: [
                 if (!isDone)
                   FilledButton.icon(
-                    icon: const Icon(Icons.check_circle_outline),
+                    icon: const Icon(AppIcons.checkCircleOutline),
                     label: const Text('完了'),
                     onPressed: () => ref
                         .read(actionPlansNotifierProvider.notifier)
@@ -546,21 +547,21 @@ class _ActionTile extends ConsumerWidget {
                   )
                 else
                   OutlinedButton.icon(
-                    icon: const Icon(Icons.refresh),
+                    icon: const Icon(AppIcons.refresh),
                     label: const Text('未完了に戻す'),
                     onPressed: () => ref
                         .read(actionPlansNotifierProvider.notifier)
                         .toggleStatus(action, false),
                   ),
                 TextButton.icon(
-                  icon: const Icon(Icons.alarm_add_outlined),
+                  icon: const Icon(AppIcons.addAlarm),
                   label: Text(action.remindAt == null ? 'リマインド設定' : 'リマインド変更'),
                   onPressed: _selectReminder,
                 ),
                 if (action.remindAt != null)
                   IconButton(
                     tooltip: 'リマインドを解除',
-                    icon: const Icon(Icons.alarm_off),
+                    icon: const Icon(AppIcons.alarmOff),
                     onPressed: _clearReminder,
                   ),
               ],
@@ -593,7 +594,7 @@ class _ActionMenu extends ConsumerWidget {
       children: [
         IconButton(
           tooltip: '編集',
-          icon: const Icon(Icons.edit_outlined),
+          icon: const Icon(AppIcons.edit),
           onPressed: action.bookId == null
               ? null
               : () => showActionPlanDialog(
@@ -605,7 +606,7 @@ class _ActionMenu extends ConsumerWidget {
         ),
         IconButton(
           tooltip: '削除',
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(AppIcons.deleteOutline),
           onPressed: action.bookId == null
               ? null
               : () => _confirmDelete(context, ref, action),
@@ -718,11 +719,11 @@ Future<void> showActionPlanDialog(
                                 dueDate = null;
                               });
                             },
-                            icon: const Icon(Icons.close),
+                            icon: const Icon(AppIcons.close),
                           ),
                         TextButton.icon(
                           onPressed: pickDate,
-                          icon: const Icon(Icons.event),
+                          icon: const Icon(AppIcons.calendar),
                           label: const Text('期日を選択'),
                         ),
                       ],
@@ -745,11 +746,11 @@ Future<void> showActionPlanDialog(
                                 remindAt = null;
                               });
                             },
-                            icon: const Icon(Icons.alarm_off),
+                            icon: const Icon(AppIcons.alarmOff),
                           ),
                         TextButton.icon(
                           onPressed: pickReminderDate,
-                          icon: const Icon(Icons.alarm),
+                          icon: const Icon(AppIcons.alarm),
                           label: const Text('リマインド'),
                         ),
                       ],

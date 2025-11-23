@@ -10,6 +10,7 @@ import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/services/google_books_api_client.dart';
 import '../../core/models/google_books/google_books_volume.dart';
+import '../../shared/constants/app_icons.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 
@@ -281,7 +282,7 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
                 decoration: const InputDecoration(
                   labelText: 'キーワード',
                   hintText: 'タイトルや著者名を入力（例: Effective Dart、村上春樹）',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: Icon(AppIcons.search),
                 ),
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _triggerSearch(),
@@ -289,7 +290,7 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
               const SizedBox(height: 16),
               AppButton.primary(
                 onPressed: _triggerSearch,
-                icon: Icons.search,
+                icon: AppIcons.search,
                 label: '検索する',
                 expand: true,
               ),
@@ -353,7 +354,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                 decoration: const InputDecoration(
                   labelText: 'キーワード',
                   hintText: 'タイトル / 著者 / メモ内容 で検索',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: Icon(AppIcons.search),
                 ),
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _triggerSearch(),
@@ -361,7 +362,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.filter_alt_outlined),
+                  const Icon(AppIcons.filter),
                   const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButton<BookStatus?>(
@@ -392,7 +393,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
               const SizedBox(height: 12),
               AppButton.primary(
                 onPressed: _triggerSearch,
-                icon: Icons.manage_search,
+                icon: AppIcons.manageSearch,
                 label: 'ローカルを検索',
                 expand: true,
               ),
@@ -623,9 +624,9 @@ class _BookListTile extends StatelessWidget {
                     ),
                   ),
               ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right),
+          const Icon(AppIcons.chevronRight),
         ],
       ),
     );
@@ -644,7 +645,7 @@ class _BookThumbnail extends StatelessWidget {
       height: 90,
       child: ColoredBox(
         color: Color(0xFFE0E0E0),
-        child: Icon(Icons.menu_book),
+        child: Icon(AppIcons.menuBook),
       ),
     );
 
@@ -685,12 +686,16 @@ class _ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            const Text('検索中にエラーが発生しました'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            const Icon(
+              AppIcons.error,
+              size: AppIconSizes.extraLarge,
+              color: Colors.redAccent,
+            ),
+              const SizedBox(height: 12),
+              const Text('検索中にエラーが発生しました'),
             const SizedBox(height: 8),
             Text(
               error.toString(),
@@ -1015,7 +1020,8 @@ class _BookRegistrationCard extends StatelessWidget {
               if (isRegistered)
                 Chip(
                   label: Text('登録済み'),
-                  avatar: const Icon(Icons.check, size: 18),
+                  avatar:
+                      const Icon(AppIcons.check, size: AppIconSizes.small),
                 ),
             ],
           ),
@@ -1042,7 +1048,7 @@ class _BookRegistrationCard extends StatelessWidget {
           const SizedBox(height: 16),
           AppButton.primary(
             onPressed: onSave,
-            icon: isRegistered ? Icons.save : Icons.library_add,
+            icon: isRegistered ? AppIcons.save : AppIcons.addLibrary,
             label: isRegistered ? 'ステータスを更新' : '本を登録',
             expand: true,
           ),
@@ -1131,7 +1137,7 @@ class _DatePickerRow extends StatelessWidget {
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: onTap,
-                icon: const Icon(Icons.calendar_today),
+                icon: const Icon(AppIcons.calendar),
                 label: Text(displayDate),
               ),
             ],
@@ -1142,7 +1148,7 @@ class _DatePickerRow extends StatelessWidget {
           IconButton(
             tooltip: 'クリア',
             onPressed: onClear,
-            icon: const Icon(Icons.close),
+            icon: const Icon(AppIcons.close),
           ),
         ]
       ],
