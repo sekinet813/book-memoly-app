@@ -1,7 +1,7 @@
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 
-const FlexSchemeColor _lightScheme = FlexSchemeColor(
+const FlexSchemeColor lightScheme = FlexSchemeColor(
   primary: Color(0xFF2E7D32),
   primaryContainer: Color(0xFFA5D6A7),
   secondary: Color(0xFF33691E),
@@ -12,7 +12,7 @@ const FlexSchemeColor _lightScheme = FlexSchemeColor(
   error: Color(0xFFBA1A1A),
 );
 
-const FlexSchemeColor _darkScheme = FlexSchemeColor(
+const FlexSchemeColor darkScheme = FlexSchemeColor(
   primary: Color(0xFF81C784),
   primaryContainer: Color(0xFF1B5E20),
   secondary: Color(0xFF9CCC65),
@@ -24,13 +24,13 @@ const FlexSchemeColor _darkScheme = FlexSchemeColor(
 );
 
 final ColorScheme lightColorScheme = FlexColorScheme.light(
-  colors: _lightScheme,
+  colors: lightScheme,
   surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
   blendLevel: 9,
 ).toScheme.copyWith(brightness: Brightness.light);
 
 final ColorScheme darkColorScheme = FlexColorScheme.dark(
-  colors: _darkScheme,
+  colors: darkScheme,
   surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
   blendLevel: 15,
 ).toScheme.copyWith(brightness: Brightness.dark);

@@ -22,7 +22,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authServiceProvider).resetFeedback();
+      ref.read(authServiceProvider)?.resetFeedback();
     });
   }
 
@@ -38,7 +38,20 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       return;
     }
 
-    await ref.read(authServiceProvider).sendSignUpLink(_emailController.text);
+    final authService = ref.read(authServiceProvider);
+    if (authService == null) {
+      // Show error message if Supabase is not configured
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+          ),
+        );
+      }
+      return;
+    }
+
+    await authService.sendSignUpLink(_emailController.text);
   }
 
   @override

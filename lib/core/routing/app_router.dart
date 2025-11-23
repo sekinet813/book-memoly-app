@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -11,27 +12,61 @@ import '../../features/search/search_feature.dart';
 import '../providers/auth_providers.dart';
 import '../services/auth_service.dart';
 
-final appRouterProvider = Provider<GoRouter>((ref) {
-  final authService = ref.watch(authServiceProvider);
+/// Dummy ChangeNotifier for when Supabase is not configured
+class _DummyChangeNotifier extends ChangeNotifier {}
 
-  return GoRouter(
+final appRouterProvider = StateProvider<GoRouter>((ref) {
+  // Read authService once, don't watch it to prevent router recreation
+  final authService = ref.read(authServiceProvider);
+  
+  // Create a dummy ChangeNotifier if authService is null
+  final refreshListenable = authService ?? _DummyChangeNotifier();
+  
+  // Create router once and store it
+  final router = GoRouter(
     initialLocation: '/login',
-    refreshListenable: authService,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
-      final status = authService.state.status;
+      // Skip authentication in debug mode
+      if (kDebugMode) {
+        // If on auth route in debug mode, redirect to home
+        final isLoggingIn = state.matchedLocation == '/login';
+        final isSigningUp = state.matchedLocation == '/signup';
+        if (isLoggingIn || isSigningUp) {
+          return '/';
+        }
+        return null;
+      }
+
+      // Read current authService state in redirect
+      final currentAuthService = ref.read(authServiceProvider);
+      
+      // If Supabase is not configured, allow access to all routes
+      if (currentAuthService == null) {
+        return null;
+      }
+
+      final status = currentAuthService.state.status;
       final isLoggedIn = status == AuthStatus.authenticated;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSigningUp = state.matchedLocation == '/signup';
       final isAuthRoute = isLoggingIn || isSigningUp;
 
+      // Allow access to auth routes (login/signup) when not logged in
       if (status == AuthStatus.loading) {
         return null;
       }
 
       if (!isLoggedIn) {
-        return isAuthRoute ? null : '/login';
+        // Allow access to login and signup pages - don't redirect if already on auth route
+        if (isAuthRoute) {
+          return null;
+        }
+        // Only redirect to login if not already on login or signup
+        return '/login';
       }
 
+      // If logged in and on auth route, redirect to home
       if (isAuthRoute) {
         return '/';
       }
@@ -69,4 +104,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  return router;
 });

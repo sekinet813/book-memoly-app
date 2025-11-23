@@ -9,7 +9,6 @@ class AppTheme {
   static const _subThemes = FlexSubThemesData(
     defaultRadius: 14,
     appBarBackgroundSchemeColor: SchemeColor.primaryContainer,
-    appBarForegroundSchemeColor: SchemeColor.onPrimaryContainer,
     appBarCenterTitle: true,
     appBarScrolledUnderElevation: 0,
     elevatedButtonSchemeColor: SchemeColor.primary,
@@ -34,7 +33,9 @@ class AppTheme {
   );
 
   static ThemeData get lightTheme => FlexThemeData.light(
-        colorScheme: lightColorScheme,
+        colors: lightScheme,
+        surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+        blendLevel: 9,
         useMaterial3: true,
         textTheme: lightTextTheme(),
         fontFamily: primaryFontFamily,
@@ -52,7 +53,9 @@ class AppTheme {
       );
 
   static ThemeData get darkTheme => FlexThemeData.dark(
-        colorScheme: darkColorScheme,
+        colors: darkScheme,
+        surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+        blendLevel: 15,
         useMaterial3: true,
         textTheme: darkTextTheme(),
         fontFamily: primaryFontFamily,

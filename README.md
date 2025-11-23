@@ -54,7 +54,36 @@ flutter pub get
 
 ### 2.5 Supabase の設定
 
-Supabase の URL と anon key はリポジトリに含めず、起動時に `--dart-define` で注入してください。
+Supabase の URL と anon key はリポジトリに含めず、`.env`ファイルに定義してください。
+
+#### `.env`ファイルの作成
+
+プロジェクトルートに`.env`ファイルを作成し、以下の形式でSupabaseの認証情報を設定してください：
+
+```bash
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_REDIRECT_URL=  # オプション
+```
+
+**注意**: `.env`ファイルは`.gitignore`に含まれているため、リポジトリにはコミットされません。
+
+#### アプリの実行
+
+`.env`ファイルを読み込んでアプリを実行するには、`run.sh`スクリプトを使用してください：
+
+```bash
+./run.sh
+```
+
+または、通常の`flutter run`コマンドに追加の引数を渡すこともできます：
+
+```bash
+./run.sh -d chrome
+./run.sh -d macos
+```
+
+手動で`--dart-define`を指定する場合：
 
 ```bash
 flutter run \

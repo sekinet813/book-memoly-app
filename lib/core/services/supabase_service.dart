@@ -4,11 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../shared/config/supabase_config.dart';
 
-final supabaseServiceProvider = Provider<SupabaseService>((ref) {
-  throw UnimplementedError(
-    'supabaseServiceProvider must be overridden. '
-    'If Supabase is not configured, override with a dummy implementation.',
-  );
+final supabaseServiceProvider = Provider<SupabaseService?>((ref) {
+  // Return null if not overridden, allowing the app to work without Supabase
+  return null;
 });
 
 class SupabaseService {

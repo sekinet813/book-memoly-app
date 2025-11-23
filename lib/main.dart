@@ -8,12 +8,20 @@ import 'core/theme/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final supabaseService = SupabaseService();
-  await supabaseService.initialize();
+  SupabaseService? supabaseService;
+  try {
+    supabaseService = SupabaseService();
+    await supabaseService.initialize();
+  } catch (e) {
+    debugPrint('Supabase initialization failed: $e');
+    debugPrint('App will continue without Supabase support.');
+  }
 
   runApp(
     ProviderScope(
-      overrides: [supabaseServiceProvider.overrideWithValue(supabaseService)],
+      overrides: supabaseService != null
+          ? [supabaseServiceProvider.overrideWithValue(supabaseService)]
+          : [],
       child: const BookMemolyApp(),
     ),
   );

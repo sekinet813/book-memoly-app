@@ -20,7 +20,10 @@ class HomePage extends ConsumerWidget {
           IconButton(
             tooltip: 'ログアウト',
             onPressed: () async {
-              await ref.read(authServiceProvider).signOut();
+              final authService = ref.read(authServiceProvider);
+              if (authService != null) {
+                await authService.signOut();
+              }
             },
             icon: const Icon(AppIcons.logout),
           ),

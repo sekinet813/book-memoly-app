@@ -24,7 +24,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authServiceProvider).resetFeedback();
+      ref.read(authServiceProvider)?.resetFeedback();
     });
     _loadSavedEmail();
   }
@@ -54,9 +54,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
+    final authService = ref.read(authServiceProvider);
+    if (authService == null) {
+      // Show error message if Supabase is not configured
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+          ),
+        );
+      }
+      return;
+    }
+
     final email = _emailController.text;
     await _storeEmail(email);
-    await ref.read(authServiceProvider).sendMagicLink(email);
+    await authService.sendMagicLink(email);
   }
 
   @override
@@ -127,7 +140,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 children: [
                   const Text('はじめての方はこちら'),
                   TextButton(
-                    onPressed: () => context.go('/signup'),
+                    onPressed: () {
+                      context.go('/signup');
+                    },
                     child: const Text('新規登録'),
                   ),
                 ],
