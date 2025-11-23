@@ -6,14 +6,14 @@ import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
 import '../../shared/widgets/app_button.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class SignUpPage extends ConsumerStatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
@@ -31,13 +31,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _sendMagicLink() async {
+  Future<void> _sendSignUpLink() async {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
 
-    await ref.read(authServiceProvider).sendMagicLink(_emailController.text);
+    await ref.read(authServiceProvider).sendSignUpLink(_emailController.text);
   }
 
   @override
@@ -57,12 +57,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'メールアドレスでログイン',
+                '新規アカウント作成',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(height: 8),
               Text(
-                'メールアドレスを入力すると、ログイン用のMagic Linkを送信します。',
+                'メールアドレスを入力すると、登録用のMagic Linkを送信します。',
                 style: Theme.of(context)
                     .textTheme
                     .bodyLarge
@@ -92,8 +92,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     AppButton(
-                      onPressed: _sendMagicLink,
-                      text: 'Magic Linkを送信',
+                      onPressed: _sendSignUpLink,
+                      text: '登録リンクを送信',
                     ),
                   ],
                 ),
@@ -102,10 +102,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('はじめての方はこちら'),
+                  const Text('すでにアカウントをお持ちの方'),
                   TextButton(
-                    onPressed: () => context.go('/signup'),
-                    child: const Text('新規登録'),
+                    onPressed: () => context.go('/login'),
+                    child: const Text('ログイン'),
                   ),
                 ],
               ),
@@ -126,7 +126,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Magic Linkを送信しました。メールボックスを確認してください。',
+                          '登録用のMagic Linkを送信しました。メールを確認してください。',
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                       ),
