@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/models/book.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
@@ -23,7 +24,8 @@ class ReadingSpeedState {
     required this.dailyTotal,
     required this.weeklyTotal,
     required this.monthlyTotal,
-    required this.recentDailyPoints,
+    required this.monthlyPagePoints,
+    required this.finishedBookPoints,
     this.selectedBookId,
     this.isLoading = false,
     this.error,
@@ -35,7 +37,8 @@ class ReadingSpeedState {
         dailyTotal: 0,
         weeklyTotal: 0,
         monthlyTotal: 0,
-        recentDailyPoints: [],
+        monthlyPagePoints: [],
+        finishedBookPoints: [],
         isLoading: true,
       );
 
@@ -44,7 +47,8 @@ class ReadingSpeedState {
   final int dailyTotal;
   final int weeklyTotal;
   final int monthlyTotal;
-  final List<ReadingStatPoint> recentDailyPoints;
+  final List<MonthlyStatPoint> monthlyPagePoints;
+  final List<MonthlyStatPoint> finishedBookPoints;
   final int? selectedBookId;
   final bool isLoading;
   final String? error;
@@ -55,7 +59,8 @@ class ReadingSpeedState {
     int? dailyTotal,
     int? weeklyTotal,
     int? monthlyTotal,
-    List<ReadingStatPoint>? recentDailyPoints,
+    List<MonthlyStatPoint>? monthlyPagePoints,
+    List<MonthlyStatPoint>? finishedBookPoints,
     int? selectedBookId,
     bool? isLoading,
     String? error,
@@ -66,7 +71,8 @@ class ReadingSpeedState {
       dailyTotal: dailyTotal ?? this.dailyTotal,
       weeklyTotal: weeklyTotal ?? this.weeklyTotal,
       monthlyTotal: monthlyTotal ?? this.monthlyTotal,
-      recentDailyPoints: recentDailyPoints ?? this.recentDailyPoints,
+      monthlyPagePoints: monthlyPagePoints ?? this.monthlyPagePoints,
+      finishedBookPoints: finishedBookPoints ?? this.finishedBookPoints,
       selectedBookId: selectedBookId ?? this.selectedBookId,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -81,11 +87,11 @@ class ReadingLogWithBook {
   final BookRow? book;
 }
 
-class ReadingStatPoint {
-  const ReadingStatPoint({required this.date, required this.pages});
+class MonthlyStatPoint {
+  const MonthlyStatPoint({required this.month, required this.value});
 
-  final DateTime date;
-  final int pages;
+  final DateTime month;
+  final int value;
 }
 
 class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
@@ -111,7 +117,7 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
           )
           .toList();
 
-      final stats = _computeStats(enrichedLogs);
+      final stats = _computeStats(enrichedLogs, books);
 
       state = state.copyWith(
         books: books,
@@ -120,7 +126,8 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
         dailyTotal: stats.dailyTotal,
         weeklyTotal: stats.weeklyTotal,
         monthlyTotal: stats.monthlyTotal,
-        recentDailyPoints: stats.recentPoints,
+        monthlyPagePoints: stats.monthlyPages,
+        finishedBookPoints: stats.finishedBooks,
         isLoading: false,
       );
     } catch (error) {
@@ -149,7 +156,10 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
     state = state.copyWith(selectedBookId: bookId);
   }
 
-  _ReadingStats _computeStats(List<ReadingLogWithBook> logs) {
+  _ReadingStats _computeStats(
+    List<ReadingLogWithBook> logs,
+    List<BookRow> books,
+  ) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final startOfMonth = DateTime(today.year, today.month, 1);
@@ -159,6 +169,9 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
     var monthlyTotal = 0;
 
     final dailyMap = <DateTime, int>{};
+    final monthlyPageMap = <DateTime, int>{};
+
+    DateTime _monthKey(DateTime date) => DateTime(date.year, date.month);
 
     for (final entry in logs) {
       final logDate = DateTime(
@@ -169,6 +182,8 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
       final pages = _pagesRead(entry.log);
 
       dailyMap[logDate] = (dailyMap[logDate] ?? 0) + pages;
+      final monthKey = _monthKey(logDate);
+      monthlyPageMap[monthKey] = (monthlyPageMap[monthKey] ?? 0) + pages;
 
       if (logDate == today) {
         dailyTotal += pages;
@@ -183,26 +198,67 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
       }
     }
 
-    final recentDates = List.generate(
-      7,
-      (index) => today.subtract(Duration(days: 6 - index)),
-    );
-
-    final points = recentDates
-        .map(
-          (date) => ReadingStatPoint(
-            date: date,
-            pages: dailyMap[date] ?? 0,
-          ),
-        )
-        .toList();
-
     return _ReadingStats(
       dailyTotal: dailyTotal,
       weeklyTotal: weeklyTotal,
       monthlyTotal: monthlyTotal,
-      recentPoints: points,
+      monthlyPages: _buildMonthlyPoints(now, monthlyPageMap),
+      finishedBooks: _buildFinishedBookPoints(now, books),
     );
+  }
+
+  List<MonthlyStatPoint> _buildMonthlyPoints(
+    DateTime now,
+    Map<DateTime, int> monthlyTotals,
+  ) {
+    final months = List.generate(
+      6,
+      (index) => DateTime(now.year, now.month - (5 - index), 1),
+    );
+
+    return months
+        .map(
+          (month) => MonthlyStatPoint(
+            month: month,
+            value: monthlyTotals[month] ?? 0,
+          ),
+        )
+        .toList();
+  }
+
+  List<MonthlyStatPoint> _buildFinishedBookPoints(
+    DateTime now,
+    List<BookRow> books,
+  ) {
+    final months = List.generate(
+      6,
+      (index) => DateTime(now.year, now.month - (5 - index), 1),
+    );
+
+    final finishedCounts = <DateTime, int>{};
+
+    for (final book in books) {
+      if (book.finishedAt == null) {
+        continue;
+      }
+
+      final status = bookStatusFromDbValue(book.status);
+      if (status != BookStatus.finished) {
+        continue;
+      }
+
+      final finishedMonth = DateTime(book.finishedAt!.year, book.finishedAt!.month, 1);
+      finishedCounts[finishedMonth] = (finishedCounts[finishedMonth] ?? 0) + 1;
+    }
+
+    return months
+        .map(
+          (month) => MonthlyStatPoint(
+            month: month,
+            value: finishedCounts[month] ?? 0,
+          ),
+        )
+        .toList();
   }
 
   int _pagesRead(ReadingLogRow log) {
@@ -217,13 +273,15 @@ class _ReadingStats {
     required this.dailyTotal,
     required this.weeklyTotal,
     required this.monthlyTotal,
-    required this.recentPoints,
+    required this.monthlyPages,
+    required this.finishedBooks,
   });
 
   final int dailyTotal;
   final int weeklyTotal;
   final int monthlyTotal;
-  final List<ReadingStatPoint> recentPoints;
+  final List<MonthlyStatPoint> monthlyPages;
+  final List<MonthlyStatPoint> finishedBooks;
 }
 
 class ReadingSpeedPage extends ConsumerStatefulWidget {
@@ -265,13 +323,13 @@ class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
                       children: [
                         _SummarySection(state: state),
                         const SizedBox(height: 16),
+                        _AnalyticsSection(state: state),
+                        const SizedBox(height: 16),
                         _ReadingLogForm(
                           state: state,
                           pagesController: _pagesController,
                           durationController: _durationController,
                         ),
-                        const SizedBox(height: 16),
-                        _ReadingChart(points: state.recentDailyPoints),
                         const SizedBox(height: 16),
                         _ReadingLogList(logs: state.logs),
                       ],
@@ -489,30 +547,119 @@ class _ReadingLogForm extends ConsumerWidget {
   }
 }
 
-class _ReadingChart extends StatelessWidget {
-  const _ReadingChart({required this.points});
+class _AnalyticsSection extends StatelessWidget {
+  const _AnalyticsSection({required this.state});
 
-  final List<ReadingStatPoint> points;
+  final ReadingSpeedState state;
 
-  double _calculateMaxY() {
-    if (points.isEmpty) {
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '読書分析',
+          style:
+              textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '直近6か月の読書傾向を確認しましょう',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _ChartCard(
+          title: '月間読書ページ数',
+          subtitle: '直近6か月の推移',
+          child: _MonthlyPagesChart(points: state.monthlyPagePoints),
+        ),
+        const SizedBox(height: 12),
+        _ChartCard(
+          title: '読了冊数',
+          subtitle: '完読した冊数の推移',
+          child: _FinishedBooksChart(points: state.finishedBookPoints),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(18);
+
+    final baseColor =
+        Color.lerp(colorScheme.surface, colorScheme.surfaceVariant, 0.24) ??
+            colorScheme.surface;
+
+    return Card(
+      elevation: 1.5,
+      shadowColor: colorScheme.shadow.withOpacity(0.08),
+      color: baseColor,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style:
+                  textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyPagesChart extends StatelessWidget {
+  const _MonthlyPagesChart({required this.points});
+
+  final List<MonthlyStatPoint> points;
+
+  bool get _hasData => points.any((point) => point.value > 0);
+
+  double _maxY() {
+    if (!_hasData) {
       return 10;
     }
 
-    final maxPages = points
-        .map((point) => point.pages.toDouble())
-        .reduce(max)
-        .ceilToDouble();
-    if (maxPages <= 10) return 10;
-    if (maxPages <= 25) return 25;
+    final maxPages = points.map((point) => point.value).reduce(max).toDouble();
     if (maxPages <= 50) return 50;
-    if (maxPages <= 75) return 75;
     if (maxPages <= 100) return 100;
     return (maxPages / 50).ceil() * 50;
   }
 
-  double _calculateInterval(double maxY) {
-    if (maxY <= 25) return 5;
+  double _interval(double maxY) {
     if (maxY <= 50) return 10;
     if (maxY <= 100) return 20;
     return 25;
@@ -520,190 +667,362 @@ class _ReadingChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (points.isEmpty || !_hasData) {
+      return const _EmptyChartMessage(
+        icon: AppIcons.barChart,
+        message: 'まだページ数の記録がありません',
+      );
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    final maxY = _calculateMaxY();
-    final gridInterval = _calculateInterval(maxY);
+    final maxY = _maxY();
+    final interval = _interval(maxY);
 
-    final barColor = Color.lerp(
-          colorScheme.primaryContainer,
-          colorScheme.primary,
-          0.25,
-        ) ??
+    final lineColor = Color.lerp(colorScheme.primary, colorScheme.secondary, 0.2) ??
         colorScheme.primary;
-    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.05);
-    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.8);
+    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.08);
+    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.9);
 
-    return Card(
-      color: colorScheme.surfaceVariant.withOpacity(0.32),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '直近1週間の推移',
-              style: textTheme.titleMedium,
+    return SizedBox(
+      height: 220,
+      child: LineChart(
+        LineChartData(
+          minX: 0,
+          maxX: (points.length - 1).toDouble(),
+          minY: 0,
+          maxY: maxY,
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: interval,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: gridColor,
+              strokeWidth: 1,
             ),
-            const SizedBox(height: 12),
-            if (points.isEmpty)
-              const _InfoCard(
-                icon: AppIcons.barChart,
-                message: 'まだ読書ログがありません',
-              )
-            else
-              Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: barColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '読んだページ数',
-                          style:
-                              textTheme.bodySmall?.copyWith(color: labelColor),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 220,
-                    child: BarChart(
-                      BarChartData(
-                        backgroundColor: Colors.transparent,
-                        alignment: BarChartAlignment.spaceAround,
-                        borderData: FlBorderData(show: false),
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: gridInterval,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: gridColor,
-                            strokeWidth: 1,
-                          ),
-                        ),
-                        barTouchData: BarTouchData(
-                          enabled: true,
-                          handleBuiltInTouches: true,
-                          touchTooltipData: BarTouchTooltipData(
-                            tooltipMargin: 6,
-                            maxContentWidth: 140,
-                            tooltipPadding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
-                            tooltipRoundedRadius: 12,
-                            getTooltipColor: (group) =>
-                                colorScheme.surfaceVariant.withOpacity(0.85),
-                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                              final point = points[groupIndex];
-                              return BarTooltipItem(
-                                '${point.date.month}/${point.date.day}\n',
-                                textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ) ??
-                                    TextStyle(
-                                      color: colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                children: [
-                                  TextSpan(
-                                    text: '${point.pages} ページ',
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurface,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false)),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-                                if (index < 0 || index >= points.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                final point = points[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    '${point.date.month}/${point.date.day}',
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: labelColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 40,
-                              interval: gridInterval,
-                              getTitlesWidget: (value, meta) => Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: Text(
-                                  value.toInt().toString(),
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: labelColor,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        maxY: maxY,
-                        barGroups: points.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final point = entry.value;
-                          return BarChartGroupData(
-                            x: index,
-                            barsSpace: 4,
-                            barRods: [
-                              BarChartRodData(
-                                toY: point.pages.toDouble(),
-                                width: 16,
-                                color: barColor,
-                                borderRadius: BorderRadius.circular(7),
-                                backDrawRodData: BackgroundBarChartRodData(
-                                  show: true,
-                                  toY: maxY,
-                                  color: barColor.withOpacity(0.08),
-                                ),
-                              ),
-                            ],
-                            showingTooltipIndicators: const [0],
-                          );
-                        }).toList(),
+          ),
+          lineTouchData: LineTouchData(
+            handleBuiltInTouches: true,
+            touchTooltipData: LineTouchTooltipData(
+              tooltipBgColor: colorScheme.surfaceVariant.withOpacity(0.92),
+              tooltipRoundedRadius: 12,
+              getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
+                final point = points[spot.x.toInt()];
+                return LineTooltipItem(
+                  '${point.month.month}月\n',
+                  textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ) ??
+                      TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                  children: [
+                    TextSpan(
+                      text: '${point.value} ページ',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= points.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final point = points[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '${point.month.month}月',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: labelColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
               ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 44,
+                interval: interval,
+                getTitlesWidget: (value, meta) => Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(
+                    value.toInt().toString(),
+                    style: textTheme.labelSmall?.copyWith(
+                      color: labelColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              isCurved: true,
+              barWidth: 3,
+              color: lineColor,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
+                  radius: 3,
+                  color: colorScheme.surface,
+                  strokeColor: lineColor,
+                  strokeWidth: 2,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    lineColor.withOpacity(0.26),
+                    lineColor.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              spots: points.asMap().entries
+                  .map((entry) => FlSpot(
+                        entry.key.toDouble(),
+                        entry.value.value.toDouble(),
+                      ))
+                  .toList(),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FinishedBooksChart extends StatelessWidget {
+  const _FinishedBooksChart({required this.points});
+
+  final List<MonthlyStatPoint> points;
+
+  bool get _hasData => points.any((point) => point.value > 0);
+
+  double _maxY() {
+    if (!_hasData) {
+      return 2;
+    }
+
+    final maxCount = points.map((point) => point.value).reduce(max).toDouble();
+    return (maxCount + 1).ceilToDouble();
+  }
+
+  double _interval(double maxY) {
+    if (maxY <= 3) return 1;
+    if (maxY <= 6) return 2;
+    return 3;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty || !_hasData) {
+      return const _EmptyChartMessage(
+        icon: AppIcons.book,
+        message: 'まだ読了冊数のデータがありません',
+      );
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    final maxY = _maxY();
+    final interval = _interval(maxY);
+
+    final barColor = Color.lerp(
+          colorScheme.secondary,
+          colorScheme.primary,
+          0.15,
+        ) ??
+        colorScheme.secondary;
+    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.08);
+    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.9);
+
+    return SizedBox(
+      height: 220,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: interval,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: gridColor,
+              strokeWidth: 1,
+            ),
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            handleBuiltInTouches: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipRoundedRadius: 12,
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              getTooltipColor: (group) =>
+                  colorScheme.surfaceVariant.withOpacity(0.92),
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final point = points[groupIndex];
+                return BarTooltipItem(
+                  '${point.month.month}月\n',
+                  textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ) ??
+                      TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                  children: [
+                    TextSpan(
+                      text: '${point.value} 冊',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index < 0 || index >= points.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final point = points[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '${point.month.month}月',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: labelColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 44,
+                interval: interval,
+                getTitlesWidget: (value, meta) => Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(
+                    value.toInt().toString(),
+                    style: textTheme.labelSmall?.copyWith(
+                      color: labelColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          maxY: maxY,
+          minY: 0,
+          barGroups: points.asMap().entries.map((entry) {
+            final index = entry.key;
+            final point = entry.value;
+            return BarChartGroupData(
+              x: index,
+              barRods: [
+                BarChartRodData(
+                  toY: point.value.toDouble(),
+                  width: 18,
+                  color: barColor,
+                  borderRadius: BorderRadius.circular(8),
+                  rodStackItems: [
+                    BarChartRodStackItem(
+                      0,
+                      point.value.toDouble(),
+                      barColor.withOpacity(0.2),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyChartMessage extends StatelessWidget {
+  const _EmptyChartMessage({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 10),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
       ),
     );
   }
