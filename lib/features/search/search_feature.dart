@@ -7,6 +7,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
 import '../../core/widgets/empty_state.dart';
@@ -228,6 +229,7 @@ class SearchPage extends StatelessWidget {
       child: AppPage(
         title: '検索',
         padding: EdgeInsets.zero,
+        currentDestination: AppDestination.search,
         bottom: const TabBar(
           tabs: [
             Tab(text: 'オンライン検索'),
@@ -609,46 +611,79 @@ class _BookListTile extends StatelessWidget {
           ),
         );
       },
+      padding: const EdgeInsets.all(14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _BookThumbnail(url: book.thumbnailUrl),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   book.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 if (book.authors?.isNotEmpty == true)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       book.authors!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color:
                                 Theme.of(context).colorScheme.onSurfaceVariant,
+                            height: 1.4,
                           ),
                     ),
                   ),
-                if (book.publishedDate != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      '出版日: ${book.publishedDate}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (book.publishedDate != null)
+                      _MetaChip(
+                        icon: AppIcons.calendar,
+                        label: book.publishedDate!,
+                      ),
+                    if (book.pageCount != null)
+                      _MetaChip(
+                        icon: AppIcons.book,
+                        label: '${book.pageCount}ページ',
+                      ),
+                  ],
+                ),
               ],
-              ),
             ),
+          ),
+          const SizedBox(width: 6),
           const Icon(AppIcons.chevronRight),
         ],
       ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      visualDensity: VisualDensity.compact,
+      avatar: Icon(icon, size: AppIconSizes.small),
+      label: Text(label),
     );
   }
 }
@@ -819,89 +854,135 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
         title: const Text('書籍詳細'),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: ListView(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: _BookThumbnail(url: widget.book.thumbnailUrl),
+          children: [
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _BookThumbnail(url: widget.book.thumbnailUrl),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.book.title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        if (widget.book.authors?.isNotEmpty == true) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.book.authors!,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  height: 1.4,
+                                ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          children: [
+                            if (widget.book.publishedDate != null)
+                              _MetaChip(
+                                icon: AppIcons.calendar,
+                                label: widget.book.publishedDate!,
+                              ),
+                            if (widget.book.pageCount != null)
+                              _MetaChip(
+                                icon: AppIcons.book,
+                                label: '${widget.book.pageCount}ページ',
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                widget.book.title,
-                style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '概要',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.book.description ?? '説明がありません',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(height: 1.5),
+                  ),
+                ],
               ),
-              if (widget.book.authors?.isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                Text('著者: ${widget.book.authors}'),
-              ],
-              if (widget.book.publishedDate != null) ...[
-                const SizedBox(height: 8),
-                Text('出版日: ${widget.book.publishedDate}'),
-              ],
-              if (widget.book.pageCount != null) ...[
-                const SizedBox(height: 8),
-                Text('ページ数: ${widget.book.pageCount}'),
-              ],
-              const SizedBox(height: 16),
-              const Text(
-                '概要',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.book.description ?? '説明がありません',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 24),
-              _ReadingPeriodCard(
-                startedAt: _startedAt,
-                finishedAt: _finishedAt,
-                onTapStartDate: () => _pickDate(isStartDate: true),
-                onTapEndDate: () => _pickDate(isStartDate: false),
-                onClearStartDate: _startedAt != null
-                    ? () {
-                        setState(() {
-                          _startedAt = null;
-                        });
-                      }
-                    : null,
-                onClearEndDate: _finishedAt != null
-                    ? () {
-                        setState(() {
-                          _finishedAt = null;
-                        });
-                      }
-                    : null,
-              ),
-              const SizedBox(height: 24),
-              _BookRegistrationCard(
-                selectedStatus: _selectedStatus ?? widget.book.status,
-                onStatusChanged: (status) {
-                  final now = DateTime.now();
-                  final today = DateTime(now.year, now.month, now.day);
-
-                  setState(() {
-                    _selectedStatus = status;
-
-                    // 読書中になったら、開始日が未設定の場合は今日を設定
-                    if (status == BookStatus.reading && _startedAt == null) {
-                      _startedAt = today;
+            ),
+            const SizedBox(height: 12),
+            _ReadingPeriodCard(
+              startedAt: _startedAt,
+              finishedAt: _finishedAt,
+              onTapStartDate: () => _pickDate(isStartDate: true),
+              onTapEndDate: () => _pickDate(isStartDate: false),
+              onClearStartDate: _startedAt != null
+                  ? () {
+                      setState(() {
+                        _startedAt = null;
+                      });
                     }
-
-                    // 読了になったら、終了日が未設定の場合は今日を設定
-                    if (status == BookStatus.finished && _finishedAt == null) {
-                      _finishedAt = today;
+                  : null,
+              onClearEndDate: _finishedAt != null
+                  ? () {
+                      setState(() {
+                        _finishedAt = null;
+                      });
                     }
-                  });
-                },
-                onSave: () => _handleSave(existingBook),
-                isRegistered: existingBook != null,
-                isLoading: bookRowAsync.isLoading,
-              ),
-            ],
-          ),
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            _BookRegistrationCard(
+              selectedStatus: _selectedStatus ?? widget.book.status,
+              onStatusChanged: (status) {
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+
+                setState(() {
+                  _selectedStatus = status;
+
+                  // 読書中になったら、開始日が未設定の場合は今日を設定
+                  if (status == BookStatus.reading && _startedAt == null) {
+                    _startedAt = today;
+                  }
+
+                  // 読了になったら、終了日が未設定の場合は今日を設定
+                  if (status == BookStatus.finished && _finishedAt == null) {
+                    _finishedAt = today;
+                  }
+                });
+              },
+              onSave: () => _handleSave(existingBook),
+              isRegistered: existingBook != null,
+              isLoading: bookRowAsync.isLoading,
+            ),
+          ],
         ),
       ),
     );

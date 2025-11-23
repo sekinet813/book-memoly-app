@@ -16,9 +16,18 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.6)),
+    );
+
     final card = Card(
-      elevation: 2,
-      color: backgroundColor,
+      elevation: 1,
+      color: backgroundColor ?? colorScheme.surface,
+      shadowColor: colorScheme.shadow.withOpacity(0.08),
+      surfaceTintColor: colorScheme.surfaceTint.withOpacity(0.08),
+      shape: shape,
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: padding,
@@ -29,7 +38,7 @@ class AppCard extends StatelessWidget {
     if (onTap != null) {
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: shape.borderRadius,
         child: card,
       );
     }

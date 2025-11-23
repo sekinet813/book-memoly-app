@@ -5,6 +5,7 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
 import '../../core/widgets/empty_state.dart';
@@ -143,6 +144,7 @@ class MemosPage extends ConsumerWidget {
     return AppPage(
       title: '読書メモ',
       padding: const EdgeInsets.all(16),
+      currentDestination: AppDestination.memos,
       child: Column(
         children: [
           _BookSelector(state: state),
@@ -263,35 +265,45 @@ class _MemoCard extends ConsumerWidget {
     );
 
     return AppCard(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (note.pageNumber != null) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (note.pageNumber != null)
                 Chip(
                   label: Text('p.${note.pageNumber}'),
                   avatar:
                       const Icon(AppIcons.bookmarkBorder, size: AppIconSizes.small),
                 ),
-                _MemoActions(note: note),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ] else
-            Align(
-              alignment: Alignment.centerRight,
-              child: _MemoActions(note: note),
-            ),
+              const Spacer(),
+              _MemoActions(note: note),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
             note.content,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 12),
-          Text(
-            '作成: $createdDate $createdTime',
-            style: Theme.of(context).textTheme.bodySmall,
+          Row(
+            children: [
+              Icon(
+                AppIcons.today,
+                size: AppIconSizes.small,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '作成: $createdDate $createdTime',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
           ),
         ],
       ),

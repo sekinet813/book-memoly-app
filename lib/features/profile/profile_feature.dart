@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/models/profile.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
 import '../../core/widgets/loading_indicator.dart';
@@ -150,6 +151,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     return AppPage(
       title: 'プロフィール設定',
       padding: const EdgeInsets.all(16),
+      currentDestination: AppDestination.profile,
       actions: [
         IconButton(
           onPressed: state.isLoading

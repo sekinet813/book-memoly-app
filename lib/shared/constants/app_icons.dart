@@ -14,6 +14,8 @@ class AppIcons {
   static const IconData error = Symbols.error_circle_rounded;
   static const IconData add = Symbols.add_rounded;
   static const IconData addTask = Symbols.add_task_rounded;
+  static const IconData home = Symbols.home_rounded;
+  static const IconData homeFilled = Symbols.home_rounded;
   static const IconData addAlarm = Symbols.alarm_add_rounded;
   static const IconData alarmOff = Symbols.alarm_off_rounded;
   static const IconData alarm = Symbols.alarm_on_rounded;
