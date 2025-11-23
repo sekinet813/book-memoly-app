@@ -6,13 +6,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_page.dart';
+import '../../core/widgets/common_button.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/loading_indicator.dart';
+import '../../core/widgets/section_header.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/services/google_books_api_client.dart';
 import '../../core/models/google_books/google_books_volume.dart';
 import '../../shared/constants/app_icons.dart';
-import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
 
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
   return BookSearchRepository(ref.read(googleBooksApiClientProvider));
@@ -221,23 +225,20 @@ class SearchPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('検索'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'オンライン検索'),
-              Tab(text: 'ローカル検索'),
-            ],
-          ),
+      child: AppPage(
+        title: '検索',
+        padding: EdgeInsets.zero,
+        bottom: const TabBar(
+          tabs: [
+            Tab(text: 'オンライン検索'),
+            Tab(text: 'ローカル検索'),
+          ],
         ),
-        body: const SafeArea(
-          child: TabBarView(
-            children: [
-              _OnlineSearchTab(),
-              _LocalSearchTab(),
-            ],
-          ),
+        child: const TabBarView(
+          children: [
+            _OnlineSearchTab(),
+            _LocalSearchTab(),
+          ],
         ),
       ),
     );
@@ -288,7 +289,7 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
                 onSubmitted: (_) => _triggerSearch(),
               ),
               const SizedBox(height: 16),
-              AppButton.primary(
+              PrimaryButton(
                 onPressed: _triggerSearch,
                 icon: AppIcons.search,
                 label: '検索する',
@@ -299,7 +300,7 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
         ),
         Expanded(
           child: searchState.results.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const LoadingIndicator(),
             error: (error, _) => _ErrorView(error: error),
             data: (books) => _SearchResults(
               books: books,
@@ -391,7 +392,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                 ],
               ),
               const SizedBox(height: 12),
-              AppButton.primary(
+              PrimaryButton(
                 onPressed: _triggerSearch,
                 icon: AppIcons.manageSearch,
                 label: 'ローカルを検索',
@@ -402,7 +403,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
         ),
         Expanded(
           child: localSearchState.results.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const LoadingIndicator(),
             error: (error, _) => _ErrorView(error: error),
             data: (results) => _LocalSearchResults(
               results: results,
@@ -433,23 +434,31 @@ class _SearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!hasSearched) {
-      return const Center(
-        child: Text('キーワードを入力して検索してください'),
+      return const EmptyState(
+        title: '検索キーワードを入力してください',
+        message: 'タイトルや著者名で検索できます。',
+        icon: AppIcons.search,
       );
     }
 
     if (books.isEmpty) {
-      return const Center(
-        child: Text('検索結果が見つかりませんでした'),
+      return const EmptyState(
+        title: '検索結果が見つかりませんでした',
+        message: 'キーワードを少し変えて、もう一度お試しください。',
+        icon: AppIcons.manageSearch,
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: books.length,
+      itemCount: books.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
-        final book = books[index];
+        if (index == 0) {
+          return const SectionHeader(title: '検索結果');
+        }
+
+        final book = books[index - 1];
         return _BookListTile(book: book);
       },
     );
@@ -468,23 +477,34 @@ class _LocalSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!hasSearched) {
-      return const Center(
-        child: Text('キーワードを入力して検索してください'),
+      return const EmptyState(
+        title: 'キーワードを入力して検索してください',
+        message: '登録済みの本やメモの中から探せます。',
+        icon: AppIcons.manageSearch,
       );
     }
 
     if (results.isEmpty) {
-      return const Center(
-        child: Text('検索結果が見つかりませんでした'),
+      return const EmptyState(
+        title: '一致する結果がありませんでした',
+        message: '絞り込み条件やキーワードを見直してください。',
+        icon: AppIcons.filter,
       );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: results.length,
+      itemCount: results.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
-        final result = results[index];
+        if (index == 0) {
+          return SectionHeader(
+            title: 'ローカル検索結果 (${results.length})',
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          );
+        }
+
+        final result = results[index - 1];
         final status = bookStatusFromDbValue(result.book.status);
         return AppCard(
           child: Column(
@@ -1046,8 +1066,8 @@ class _BookRegistrationCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          AppButton.primary(
-            onPressed: onSave,
+          PrimaryButton(
+            onPressed: isLoading ? null : onSave,
             icon: isRegistered ? AppIcons.save : AppIcons.addLibrary,
             label: isRegistered ? 'ステータスを更新' : '本を登録',
             expand: true,

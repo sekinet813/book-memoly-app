@@ -4,10 +4,13 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_page.dart';
+import '../../core/widgets/common_button.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/loading_indicator.dart';
 import '../action_plans/action_plans_feature.dart';
 import '../../shared/constants/app_icons.dart';
-import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
 
 final memosNotifierProvider =
     StateNotifierProvider<MemosNotifier, MemoState>((ref) {
@@ -137,21 +140,15 @@ class MemosPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(memosNotifierProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('読書メモ'),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _BookSelector(state: state),
-              const SizedBox(height: 16),
-              Expanded(child: _MemoList(state: state)),
-            ],
-          ),
-        ),
+    return AppPage(
+      title: '読書メモ',
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _BookSelector(state: state),
+          const SizedBox(height: 16),
+          Expanded(child: _MemoList(state: state)),
+        ],
       ),
       floatingActionButton: state.selectedBookId != null
           ? FloatingActionButton(
@@ -171,13 +168,14 @@ class _BookSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (state.isLoadingBooks) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingIndicator();
     }
 
     if (state.books.isEmpty) {
-      return const _InfoCard(
+      return const EmptyState(
+        title: '登録済みの本がありません',
+        message: '本を追加してからメモを作成できます。',
         icon: AppIcons.menuBook,
-        message: 'まずは本を登録してメモを追加しましょう',
       );
     }
 
@@ -223,9 +221,10 @@ class _MemoList extends ConsumerWidget {
     return state.notes.when(
       data: (notes) {
         if (notes.isEmpty) {
-          return const _InfoCard(
+          return const EmptyState(
+            title: 'この本のメモはまだありません',
+            message: '気づきや引用をメモしてみましょう。',
             icon: AppIcons.note,
-            message: 'この本のメモはまだありません',
           );
         }
 
@@ -238,10 +237,11 @@ class _MemoList extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => _InfoCard(
-        icon: AppIcons.error,
+      loading: () => const LoadingIndicator(),
+      error: (error, _) => EmptyState(
+        title: 'メモの取得に失敗しました',
         message: 'メモの読み込み中にエラーが発生しました\n$error',
+        icon: AppIcons.error,
       ),
     );
   }
@@ -383,7 +383,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('キャンセル'),
           ),
-          AppButton.primary(
+          PrimaryButton(
             onPressed: () {
               if (formKey.currentState?.validate() ?? false) {
                 Navigator.of(context).pop(true);
@@ -447,7 +447,7 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('キャンセル'),
           ),
-          AppButton.primary(
+          PrimaryButton(
             onPressed: () => Navigator.of(context).pop(true),
             label: '削除',
           ),
@@ -491,29 +491,4 @@ Future<void> _showActionFromNoteDialog(
     bookId: note.bookId,
     note: note,
   );
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Row(
-        children: [
-          Icon(icon, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
