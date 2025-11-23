@@ -5,6 +5,9 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/tag_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/theme/tokens/radius.dart';
+import '../../core/theme/tokens/spacing.dart';
+import '../../core/theme/tokens/text_styles.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
@@ -166,15 +169,15 @@ class MemosPage extends ConsumerWidget {
 
     return AppPage(
       title: '読書メモ',
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.large),
       currentDestination: AppDestination.memos,
       backgroundColor: _paperColor,
       child: Column(
         children: [
           const _TagManagerSection(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.medium),
           _BookSelector(state: state),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.large),
           Expanded(child: _MemoList(state: state)),
         ],
       ),
@@ -196,17 +199,17 @@ class _TagManagerSection extends ConsumerWidget {
     final tagState = ref.watch(tagsNotifierProvider);
 
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.medium),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               const Icon(AppIcons.label),
-              const SizedBox(width: 8),
-              const Text(
+              const SizedBox(width: AppSpacing.small),
+              Text(
                 'タグ管理',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: AppTextStyles.sectionTitle(context),
               ),
               const Spacer(),
               IconButton(
@@ -221,7 +224,7 @@ class _TagManagerSection extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           tagState.when(
             loading: () => const LoadingIndicator(),
             error: (error, _) => Text('タグの取得に失敗しました: $error'),
@@ -231,8 +234,8 @@ class _TagManagerSection extends ConsumerWidget {
               }
 
               return Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.small,
+                runSpacing: AppSpacing.small,
                 children: tags
                     .map(
                       (tag) => InputChip(
@@ -355,10 +358,13 @@ class _BookSelector extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.large,
+        vertical: AppSpacing.medium,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.largeRadius,
         border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.6)),
       ),
       child: Column(
@@ -366,22 +372,22 @@ class _BookSelector extends ConsumerWidget {
         children: [
           Text(
             '書籍ノート',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                ),
+            style: AppTextStyles.title(context).copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           Row(
             children: [
               const Icon(AppIcons.menuBook),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.medium),
               Expanded(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
                     value: state.selectedBookId,
                     isExpanded: true,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppRadius.largeRadius,
                     items: state.books
                         .map(
                           (book) => DropdownMenuItem(
@@ -434,7 +440,7 @@ class _MemoList extends ConsumerWidget {
 
         return ListView.separated(
           itemCount: notes.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.medium),
           itemBuilder: (context, index) {
             final note = notes[index];
             return _MemoCard(note: note);
@@ -466,7 +472,7 @@ class _MemoCard extends ConsumerWidget {
     );
 
     return AppCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.large),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -483,14 +489,14 @@ class _MemoCard extends ConsumerWidget {
               _MemoActions(note: note),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           _MemoContent(text: note.content),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           TagChipList(
             tags:
                 ref.watch(memosNotifierProvider).noteTags[note.id] ?? const [],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.medium),
           Row(
             children: [
               Icon(
@@ -498,11 +504,12 @@ class _MemoCard extends ConsumerWidget {
                 size: AppIconSizes.small,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.small),
               Text(
                 '作成: $createdDate $createdTime',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: AppTextStyles.bodySmall(context).copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -520,7 +527,7 @@ class _MemoContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseStyle =
-        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.7);
+        AppTextStyles.bodyLarge(context).copyWith(height: 1.7);
     final bulletStyle = baseStyle?.copyWith(fontWeight: FontWeight.w600);
     final quoteStyle = baseStyle?.copyWith(
       fontStyle: FontStyle.italic,
@@ -534,7 +541,7 @@ class _MemoContent extends StatelessWidget {
       children: [
         for (final line in lines)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xSmall),
             child: _buildStyledLine(
               context,
               line,
@@ -555,7 +562,7 @@ class _MemoContent extends StatelessWidget {
     TextStyle? quoteStyle,
   ) {
     if (line.trim().isEmpty) {
-      return const SizedBox(height: 8);
+      return const SizedBox(height: AppSpacing.small);
     }
 
     final bulletMatch = RegExp(r'^\s*[-*・]\s+(.*)$').firstMatch(line);
@@ -565,10 +572,10 @@ class _MemoContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.xSmall),
             child: Text('•', style: bulletStyle),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.small),
           Expanded(
             child: Text(
               bulletText,
@@ -588,15 +595,18 @@ class _MemoContent extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           color: colorScheme.surface.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.mediumRadius,
           border: Border(
             left: BorderSide(
               color: colorScheme.outlineVariant,
-              width: 3,
+              width: AppSpacing.xSmall,
             ),
           ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.medium,
+          vertical: AppSpacing.small,
+        ),
         child: Text(
           quoteText,
           style: quoteStyle,
@@ -622,7 +632,7 @@ class _MemoActions extends ConsumerWidget {
     final selectedBookId = ref.watch(memosNotifierProvider).selectedBookId;
 
     return Wrap(
-      spacing: 8,
+      spacing: AppSpacing.small,
       children: [
         IconButton(
           tooltip: '編集',
@@ -683,11 +693,11 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                      horizontal: AppSpacing.large,
+                      vertical: AppSpacing.medium,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
@@ -696,7 +706,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
@@ -705,7 +715,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
                         width: 1.4,
@@ -715,7 +725,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                   ),
                   maxLines: null,
                   minLines: 6,
-                  style: const TextStyle(height: 1.6),
+                  style: AppTextStyles.bodyLarge(context).copyWith(height: 1.6),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'メモを入力してください';
@@ -723,7 +733,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.medium),
                 TextFormField(
                   controller: pageController,
                   decoration: InputDecoration(
@@ -732,11 +742,11 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                      horizontal: AppSpacing.large,
+                      vertical: AppSpacing.medium,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
@@ -745,7 +755,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context)
                             .colorScheme
@@ -754,7 +764,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
                         width: 1.2,
@@ -763,18 +773,16 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                   ),
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.medium),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'タグ',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: AppTextStyles.title(context)
+                        .copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.small),
                 TagSelector(
                   selectedTagIds: selectedTagIds,
                   onSelectionChanged: (ids) {

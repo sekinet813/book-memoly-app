@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/tokens/spacing.dart';
 import 'app_navigation_bar.dart';
 
 class AppPage extends StatelessWidget {
@@ -8,7 +9,7 @@ class AppPage extends StatelessWidget {
     required this.title,
     required this.child,
     this.actions,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(AppSpacing.xLarge),
     this.floatingActionButton,
     this.bottomNavigationBar,
     this.currentDestination,
@@ -77,7 +78,12 @@ class AppPage extends StatelessWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
+            padding: const EdgeInsets.fromLTRB(
+              0,
+              AppSpacing.medium,
+              0,
+              AppSpacing.large,
+            ),
             child: pageBody,
           ),
         ),

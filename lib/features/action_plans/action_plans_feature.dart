@@ -5,6 +5,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/theme/tokens/radius.dart';
+import '../../core/theme/tokens/spacing.dart';
+import '../../core/theme/tokens/text_styles.dart';
 import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../shared/constants/app_icons.dart';
@@ -231,14 +234,14 @@ class ActionPlansPage extends ConsumerWidget {
 
     return AppPage(
       title: 'アクションプラン',
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.large),
       currentDestination: AppDestination.actions,
       child: Column(
         children: [
           _BookSelector(state: state),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.large),
           _StatusFilterRow(state: state),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           Expanded(child: _ActionList(state: state)),
         ],
       ),
@@ -277,7 +280,7 @@ class _BookSelector extends ConsumerWidget {
     return Row(
       children: [
         const Icon(AppIcons.menuBook),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.medium),
         Expanded(
           child: DropdownButton<int>(
             value: state.selectedBookId,
@@ -317,7 +320,7 @@ class _StatusFilterRow extends ConsumerWidget {
         children: ActionStatusFilter.values.map((filter) {
           final isSelected = state.statusFilter == filter;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: AppSpacing.small),
             child: ChoiceChip(
               label: Text(_statusFilterLabel(filter)),
               selected: isSelected,
@@ -364,7 +367,7 @@ class _ActionList extends ConsumerWidget {
 
         return ListView.separated(
           itemCount: filteredActions.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.medium),
           itemBuilder: (context, index) {
             final action = filteredActions[index];
             return _ActionTile(action: action, notes: state.notes);
@@ -447,7 +450,7 @@ class _ActionTile extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -465,7 +468,7 @@ class _ActionTile extends ConsumerWidget {
                     children: [
                       Text(
                         action.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: AppTextStyles.title(context).copyWith(
                           decoration: isDone
                               ? TextDecoration.lineThrough
                               : TextDecoration.none,
@@ -473,16 +476,16 @@ class _ActionTile extends ConsumerWidget {
                       ),
                       if (action.description?.isNotEmpty ?? false)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: AppSpacing.xSmall),
                           child: Text(
                             action.description!,
-                            style: theme.textTheme.bodyMedium,
+                            style: AppTextStyles.bodyMedium(context),
                           ),
                         ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.small),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: AppSpacing.small,
+                        runSpacing: AppSpacing.small,
                         children: [
                           Chip(
                             avatar: Icon(
@@ -524,15 +527,15 @@ class _ActionTile extends ConsumerWidget {
                         ],
                       ),
                     ],
-                  ),
+                    ),
                 ),
                 _ActionMenu(action: action),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.small,
+              runSpacing: AppSpacing.small,
               children: [
                 if (!isDone)
                   FilledButton.icon(
@@ -565,11 +568,11 @@ class _ActionTile extends ConsumerWidget {
             ),
             if (isReminderDue && !isDone)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: AppSpacing.small),
                 child: Text(
                   'リマインドの時間になりました。進捗を確認しましょう。',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.primary),
+                  style: AppTextStyles.bodySmall(context)
+                      .copyWith(color: theme.colorScheme.primary),
                 ),
               ),
           ],
@@ -587,7 +590,7 @@ class _ActionMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Wrap(
-      spacing: 4,
+      spacing: AppSpacing.xSmall,
       children: [
         IconButton(
           tooltip: '編集',
@@ -690,7 +693,7 @@ Future<void> showActionPlanDialog(
                         return null;
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.medium),
                     TextFormField(
                       controller: descriptionController,
                       decoration: const InputDecoration(
@@ -698,7 +701,7 @@ Future<void> showActionPlanDialog(
                       ),
                       maxLines: 3,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.medium),
                     Row(
                       children: [
                         Expanded(
@@ -717,7 +720,7 @@ Future<void> showActionPlanDialog(
                               });
                             },
                             icon: const Icon(AppIcons.close),
-                          ),
+                        ),
                         TextButton.icon(
                           onPressed: pickDate,
                           icon: const Icon(AppIcons.calendar),
@@ -725,7 +728,7 @@ Future<void> showActionPlanDialog(
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.medium),
                     Row(
                       children: [
                         Expanded(
@@ -744,7 +747,7 @@ Future<void> showActionPlanDialog(
                               });
                             },
                             icon: const Icon(AppIcons.alarmOff),
-                          ),
+                        ),
                         TextButton.icon(
                           onPressed: pickReminderDate,
                           icon: const Icon(AppIcons.alarm),
@@ -752,7 +755,7 @@ Future<void> showActionPlanDialog(
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.medium),
                     DropdownButtonFormField<int?>(
                       value: selectedNoteId,
                       decoration: const InputDecoration(
@@ -895,15 +898,15 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.large),
         child: Row(
           children: [
             Icon(icon, size: 28),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.medium),
             Expanded(
               child: Text(
                 message,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: AppTextStyles.bodyMedium(context),
               ),
             ),
           ],
