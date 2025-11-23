@@ -2,12 +2,15 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../theme/tokens/radius.dart';
+import '../theme/tokens/spacing.dart';
+
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(AppSpacing.large),
     this.backgroundColor,
   });
 
@@ -19,13 +22,16 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final radius = BorderRadius.circular(18);
+    const radius = AppRadius.largeRadius;
     final baseColor = backgroundColor ?? colorScheme.surface;
 
     final card = ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        filter: ImageFilter.blur(
+          sigmaX: AppSpacing.xLarge,
+          sigmaY: AppSpacing.xLarge,
+        ),
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: radius,
@@ -44,8 +50,8 @@ class AppCard extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: colorScheme.shadow.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 6),
+                blurRadius: AppSpacing.small,
+                offset: const Offset(0, AppSpacing.medium),
               ),
             ],
           ),

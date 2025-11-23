@@ -8,6 +8,9 @@ import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/theme/tokens/radius.dart';
+import '../../core/theme/tokens/spacing.dart';
+import '../../core/theme/tokens/text_styles.dart';
 import '../../shared/constants/app_icons.dart';
 
 final readingSpeedNotifierProvider =
@@ -261,18 +264,18 @@ class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
               : state.error != null
                   ? _ErrorCard(message: state.error!)
                   : ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.large),
                       children: [
                         _SummarySection(state: state),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.large),
                         _ReadingLogForm(
                           state: state,
                           pagesController: _pagesController,
                           durationController: _durationController,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.large),
                         _ReadingChart(points: state.recentDailyPoints),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.large),
                         _ReadingLogList(logs: state.logs),
                       ],
                     ),
@@ -299,7 +302,7 @@ class _SummarySection extends StatelessWidget {
             color: Colors.blue,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.medium),
         Expanded(
           child: _SummaryCard(
             title: '今週',
@@ -308,7 +311,7 @@ class _SummarySection extends StatelessWidget {
             color: Colors.green,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.medium),
         Expanded(
           child: _SummaryCard(
             title: '今月',
@@ -339,26 +342,26 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icon, color: color),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.small),
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: AppTextStyles.title(context),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: AppTextStyles.pageTitle(context).copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -389,15 +392,15 @@ class _ReadingLogForm extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '読書ログを追加',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: AppTextStyles.title(context),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             DropdownButtonFormField<int>(
               value: state.selectedBookId,
               decoration: const InputDecoration(
@@ -420,7 +423,7 @@ class _ReadingLogForm extends ConsumerWidget {
                 }
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             TextField(
               controller: pagesController,
               decoration: const InputDecoration(
@@ -430,7 +433,7 @@ class _ReadingLogForm extends ConsumerWidget {
               ),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             TextField(
               controller: durationController,
               decoration: const InputDecoration(
@@ -440,7 +443,7 @@ class _ReadingLogForm extends ConsumerWidget {
               ),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -539,15 +542,15 @@ class _ReadingChart extends StatelessWidget {
     return Card(
       color: colorScheme.surfaceVariant.withOpacity(0.32),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.medium),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               '直近1週間の推移',
-              style: textTheme.titleMedium,
+              style: AppTextStyles.title(context),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             if (points.isEmpty)
               const _InfoCard(
                 icon: AppIcons.barChart,
@@ -557,18 +560,20 @@ class _ReadingChart extends StatelessWidget {
               Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xSmall,
+                    ),
                     child: Row(
                       children: [
                         Container(
-                          width: 12,
-                          height: 12,
+                          width: AppSpacing.medium,
+                          height: AppSpacing.medium,
                           decoration: BoxDecoration(
                             color: barColor,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadius.smallRadius,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.small),
                         Text(
                           '読んだページ数',
                           style:
@@ -577,7 +582,7 @@ class _ReadingChart extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.small),
                   SizedBox(
                     height: 220,
                     child: BarChart(
@@ -598,11 +603,13 @@ class _ReadingChart extends StatelessWidget {
                           enabled: true,
                           handleBuiltInTouches: true,
                           touchTooltipData: BarTouchTooltipData(
-                            tooltipMargin: 6,
+                            tooltipMargin: AppSpacing.xSmall,
                             maxContentWidth: 140,
                             tooltipPadding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
-                            tooltipRoundedRadius: 12,
+                              horizontal: AppSpacing.small,
+                              vertical: AppSpacing.small,
+                            ),
+                            tooltipRoundedRadius: AppRadius.medium,
                             getTooltipColor: (group) =>
                                 colorScheme.surfaceVariant.withOpacity(0.85),
                             getTooltipItem: (group, groupIndex, rod, rodIndex) {
@@ -645,7 +652,8 @@ class _ReadingChart extends StatelessWidget {
                                 }
                                 final point = points[index];
                                 return Padding(
-                                  padding: const EdgeInsets.only(top: 6),
+                                  padding:
+                                      const EdgeInsets.only(top: AppSpacing.xSmall),
                                   child: Text(
                                     '${point.date.month}/${point.date.day}',
                                     style: textTheme.bodySmall?.copyWith(
@@ -663,7 +671,9 @@ class _ReadingChart extends StatelessWidget {
                               reservedSize: 40,
                               interval: gridInterval,
                               getTitlesWidget: (value, meta) => Padding(
-                                padding: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.only(
+                                  right: AppSpacing.xSmall,
+                                ),
                                 child: Text(
                                   value.toInt().toString(),
                                   style: textTheme.bodySmall?.copyWith(
@@ -680,13 +690,13 @@ class _ReadingChart extends StatelessWidget {
                           final point = entry.value;
                           return BarChartGroupData(
                             x: index,
-                            barsSpace: 4,
+                            barsSpace: AppSpacing.xSmall,
                             barRods: [
                               BarChartRodData(
                                 toY: point.pages.toDouble(),
-                                width: 16,
+                                width: AppSpacing.large,
                                 color: barColor,
-                                borderRadius: BorderRadius.circular(7),
+                                borderRadius: AppRadius.smallRadius,
                                 backDrawRodData: BackgroundBarChartRodData(
                                   show: true,
                                   toY: maxY,
@@ -728,59 +738,56 @@ class _ReadingLogList extends StatelessWidget {
       children: [
         Text(
           '最近の記録',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: AppTextStyles.title(context),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.medium),
         ...logs.map((entry) {
           final localization = MaterialLocalizations.of(context);
           final logDate = entry.log.loggedAt.toLocal();
           final dateLabel = localization.formatShortDate(logDate);
-          final pages =
-              max(0, (entry.log.endPage ?? 0) - (entry.log.startPage ?? 0));
+        final pages =
+            max(0, (entry.log.endPage ?? 0) - (entry.log.startPage ?? 0));
 
-          return AppCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return AppCard(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         entry.book?.title ?? '不明な本',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: AppTextStyles.title(context)
+                            .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    if (entry.log.durationMinutes != null)
-                      Chip(
-                        label: Text('${entry.log.durationMinutes} 分'),
-                        avatar: const Icon(AppIcons.timelapse,
-                            size: AppIconSizes.small),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      AppIcons.today,
-                      size: AppIconSizes.small,
+                if (entry.log.durationMinutes != null)
+                  Chip(
+                    label: Text('${entry.log.durationMinutes} 分'),
+                    avatar: const Icon(AppIcons.timelapse,
+                        size: AppIconSizes.small),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.small),
+            Row(
+              children: [
+                  Icon(
+                    AppIcons.today,
+                    size: AppIconSizes.small,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.small),
+                  Text(
+                    '$dateLabel · $pages ページ',
+                    style: AppTextStyles.bodySmall(context).copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$dateLabel · $pages ページ',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
               ],
             ),
           );
@@ -800,15 +807,15 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.medium),
         child: Row(
           children: [
             Icon(icon, size: AppIconSizes.large),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.medium),
             Expanded(
               child: Text(
                 message,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: AppTextStyles.bodyMedium(context),
               ),
             ),
           ],
@@ -829,20 +836,18 @@ class _ErrorCard extends StatelessWidget {
       child: Card(
         color: Colors.red.shade50,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.large),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(AppIcons.error, color: Colors.red),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.small),
               Text(
                 '読み込みに失敗しました',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: Colors.red),
+                style:
+                    AppTextStyles.title(context).copyWith(color: Colors.red),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.small),
               Text(
                 message,
                 textAlign: TextAlign.center,

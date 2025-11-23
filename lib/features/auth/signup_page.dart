@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/providers/auth_providers.dart';
+import '../../core/theme/tokens/radius.dart';
+import '../../core/theme/tokens/spacing.dart';
+import '../../core/theme/tokens/text_styles.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
 import '../../shared/constants/app_constants.dart';
@@ -67,17 +70,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
         children: [
           Text(
             '新規アカウント作成',
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: AppTextStyles.pageTitle(context),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.small),
           Text(
             'メールアドレスを入力すると、登録用のMagic Linkを送信します。',
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: AppTextStyles.bodyLarge(context).copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xLarge),
           Form(
             key: _formKey,
             child: Column(
@@ -99,7 +101,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.large),
                 PrimaryButton(
                   onPressed: _sendSignUpLink,
                   label: '登録リンクを送信',
@@ -108,7 +110,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.large),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -122,10 +124,10 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
           if (magicLinkSent)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.medium),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mediumRadius,
               ),
               child: Row(
                 children: [
@@ -133,24 +135,24 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     AppIcons.email,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
                       '登録用のMagic Linkを送信しました。メールを確認してください。',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      style: AppTextStyles.bodyLarge(context),
                     ),
                   ),
                 ],
               ),
             ),
           if (authError != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.medium),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.medium),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.mediumRadius,
               ),
               child: Row(
                 children: [
@@ -158,14 +160,16 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     AppIcons.error,
                     color: Theme.of(context).colorScheme.error,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
                       authError,
                       style: Theme.of(context)
                           .textTheme
                           .bodyLarge
-                          ?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),
+                          ?.copyWith(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
                     ),
                   ),
                 ],

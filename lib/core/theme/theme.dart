@@ -3,25 +3,27 @@ import 'package:flutter/material.dart';
 
 import 'color_schemes.dart';
 import 'typography.dart';
+import 'tokens/elevation.dart';
+import 'tokens/radius.dart';
 import '../../shared/constants/app_icons.dart';
 
 class AppTheme {
   static const _subThemes = FlexSubThemesData(
-    defaultRadius: 14,
+    defaultRadius: AppRadius.large,
     appBarBackgroundSchemeColor: SchemeColor.primaryContainer,
     appBarCenterTitle: true,
-    appBarScrolledUnderElevation: 0,
+    appBarScrolledUnderElevation: AppElevation.level0,
     elevatedButtonSchemeColor: SchemeColor.primary,
     elevatedButtonSecondarySchemeColor: SchemeColor.onPrimary,
     outlinedButtonSchemeColor: SchemeColor.primary,
     outlinedButtonOutlineSchemeColor: SchemeColor.primary,
     outlinedButtonBorderWidth: 1.4,
-    cardRadius: 14,
-    cardElevation: 2,
+    cardRadius: AppRadius.large,
+    cardElevation: AppElevation.level2,
     inputDecoratorBorderType: FlexInputBorderType.outline,
     inputDecoratorSchemeColor: SchemeColor.primary,
     inputDecoratorUnfocusedHasBorder: true,
-    inputDecoratorRadius: 14,
+    inputDecoratorRadius: AppRadius.large,
     navigationBarHeight: 72,
     navigationBarIndicatorSchemeColor: SchemeColor.primaryContainer,
     navigationBarSelectedIconSchemeColor: SchemeColor.onPrimaryContainer,
@@ -51,9 +53,9 @@ class AppTheme {
           color: lightColorScheme.onPrimary,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          elevation: 2,
+          elevation: AppElevation.level2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(18)),
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.large)),
           ),
         ),
       );
@@ -77,9 +79,9 @@ class AppTheme {
           color: darkColorScheme.onPrimary,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          elevation: 2,
+          elevation: AppElevation.level2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(18)),
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.large)),
           ),
         ),
       );
