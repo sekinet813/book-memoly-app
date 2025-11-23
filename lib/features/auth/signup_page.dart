@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
+import '../../shared/constants/app_icons.dart';
 import '../../shared/widgets/app_button.dart';
 
 class SignUpPage extends ConsumerStatefulWidget {
@@ -121,7 +122,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.mail_outline,
+                        AppIcons.email,
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                       const SizedBox(width: 12),
@@ -146,7 +147,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.error_outline,
+                        AppIcons.error,
                         color: Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(width: 12),

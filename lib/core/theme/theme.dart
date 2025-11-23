@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'color_schemes.dart';
 import 'typography.dart';
+import '../../shared/constants/app_icons.dart';
 
 class AppTheme {
   static const _subThemes = FlexSubThemesData(
@@ -39,6 +40,15 @@ class AppTheme {
         fontFamily: primaryFontFamily,
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+      ).copyWith(
+        iconTheme: const IconThemeData(
+          size: AppIconSizes.medium,
+          color: lightColorScheme.onSurfaceVariant,
+        ),
+        primaryIconTheme: const IconThemeData(
+          size: AppIconSizes.medium,
+          color: lightColorScheme.onPrimary,
+        ),
       );
 
   static ThemeData get darkTheme => FlexThemeData.dark(
@@ -48,5 +58,14 @@ class AppTheme {
         fontFamily: primaryFontFamily,
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+      ).copyWith(
+        iconTheme: const IconThemeData(
+          size: AppIconSizes.medium,
+          color: darkColorScheme.onSurfaceVariant,
+        ),
+        primaryIconTheme: const IconThemeData(
+          size: AppIconSizes.medium,
+          color: darkColorScheme.onPrimary,
+        ),
       );
 }

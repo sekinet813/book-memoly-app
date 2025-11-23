@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_icons.dart';
+
 class AppButton extends StatelessWidget {
   const AppButton.primary({
     super.key,
@@ -26,8 +28,8 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final child = switch (variant) {
-      _ButtonVariant.primary => _buildFilledButton(),
-      _ButtonVariant.secondary => _buildOutlinedButton(),
+      _ButtonVariant.primary => _buildFilledButton(context),
+      _ButtonVariant.secondary => _buildOutlinedButton(context),
     };
 
     if (expand) {
@@ -37,11 +39,15 @@ class AppButton extends StatelessWidget {
     return child;
   }
 
-  Widget _buildFilledButton() {
+  Widget _buildFilledButton(BuildContext context) {
     if (icon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
+        icon: Icon(
+          icon,
+          size: AppIconSizes.medium,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
         label: Text(label),
       );
     }
@@ -52,11 +58,15 @@ class AppButton extends StatelessWidget {
     );
   }
 
-  Widget _buildOutlinedButton() {
+  Widget _buildOutlinedButton(BuildContext context) {
     if (icon != null) {
       return OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
+        icon: Icon(
+          icon,
+          size: AppIconSizes.medium,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         label: Text(label),
       );
     }

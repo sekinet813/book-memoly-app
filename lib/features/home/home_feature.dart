@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
+import '../../shared/constants/app_icons.dart';
 import '../../shared/widgets/app_card.dart';
 
 class HomePage extends ConsumerWidget {
@@ -21,7 +22,7 @@ class HomePage extends ConsumerWidget {
             onPressed: () async {
               await ref.read(authServiceProvider).signOut();
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(AppIcons.logout),
           ),
         ],
       ),
@@ -52,7 +53,7 @@ class HomePage extends ConsumerWidget {
                   mainAxisSpacing: 16,
                   children: [
                     _FeatureCard(
-                      icon: Icons.search,
+                      icon: AppIcons.search,
                       title: '書籍検索',
                       description: 'Google Books APIで\n書籍を検索',
                       color: Theme.of(context).colorScheme.primary,
@@ -61,7 +62,7 @@ class HomePage extends ConsumerWidget {
                       },
                     ),
                     _FeatureCard(
-                      icon: Icons.library_books,
+                      icon: AppIcons.books,
                       title: '読書記録',
                       description: '読んだ本を\n管理',
                       color: Theme.of(context).colorScheme.secondary,
@@ -70,7 +71,7 @@ class HomePage extends ConsumerWidget {
                       },
                     ),
                     _FeatureCard(
-                      icon: Icons.note,
+                      icon: AppIcons.memo,
                       title: 'メモ',
                       description: '読書メモを\n作成・管理',
                       color: Theme.of(context).colorScheme.tertiary,
@@ -79,7 +80,7 @@ class HomePage extends ConsumerWidget {
                       },
                     ),
                     _FeatureCard(
-                      icon: Icons.speed,
+                      icon: AppIcons.readingSpeed,
                       title: '読書速度',
                       description: '読書速度を\n測定・記録',
                       color: Theme.of(context).colorScheme.primary,
@@ -88,7 +89,7 @@ class HomePage extends ConsumerWidget {
                       },
                     ),
                     _FeatureCard(
-                      icon: Icons.checklist,
+                      icon: AppIcons.actions,
                       title: 'アクションプラン',
                       description: '読書後の\nアクションを管理',
                       color: Theme.of(context).colorScheme.secondary,
@@ -137,7 +138,7 @@ class _FeatureCard extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              size: 32,
+              size: AppIconSizes.extraLarge,
               color: color,
             ),
           ),

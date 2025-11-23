@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../shared/constants/app_icons.dart';
 
 final readingSpeedNotifierProvider =
     StateNotifierProvider<ReadingSpeedNotifier, ReadingSpeedState>((ref) {
@@ -292,7 +293,7 @@ class _SummarySection extends StatelessWidget {
           child: _SummaryCard(
             title: '今日',
             value: '${state.dailyTotal} ページ',
-            icon: Icons.today,
+            icon: AppIcons.today,
             color: Colors.blue,
           ),
         ),
@@ -301,7 +302,7 @@ class _SummarySection extends StatelessWidget {
           child: _SummaryCard(
             title: '今週',
             value: '${state.weeklyTotal} ページ',
-            icon: Icons.calendar_view_week,
+            icon: AppIcons.calendarViewWeek,
             color: Colors.green,
           ),
         ),
@@ -310,7 +311,7 @@ class _SummarySection extends StatelessWidget {
           child: _SummaryCard(
             title: '今月',
             value: '${state.monthlyTotal} ページ',
-            icon: Icons.calendar_month,
+            icon: AppIcons.calendarMonth,
             color: Colors.purple,
           ),
         ),
@@ -379,7 +380,7 @@ class _ReadingLogForm extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (state.books.isEmpty) {
       return const _InfoCard(
-        icon: Icons.menu_book_outlined,
+        icon: AppIcons.menuBook,
         message: 'まずは検索から本を登録して読書ログを追加しましょう',
       );
     }
@@ -440,7 +441,7 @@ class _ReadingLogForm extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.save_alt),
+                icon: const Icon(AppIcons.saveAlt),
                 label: const Text('記録する'),
                 onPressed: () => _submit(context, ref),
               ),
@@ -508,7 +509,7 @@ class _ReadingChart extends StatelessWidget {
             const SizedBox(height: 12),
             if (points.isEmpty)
               const _InfoCard(
-                icon: Icons.bar_chart,
+                icon: AppIcons.barChart,
                 message: 'まだ読書ログがありません',
               )
             else
@@ -561,7 +562,7 @@ class _ReadingLogList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (logs.isEmpty) {
       return const _InfoCard(
-        icon: Icons.book_outlined,
+        icon: AppIcons.book,
         message: '記録はまだありません。ページ数を入力して記録しましょう。',
       );
     }
@@ -609,7 +610,7 @@ class _InfoCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Icon(icon, size: 28),
+            Icon(icon, size: AppIconSizes.large),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -639,7 +640,7 @@ class _ErrorCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Colors.red),
+              const Icon(AppIcons.error, color: Colors.red),
               const SizedBox(height: 8),
               Text(
                 '読み込みに失敗しました',

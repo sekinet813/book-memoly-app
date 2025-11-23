@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
+import '../../shared/constants/app_icons.dart';
 import '../../shared/widgets/app_button.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -112,11 +113,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       label: 'Magic Linkを送信',
                       expand: true,
                     ),
-                    TextButton.icon(
-                      onPressed: _sendMagicLink,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('再送'),
-                    ),
+                  TextButton.icon(
+                    onPressed: _sendMagicLink,
+                    icon: const Icon(AppIcons.refresh),
+                    label: const Text('再送'),
+                  ),
                   ],
                 ),
               ),
@@ -142,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.mail_outline,
+                        AppIcons.email,
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                       const SizedBox(width: 12),
@@ -167,7 +168,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.error_outline,
+                        AppIcons.error,
                         color: Theme.of(context).colorScheme.error,
                       ),
                       const SizedBox(width: 12),
