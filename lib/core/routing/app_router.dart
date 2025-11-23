@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../features/action_plans/action_plans_feature.dart';
 import '../../features/auth/login_page.dart';
+import '../../features/auth/signup_page.dart';
 import '../../features/home/home_feature.dart';
 import '../../features/memos/memos_feature.dart';
 import '../../features/reading_speed/reading_speed_feature.dart';
@@ -20,16 +21,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final status = authService.state.status;
       final isLoggedIn = status == AuthStatus.authenticated;
       final isLoggingIn = state.matchedLocation == '/login';
+      final isSigningUp = state.matchedLocation == '/signup';
+      final isAuthRoute = isLoggingIn || isSigningUp;
 
       if (status == AuthStatus.loading) {
         return null;
       }
 
       if (!isLoggedIn) {
-        return isLoggingIn ? null : '/login';
+        return isAuthRoute ? null : '/login';
       }
 
-      if (isLoggingIn) {
+      if (isAuthRoute) {
         return '/';
       }
 
@@ -39,6 +42,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignUpPage(),
       ),
       GoRoute(
         path: '/',

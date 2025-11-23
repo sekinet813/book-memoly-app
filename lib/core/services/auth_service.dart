@@ -62,6 +62,11 @@ class AuthService extends ChangeNotifier {
 
   String? get userId => _state.session?.user.id;
 
+  void resetFeedback() {
+    _state = _state.copyWith(magicLinkSent: false, errorMessage: null);
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     if (_initialized) {
       return;
@@ -85,8 +90,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> _recoverSessionFromUrl([Uri? uri]) async {
     final link = uri ?? Uri.base;
-    final hasAccessToken = link.queryParameters.containsKey('access_token');
-    final hasRefreshToken = link.queryParameters.containsKey('refresh_token');
+    final params = _extractAuthParams(link);
+    final hasAccessToken = params['access_token']?.isNotEmpty ?? false;
+    final hasRefreshToken = params['refresh_token']?.isNotEmpty ?? false;
 
     if (!hasAccessToken || !hasRefreshToken) {
       return;
@@ -97,6 +103,18 @@ class AuthService extends ChangeNotifier {
     } catch (error) {
       debugPrint('Failed to recover session from deep link: $error');
     }
+  }
+
+  Map<String, String> _extractAuthParams(Uri link) {
+    final queryParams = <String, String>{...link.queryParameters};
+    if (link.fragment.isNotEmpty) {
+      try {
+        queryParams.addAll(Uri.splitQueryString(link.fragment));
+      } on FormatException catch (error) {
+        debugPrint('Failed to parse auth fragment: $error');
+      }
+    }
+    return queryParams;
   }
 
   void _handleAuthStateChange(AuthState authState) {
@@ -116,8 +134,22 @@ class AuthService extends ChangeNotifier {
       await _client.auth.signInWithOtp(
         email: email,
         emailRedirectTo: _config.authRedirectUrl,
+        shouldCreateUser: false,
       );
       _state = _state.copyWith(magicLinkSent: true);
+    } on AuthException catch (error, stackTrace) {
+      debugPrint('Magic link sign-in failed: $error');
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          context: const ErrorDescription('Magic link sign-in failed'),
+        ),
+      );
+      _state = _state.copyWith(
+        errorMessage: 'アカウントが見つかりません。新規登録を行ってください。',
+        magicLinkSent: false,
+      );
     } catch (error, stackTrace) {
       debugPrint('Magic link sign-in failed: $error');
       FlutterError.reportError(
@@ -129,6 +161,50 @@ class AuthService extends ChangeNotifier {
       );
       _state = _state.copyWith(
         errorMessage: 'ログインリンクの送信に失敗しました。時間を置いて再試行してください。',
+        magicLinkSent: false,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> sendSignUpLink(String email) async {
+    _state = _state.copyWith(magicLinkSent: false, errorMessage: null);
+    notifyListeners();
+
+    try {
+      await _client.auth.signUp(
+        email: email,
+        emailRedirectTo: _config.authRedirectUrl,
+      );
+      _state = _state.copyWith(magicLinkSent: true);
+    } on AuthException catch (error, stackTrace) {
+      debugPrint('Magic link sign-up failed: $error');
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          context: const ErrorDescription('Magic link sign-up failed'),
+        ),
+      );
+      final message = error.message.contains('already registered')
+          ? 'このメールアドレスは既に登録されています。ログインしてください。'
+          : '登録リンクの送信に失敗しました。時間を置いて再試行してください。';
+      _state = _state.copyWith(
+        errorMessage: message,
+        magicLinkSent: false,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Magic link sign-up failed: $error');
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          context: const ErrorDescription('Magic link sign-up failed'),
+        ),
+      );
+      _state = _state.copyWith(
+        errorMessage: '登録リンクの送信に失敗しました。時間を置いて再試行してください。',
         magicLinkSent: false,
       );
     }
