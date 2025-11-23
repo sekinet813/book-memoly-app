@@ -9,7 +9,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
-    repository = LocalDatabaseRepository(db);
+    repository = LocalDatabaseRepository(db, userId: 'test-user-id');
   });
 
   tearDown(() async {
@@ -24,7 +24,7 @@ void main() {
     expect(result.actions, isNotEmpty);
     expect(result.readingLogs, isNotEmpty);
 
-    final fetchedNotes = await repository.notes.getNotesForBook(result.book.id);
+    final fetchedNotes = await repository.getNotesForBook(result.book.id);
     expect(fetchedNotes.first.content, contains('sample note'));
   });
 }

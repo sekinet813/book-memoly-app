@@ -81,10 +81,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 8),
               Text(
                 'メールアドレスを入力すると、ログイン用のMagic Linkを送信します。',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               Form(
@@ -109,9 +107,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    AppButton(
+                    AppButton.primary(
                       onPressed: _sendMagicLink,
-                      text: 'Magic Linkを送信',
+                      label: 'Magic Linkを送信',
+                      expand: true,
                     ),
                     TextButton.icon(
                       onPressed: _sendMagicLink,
@@ -178,7 +177,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           style: Theme.of(context)
                               .textTheme
                               .bodyLarge
-                              ?.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),
+                              ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onErrorContainer),
                         ),
                       ),
                     ],

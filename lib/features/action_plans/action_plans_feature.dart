@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -67,7 +67,8 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
 
     try {
       final books = await _repository.getAllBooks();
-      final selectedBookId = initialBookId ?? (books.isNotEmpty ? books.first.id : null);
+      final selectedBookId =
+          initialBookId ?? (books.isNotEmpty ? books.first.id : null);
 
       state = state.copyWith(
         books: books,
@@ -198,14 +199,14 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     await loadActionsForBook(action.bookId!);
   }
 
-  Future<void> updateReminder(ActionRow action, Value<DateTime?> remindAt) async {
+  Future<void> updateReminder(
+      ActionRow action, Value<DateTime?> remindAt) async {
     if (action.bookId == null) {
       return;
     }
 
     await _repository.updateAction(
       actionId: action.id,
-      bookId: action.bookId!,
       title: action.title,
       description: action.description,
       dueDate: action.dueDate,
@@ -395,12 +396,14 @@ class _ActionTile extends ConsumerWidget {
             (n) => n.id == action.noteId,
             orElse: () => NoteRow(
               id: -1,
+              userId: action.userId,
               bookId: action.bookId ?? -1,
               content: '',
             ),
           )
         : null;
-    final isLinkedToNote = note != null && note.id != -1 && note.content.isNotEmpty;
+    final isLinkedToNote =
+        note != null && note.id != -1 && note.content.isNotEmpty;
     final isDone = action.status == 'done';
     final isOverdue =
         action.dueDate != null && action.dueDate!.isBefore(DateTime.now());
@@ -465,8 +468,9 @@ class _ActionTile extends ConsumerWidget {
                       Text(
                         action.title,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          decoration:
-                              isDone ? TextDecoration.lineThrough : TextDecoration.none,
+                          decoration: isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
                         ),
                       ),
                       if (action.description?.isNotEmpty ?? false)
@@ -496,14 +500,16 @@ class _ActionTile extends ConsumerWidget {
                           if (action.dueDate != null)
                             InputChip(
                               avatar: const Icon(Icons.event),
-                              label: Text(_formatDueDate(context, action.dueDate!)),
+                              label: Text(
+                                  _formatDueDate(context, action.dueDate!)),
                               backgroundColor:
                                   isOverdue ? Colors.red[50] : Colors.grey[200],
                             ),
                           if (action.remindAt != null)
                             InputChip(
                               avatar: const Icon(Icons.alarm),
-                              label: Text(_formatDueDate(context, action.remindAt!)),
+                              label: Text(
+                                  _formatDueDate(context, action.remindAt!)),
                               backgroundColor: isReminderDue
                                   ? Colors.amber[50]
                                   : Colors.blueGrey[50],

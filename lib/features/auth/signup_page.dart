@@ -91,9 +91,10 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    AppButton(
+                    AppButton.primary(
                       onPressed: _sendSignUpLink,
-                      text: '登録リンクを送信',
+                      label: '登録リンクを送信',
+                      expand: true,
                     ),
                   ],
                 ),

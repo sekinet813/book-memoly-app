@@ -83,7 +83,9 @@ class AuthService extends ChangeNotifier {
     final session = _client.auth.currentSession;
     _state = _state.copyWith(
       session: session,
-      status: session != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+      status: session != null
+          ? AuthStatus.authenticated
+          : AuthStatus.unauthenticated,
     );
     notifyListeners();
   }
@@ -121,7 +123,9 @@ class AuthService extends ChangeNotifier {
     final session = authState.session;
     _state = _state.copyWith(
       session: session,
-      status: session != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+      status: session != null
+          ? AuthStatus.authenticated
+          : AuthStatus.unauthenticated,
     );
     notifyListeners();
   }
@@ -143,7 +147,7 @@ class AuthService extends ChangeNotifier {
         FlutterErrorDetails(
           exception: error,
           stack: stackTrace,
-          context: const ErrorDescription('Magic link sign-in failed'),
+          context: ErrorDescription('Magic link sign-in failed'),
         ),
       );
       _state = _state.copyWith(
@@ -156,7 +160,7 @@ class AuthService extends ChangeNotifier {
         FlutterErrorDetails(
           exception: error,
           stack: stackTrace,
-          context: const ErrorDescription('Magic link sign-in failed'),
+          context: ErrorDescription('Magic link sign-in failed'),
         ),
       );
       _state = _state.copyWith(
@@ -173,9 +177,10 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _client.auth.signUp(
+      await _client.auth.signInWithOtp(
         email: email,
         emailRedirectTo: _config.authRedirectUrl,
+        shouldCreateUser: true,
       );
       _state = _state.copyWith(magicLinkSent: true);
     } on AuthException catch (error, stackTrace) {
@@ -184,7 +189,7 @@ class AuthService extends ChangeNotifier {
         FlutterErrorDetails(
           exception: error,
           stack: stackTrace,
-          context: const ErrorDescription('Magic link sign-up failed'),
+          context: ErrorDescription('Magic link sign-up failed'),
         ),
       );
       final message = error.message.contains('already registered')
@@ -200,7 +205,7 @@ class AuthService extends ChangeNotifier {
         FlutterErrorDetails(
           exception: error,
           stack: stackTrace,
-          context: const ErrorDescription('Magic link sign-up failed'),
+          context: ErrorDescription('Magic link sign-up failed'),
         ),
       );
       _state = _state.copyWith(

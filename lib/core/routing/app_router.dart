@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -10,6 +9,7 @@ import '../../features/memos/memos_feature.dart';
 import '../../features/reading_speed/reading_speed_feature.dart';
 import '../../features/search/search_feature.dart';
 import '../providers/auth_providers.dart';
+import '../services/auth_service.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authService = ref.watch(authServiceProvider);

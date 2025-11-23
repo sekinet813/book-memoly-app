@@ -10,7 +10,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase(executor: NativeDatabase.memory());
-    repository = LocalDatabaseRepository(db);
+    repository = LocalDatabaseRepository(db, userId: 'test-user-id');
   });
 
   tearDown(() async {
@@ -45,7 +45,7 @@ void main() {
 
     expect(secondAttempt, isFalse);
 
-    final allBooks = await repository.books.getAllBooks();
+    final allBooks = await repository.getAllBooks();
     expect(allBooks.length, 1);
   });
 
