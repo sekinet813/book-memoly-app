@@ -177,11 +177,11 @@ class _ProfileSummaryCard extends StatelessWidget {
           CircleAvatar(
             radius: 24,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            backgroundImage:
-                profile?.avatarUrl != null ? NetworkImage(profile!.avatarUrl!) : null,
-            child: profile?.avatarUrl == null
-                ? const Icon(AppIcons.person)
+            backgroundImage: profile?.avatarUrl != null
+                ? NetworkImage(profile!.avatarUrl!)
                 : null,
+            child:
+                profile?.avatarUrl == null ? const Icon(AppIcons.person) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -233,7 +233,7 @@ class _ContinueReadingSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          icon: AppIcons.autoAwesomeMotion,
+          icon: AppIcons.books,
           title: 'Continue Reading',
           subtitle: 'いま読んでいる本を続けましょう',
         ),
@@ -284,7 +284,7 @@ class _MagazineGrid extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(
-          icon: AppIcons.gridView,
+          icon: AppIcons.books,
           title: 'My Magazine Shelf',
           subtitle: '表紙で並べる、美しい本棚',
         ),
@@ -304,7 +304,8 @@ class _MagazineGrid extends StatelessWidget {
                     : constraints.maxWidth > 600
                         ? 3
                         : 2;
-                final childAspectRatio = constraints.maxWidth > 600 ? 0.66 : 0.62;
+                final childAspectRatio =
+                    constraints.maxWidth > 600 ? 0.66 : 0.62;
 
                 return GridView.builder(
                   shrinkWrap: true,
@@ -446,7 +447,10 @@ class _BookTile extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.4),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withOpacity(0.4),
                   ),
                 ),
               ),
@@ -477,8 +481,10 @@ class _BookTile extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surface.withOpacity(0.16),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surface
+                          .withOpacity(0.16),
                       gradient: LinearGradient(
                         colors: [
                           Colors.black.withOpacity(0.24),
@@ -501,12 +507,14 @@ class _BookTile extends StatelessWidget {
                           book.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                         ),
-                        if (book.authors != null && book.authors!.isNotEmpty) ...[
+                        if (book.authors != null &&
+                            book.authors!.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             book.authors!,
@@ -515,7 +523,8 @@ class _BookTile extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
-                                ?.copyWith(color: Colors.white.withOpacity(0.86)),
+                                ?.copyWith(
+                                    color: Colors.white.withOpacity(0.86)),
                           ),
                         ],
                       ],
@@ -714,10 +723,8 @@ class _SectionTitle extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),

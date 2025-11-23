@@ -98,16 +98,15 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
     try {
       final books = await _repository.getAllBooks();
       final logs = await _repository.getReadingLogs();
-      final selectedBookId = state.selectedBookId ??
-          (books.isNotEmpty ? books.first.id : null);
+      final selectedBookId =
+          state.selectedBookId ?? (books.isNotEmpty ? books.first.id : null);
       final enrichedLogs = logs
           .map(
             (log) => ReadingLogWithBook(
               log: log,
-              book: books
-                  .cast<BookRow?>()
-                  .firstWhere((book) => book?.id == log.bookId,
-                      orElse: () => null),
+              book: books.cast<BookRow?>().firstWhere(
+                  (book) => book?.id == log.bookId,
+                  orElse: () => null),
             ),
           )
           .toList();
@@ -255,7 +254,8 @@ class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => ref.read(readingSpeedNotifierProvider.notifier).load(),
+          onRefresh: () =>
+              ref.read(readingSpeedNotifierProvider.notifier).load(),
           child: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : state.error != null
@@ -414,7 +414,8 @@ class _ReadingLogForm extends ConsumerWidget {
                   .toList(),
               onChanged: (bookId) {
                 if (bookId != null) {
-                  ref.read(readingSpeedNotifierProvider.notifier)
+                  ref
+                      .read(readingSpeedNotifierProvider.notifier)
                       .selectBook(bookId);
                 }
               },
@@ -455,7 +456,8 @@ class _ReadingLogForm extends ConsumerWidget {
   }
 
   Future<void> _submit(BuildContext context, WidgetRef ref) async {
-    final selectedBookId = ref.read(readingSpeedNotifierProvider).selectedBookId;
+    final selectedBookId =
+        ref.read(readingSpeedNotifierProvider).selectedBookId;
     if (selectedBookId == null) {
       return;
     }
@@ -497,8 +499,10 @@ class _ReadingChart extends StatelessWidget {
       return 10;
     }
 
-    final maxPages =
-        points.map((point) => point.pages.toDouble()).reduce(max).ceilToDouble();
+    final maxPages = points
+        .map((point) => point.pages.toDouble())
+        .reduce(max)
+        .ceilToDouble();
     if (maxPages <= 10) return 10;
     if (maxPages <= 25) return 25;
     if (maxPages <= 50) return 50;
@@ -567,7 +571,8 @@ class _ReadingChart extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           '読んだページ数',
-                          style: textTheme.bodySmall?.copyWith(color: labelColor),
+                          style:
+                              textTheme.bodySmall?.copyWith(color: labelColor),
                         ),
                       ],
                     ),
@@ -595,10 +600,10 @@ class _ReadingChart extends StatelessWidget {
                           touchTooltipData: BarTouchTooltipData(
                             tooltipMargin: 6,
                             maxContentWidth: 140,
-                            tooltipPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            tooltipPadding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                             tooltipRoundedRadius: 12,
-                            tooltipBgColor:
+                            getTooltipColor: (group) =>
                                 colorScheme.surfaceVariant.withOpacity(0.85),
                             getTooltipItem: (group, groupIndex, rod, rodIndex) {
                               final point = points[groupIndex];
@@ -626,9 +631,10 @@ class _ReadingChart extends StatelessWidget {
                           ),
                         ),
                         titlesData: FlTitlesData(
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles:
-                              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
                           bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
