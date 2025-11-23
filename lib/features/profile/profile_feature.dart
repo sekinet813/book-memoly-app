@@ -29,7 +29,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _profileSubscription = ref.listen(
+    _profileSubscription = ref.listenManual(
       profileNotifierProvider.select((value) => value.profile),
       (previous, next) {
         if (previous != next) {
@@ -241,9 +241,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               const SizedBox(height: 24),
                               SizedBox(
                                 width: double.infinity,
-                                child: CommonButton.primary(
-                                  onPressed:
-                                      state.isSaving ? null : () => _saveProfile(),
+                                child: PrimaryButton(
+                                  onPressed: state.isSaving
+                                      ? null
+                                      : () => _saveProfile(),
                                   icon: AppIcons.save,
                                   label:
                                       state.isSaving ? '保存中...' : 'プロフィールを保存',
@@ -281,12 +282,11 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 36,
-                backgroundColor:
-                    Theme.of(context).colorScheme.primaryContainer,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 backgroundImage:
                     avatarUrl != null ? NetworkImage(avatarUrl) : null,
                 child: avatarUrl == null
-                    ? const Icon(AppIcons.accountCircle, size: 36)
+                    ? const Icon(AppIcons.person, size: 36)
                     : null,
               ),
               Positioned(
@@ -306,9 +306,7 @@ class _ProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  profile?.name.isNotEmpty == true
-                      ? profile!.name
-                      : '未設定のユーザー',
+                  profile?.name.isNotEmpty == true ? profile!.name : '未設定のユーザー',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
@@ -316,11 +314,8 @@ class _ProfileHeader extends StatelessWidget {
                   profile?.bio?.isNotEmpty == true
                       ? profile!.bio!
                       : 'プロフィールを設定して読書体験をパーソナライズしましょう',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -349,10 +344,8 @@ class _ProfileUnavailable extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'プロフィール機能を利用するにはSupabaseの接続を有効にしてください。',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ],

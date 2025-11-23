@@ -47,10 +47,8 @@ class HomePage extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             '読書記録とメモを管理しましょう',
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           const _ProfileSummaryCard(),
@@ -158,10 +156,8 @@ class _FeatureCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             description,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ],
@@ -191,11 +187,11 @@ class _ProfileSummaryCard extends ConsumerWidget {
           CircleAvatar(
             radius: 28,
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            backgroundImage:
-                profile?.avatarUrl != null ? NetworkImage(profile!.avatarUrl!) : null,
-            child: profile?.avatarUrl == null
-                ? const Icon(AppIcons.accountCircle)
+            backgroundImage: profile?.avatarUrl != null
+                ? NetworkImage(profile!.avatarUrl!)
                 : null,
+            child:
+                profile?.avatarUrl == null ? const Icon(AppIcons.person) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -221,10 +217,8 @@ class _ProfileSummaryCard extends ConsumerWidget {
                   profile?.bio?.isNotEmpty == true
                       ? profile!.bio!
                       : '名前や一言、読書テーマを編集できます。',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -251,4 +245,3 @@ class _ProfileSummaryCard extends ConsumerWidget {
     );
   }
 }
-
