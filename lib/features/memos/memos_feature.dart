@@ -15,6 +15,8 @@ import '../../core/widgets/tag_selector.dart';
 import '../action_plans/action_plans_feature.dart';
 import '../../shared/constants/app_icons.dart';
 
+const _paperColor = Color(0xFFF7F9F7);
+
 final memosNotifierProvider =
     StateNotifierProvider<MemosNotifier, MemoState>((ref) {
   final repository = ref.read(localDatabaseRepositoryProvider);
@@ -166,6 +168,7 @@ class MemosPage extends ConsumerWidget {
       title: '読書メモ',
       padding: const EdgeInsets.all(16),
       currentDestination: AppDestination.memos,
+      backgroundColor: _paperColor,
       child: Column(
         children: [
           const _TagManagerSection(),
@@ -348,32 +351,62 @@ class _BookSelector extends ConsumerWidget {
       );
     }
 
-    return Row(
-      children: [
-        const Icon(AppIcons.menuBook),
-        const SizedBox(width: 12),
-        Expanded(
-          child: DropdownButton<int>(
-            value: state.selectedBookId,
-            isExpanded: true,
-            items: state.books
-                .map(
-                  (book) => DropdownMenuItem(
-                    value: book.id,
-                    child: Text(book.title),
-                  ),
-                )
-                .toList(),
-            onChanged: (bookId) {
-              if (bookId != null) {
-                ref
-                    .read(memosNotifierProvider.notifier)
-                    .loadNotesForBook(bookId);
-              }
-            },
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '書籍ノート',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(AppIcons.menuBook),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: state.selectedBookId,
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(14),
+                    items: state.books
+                        .map(
+                          (book) => DropdownMenuItem(
+                            value: book.id,
+                            child: Text(
+                              book.title,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (bookId) {
+                      if (bookId != null) {
+                        ref
+                            .read(memosNotifierProvider.notifier)
+                            .loadNotesForBook(bookId);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -451,10 +484,7 @@ class _MemoCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            note.content,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
+          _MemoContent(text: note.content),
           const SizedBox(height: 8),
           TagChipList(
             tags:
@@ -478,6 +508,106 @@ class _MemoCard extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MemoContent extends StatelessWidget {
+  const _MemoContent({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle =
+        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.7);
+    final bulletStyle = baseStyle?.copyWith(fontWeight: FontWeight.w600);
+    final quoteStyle = baseStyle?.copyWith(
+      fontStyle: FontStyle.italic,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+
+    final lines = text.split('\n');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final line in lines)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: _buildStyledLine(
+              context,
+              line,
+              baseStyle,
+              bulletStyle,
+              quoteStyle,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStyledLine(
+    BuildContext context,
+    String line,
+    TextStyle? baseStyle,
+    TextStyle? bulletStyle,
+    TextStyle? quoteStyle,
+  ) {
+    if (line.trim().isEmpty) {
+      return const SizedBox(height: 8);
+    }
+
+    final bulletMatch = RegExp(r'^\s*[-*・]\s+(.*)$').firstMatch(line);
+    if (bulletMatch != null) {
+      final bulletText = bulletMatch.group(1) ?? '';
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text('•', style: bulletStyle),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              bulletText,
+              style: baseStyle,
+              softWrap: true,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final quoteMatch = RegExp(r'^\s*>\s?(.*)$').firstMatch(line);
+    if (quoteMatch != null) {
+      final quoteText = quoteMatch.group(1) ?? '';
+      final colorScheme = Theme.of(context).colorScheme;
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border(
+            left: BorderSide(
+              color: colorScheme.outlineVariant,
+              width: 3,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          quoteText,
+          style: quoteStyle,
+        ),
+      );
+    }
+
+    return Text(
+      line,
+      style: baseStyle,
+      softWrap: true,
     );
   }
 }
@@ -547,11 +677,45 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
               children: [
                 TextFormField(
                   controller: contentController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'メモ',
                     hintText: '読書メモを入力してください',
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.4,
+                      ),
+                    ),
+                    alignLabelWithHint: true,
                   ),
-                  maxLines: 4,
+                  maxLines: null,
+                  minLines: 6,
+                  style: const TextStyle(height: 1.6),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'メモを入力してください';
@@ -562,9 +726,40 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: pageController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'ページ番号 (任意)',
                     hintText: '例: 25',
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.2,
+                      ),
+                    ),
                   ),
                   keyboardType: TextInputType.number,
                 ),
