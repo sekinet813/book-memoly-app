@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/providers/auth_providers.dart';
+import '../../core/providers/profile_providers.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_page.dart';
 import '../../shared/constants/app_constants.dart';
@@ -16,6 +17,13 @@ class HomePage extends ConsumerWidget {
     return AppPage(
       title: AppConstants.appName,
       actions: [
+        IconButton(
+          tooltip: '設定',
+          onPressed: () {
+            context.push('/profile');
+          },
+          icon: const Icon(AppIcons.settings),
+        ),
         IconButton(
           tooltip: 'ログアウト',
           onPressed: () async {
@@ -44,6 +52,8 @@ class HomePage extends ConsumerWidget {
                 .bodyLarge
                 ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
+          const SizedBox(height: 16),
+          const _ProfileSummaryCard(),
           const SizedBox(height: 32),
           Expanded(
             child: GridView.count(
@@ -153,6 +163,88 @@ class _FeatureCard extends StatelessWidget {
                 .bodySmall
                 ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSummaryCard extends ConsumerWidget {
+  const _ProfileSummaryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(profileNotifierProvider);
+    final profileService = ref.watch(profileServiceProvider);
+
+    if (profileService == null) {
+      return const SizedBox.shrink();
+    }
+
+    final profile = profileState.profile;
+
+    return AppCard(
+      onTap: () => context.push('/profile'),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            backgroundImage:
+                profile?.avatarUrl != null ? NetworkImage(profile!.avatarUrl!) : null,
+            child: profile?.avatarUrl == null
+                ? const Icon(AppIcons.accountCircle)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        profile?.name.isNotEmpty == true
+                            ? profile!.name
+                            : 'プロフィールを設定しましょう',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(AppIcons.chevronRight),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  profile?.bio?.isNotEmpty == true
+                      ? profile!.bio!
+                      : '名前や一言、読書テーマを編集できます。',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (profile != null && profile.readingThemes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: profile.readingThemes
+                        .map(
+                          (theme) => Chip(
+                            label: Text(theme),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
