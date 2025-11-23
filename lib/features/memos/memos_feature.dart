@@ -306,26 +306,27 @@ Future<String?> _promptForTagName(
   return null;
 }
 
-Future<bool> _confirmTagDeletion(BuildContext context, {required String tagName}) {
+Future<bool> _confirmTagDeletion(BuildContext context,
+    {required String tagName}) {
   return showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('タグを削除しますか？'),
-            content: Text('タグ「$tagName」を削除します。関連付けも解除されます。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('キャンセル'),
-              ),
-              PrimaryButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                label: '削除',
-              ),
-            ],
-          );
-        },
-      ).then((value) => value ?? false);
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('タグを削除しますか？'),
+        content: Text('タグ「$tagName」を削除します。関連付けも解除されます。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          PrimaryButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            label: '削除',
+          ),
+        ],
+      );
+    },
+  ).then((value) => value ?? false);
 }
 
 class _BookSelector extends ConsumerWidget {
@@ -365,7 +366,9 @@ class _BookSelector extends ConsumerWidget {
                 .toList(),
             onChanged: (bookId) {
               if (bookId != null) {
-                ref.read(memosNotifierProvider.notifier).loadNotesForBook(bookId);
+                ref
+                    .read(memosNotifierProvider.notifier)
+                    .loadNotesForBook(bookId);
               }
             },
           ),
@@ -423,8 +426,7 @@ class _MemoCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final localizations = MaterialLocalizations.of(context);
-    final createdDate =
-        localizations.formatShortDate(note.createdAt.toLocal());
+    final createdDate = localizations.formatShortDate(note.createdAt.toLocal());
     final createdTime = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(note.createdAt.toLocal()),
       alwaysUse24HourFormat: true,
@@ -441,8 +443,8 @@ class _MemoCard extends ConsumerWidget {
               if (note.pageNumber != null)
                 Chip(
                   label: Text('p.${note.pageNumber}'),
-                  avatar:
-                      const Icon(AppIcons.bookmarkBorder, size: AppIconSizes.small),
+                  avatar: const Icon(AppIcons.bookmarkBorder,
+                      size: AppIconSizes.small),
                 ),
               const Spacer(),
               _MemoActions(note: note),
@@ -455,7 +457,8 @@ class _MemoCard extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           TagChipList(
-            tags: ref.watch(memosNotifierProvider).noteTags[note.id] ?? const [],
+            tags:
+                ref.watch(memosNotifierProvider).noteTags[note.id] ?? const [],
           ),
           const SizedBox(height: 12),
           Row(
@@ -468,10 +471,8 @@ class _MemoCard extends ConsumerWidget {
               const SizedBox(width: 6),
               Text(
                 '作成: $createdDate $createdTime',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),

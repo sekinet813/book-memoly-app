@@ -45,6 +45,7 @@ class AppIcons {
   static const IconData filter = Symbols.filter_alt_rounded;
   static const IconData manageSearch = Symbols.manage_search_rounded;
   static const IconData today = Symbols.today_rounded;
+  static const IconData label = Symbols.label_rounded;
   static const IconData calendarViewWeek = Symbols.calendar_view_week_rounded;
   static const IconData calendarMonth = Symbols.calendar_month_rounded;
   static const IconData speed = Symbols.speed_rounded;
