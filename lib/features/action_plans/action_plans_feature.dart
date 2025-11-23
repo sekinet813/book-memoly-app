@@ -518,7 +518,7 @@ class _ActionTile extends ConsumerWidget {
                             InputChip(
                               avatar: const Icon(Icons.note_alt_outlined),
                               label: Text(
-                                note!.content,
+                                note.content,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
