@@ -9,6 +9,7 @@ import '../../features/home/home_feature.dart';
 import '../../features/memos/memos_feature.dart';
 import '../../features/reading_speed/reading_speed_feature.dart';
 import '../../features/search/search_feature.dart';
+import '../../features/profile/profile_feature.dart';
 import '../providers/auth_providers.dart';
 import '../services/auth_service.dart';
 
@@ -101,6 +102,10 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       GoRoute(
         path: '/reading-speed',
         builder: (context, state) => const ReadingSpeedPage(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfilePage(),
       ),
     ],
   );
