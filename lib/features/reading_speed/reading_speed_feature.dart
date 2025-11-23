@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -491,13 +492,48 @@ class _ReadingChart extends StatelessWidget {
 
   final List<ReadingStatPoint> points;
 
+  double _calculateMaxY() {
+    if (points.isEmpty) {
+      return 10;
+    }
+
+    final maxPages =
+        points.map((point) => point.pages.toDouble()).reduce(max).ceilToDouble();
+    if (maxPages <= 10) return 10;
+    if (maxPages <= 25) return 25;
+    if (maxPages <= 50) return 50;
+    if (maxPages <= 75) return 75;
+    if (maxPages <= 100) return 100;
+    return (maxPages / 50).ceil() * 50;
+  }
+
+  double _calculateInterval(double maxY) {
+    if (maxY <= 25) return 5;
+    if (maxY <= 50) return 10;
+    if (maxY <= 100) return 20;
+    return 25;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final maxPages = points.isEmpty
-        ? 0
-        : points.map((point) => point.pages).reduce(max);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    final maxY = _calculateMaxY();
+    final gridInterval = _calculateInterval(maxY);
+
+    final barColor = Color.lerp(
+          colorScheme.primaryContainer,
+          colorScheme.primary,
+          0.25,
+        ) ??
+        colorScheme.primary;
+    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.05);
+    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.8);
 
     return Card(
+      color: colorScheme.surfaceVariant.withOpacity(0.32),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -505,7 +541,7 @@ class _ReadingChart extends StatelessWidget {
           children: [
             Text(
               '直近1週間の推移',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             if (points.isEmpty)
@@ -514,38 +550,151 @@ class _ReadingChart extends StatelessWidget {
                 message: 'まだ読書ログがありません',
               )
             else
-              SizedBox(
-                height: 200,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: points.map((point) {
-                    final height = maxPages == 0
-                        ? 0.0
-                        : (point.pages / maxPages) * 140;
-                    return Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text('${point.pages}',
-                              style: const TextStyle(fontSize: 12)),
-                          const SizedBox(height: 4),
-                          Container(
-                            height: max(height, 6),
-                            decoration: BoxDecoration(
-                              color: Colors.blueAccent.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(8),
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: barColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '読んだページ数',
+                          style: textTheme.bodySmall?.copyWith(color: labelColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 220,
+                    child: BarChart(
+                      BarChartData(
+                        backgroundColor: Colors.transparent,
+                        alignment: BarChartAlignment.spaceAround,
+                        borderData: FlBorderData(show: false),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: gridInterval,
+                          getDrawingHorizontalLine: (value) => FlLine(
+                            color: gridColor,
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        barTouchData: BarTouchData(
+                          enabled: true,
+                          handleBuiltInTouches: true,
+                          touchTooltipData: BarTouchTooltipData(
+                            tooltipMargin: 6,
+                            maxContentWidth: 140,
+                            tooltipPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            tooltipRoundedRadius: 12,
+                            tooltipBgColor:
+                                colorScheme.surfaceVariant.withOpacity(0.85),
+                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                              final point = points[groupIndex];
+                              return BarTooltipItem(
+                                '${point.date.month}/${point.date.day}\n',
+                                textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ) ??
+                                    TextStyle(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                children: [
+                                  TextSpan(
+                                    text: '${point.pages} ページ',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles:
+                              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                if (index < 0 || index >= points.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                final point = points[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    '${point.date.month}/${point.date.day}',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: labelColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${point.date.month}/${point.date.day}',
-                            style: const TextStyle(fontSize: 12),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 40,
+                              interval: gridInterval,
+                              getTitlesWidget: (value, meta) => Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Text(
+                                  value.toInt().toString(),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: labelColor,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
+                        ),
+                        maxY: maxY,
+                        barGroups: points.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final point = entry.value;
+                          return BarChartGroupData(
+                            x: index,
+                            barsSpace: 4,
+                            barRods: [
+                              BarChartRodData(
+                                toY: point.pages.toDouble(),
+                                width: 16,
+                                color: barColor,
+                                borderRadius: BorderRadius.circular(7),
+                                backDrawRodData: BackgroundBarChartRodData(
+                                  show: true,
+                                  toY: maxY,
+                                  color: barColor.withOpacity(0.08),
+                                ),
+                              ),
+                            ],
+                            showingTooltipIndicators: const [0],
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }).toList(),
-                ),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
