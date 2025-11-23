@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 @DataClassName('BookRow')
 class Books extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
   TextColumn get googleBooksId => text()();
   TextColumn get title => text()();
   TextColumn get authors => text().nullable()();
@@ -21,6 +22,7 @@ class Books extends Table {
 @DataClassName('NoteRow')
 class Notes extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
   IntColumn get bookId =>
       integer().references(Books, #id, onDelete: KeyAction.cascade)();
   TextColumn get content => text()();
@@ -32,6 +34,7 @@ class Notes extends Table {
 @DataClassName('ActionRow')
 class Actions extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
   IntColumn get bookId => integer()
       .nullable()
       .references(Books, #id, onDelete: KeyAction.cascade)();
@@ -50,6 +53,7 @@ class Actions extends Table {
 @DataClassName('ReadingLogRow')
 class ReadingLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
   IntColumn get bookId =>
       integer().references(Books, #id, onDelete: KeyAction.cascade)();
   IntColumn get startPage => integer().nullable()();

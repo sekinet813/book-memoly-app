@@ -51,6 +51,7 @@ class AppDatabase {
 class BookRow {
   BookRow({
     required this.id,
+    required this.userId,
     required this.googleBooksId,
     required this.title,
     this.authors,
@@ -67,6 +68,7 @@ class BookRow {
         updatedAt = updatedAt ?? DateTime.now();
 
   final int id;
+  final String userId;
   final String googleBooksId;
   final String title;
   final String? authors;
@@ -84,6 +86,7 @@ class BookRow {
 class NoteRow {
   NoteRow({
     required this.id,
+    required this.userId,
     required this.bookId,
     required this.content,
     this.pageNumber,
@@ -93,6 +96,7 @@ class NoteRow {
         updatedAt = updatedAt ?? DateTime.now();
 
   final int id;
+  final String userId;
   final int bookId;
   final String content;
   final int? pageNumber;
@@ -103,6 +107,7 @@ class NoteRow {
 class ActionRow {
   ActionRow({
     required this.id,
+    required this.userId,
     this.bookId,
     this.noteId,
     required this.title,
@@ -116,6 +121,7 @@ class ActionRow {
         updatedAt = updatedAt ?? DateTime.now();
 
   final int id;
+  final String userId;
   final int? bookId;
   final int? noteId;
   final String title;
@@ -130,6 +136,7 @@ class ActionRow {
 class ReadingLogRow {
   ReadingLogRow({
     required this.id,
+    required this.userId,
     required this.bookId,
     this.startPage,
     this.endPage,
@@ -142,6 +149,7 @@ class ReadingLogRow {
         updatedAt = updatedAt ?? DateTime.now();
 
   final int id;
+  final String userId;
   final int bookId;
   final int? startPage;
   final int? endPage;
@@ -153,6 +161,7 @@ class ReadingLogRow {
 
 class BooksCompanion {
   const BooksCompanion({
+    required this.userId,
     required this.googleBooksId,
     required this.title,
     this.authors,
@@ -166,6 +175,7 @@ class BooksCompanion {
   });
 
   const BooksCompanion.insert({
+    required this.userId,
     required this.googleBooksId,
     required this.title,
     this.authors,
@@ -178,6 +188,7 @@ class BooksCompanion {
     this.finishedAt,
   });
 
+  final String userId;
   final String googleBooksId;
   final String title;
   final Value<String?>? authors;
@@ -192,17 +203,20 @@ class BooksCompanion {
 
 class NotesCompanion {
   const NotesCompanion({
+    required this.userId,
     required this.bookId,
     required this.content,
     this.pageNumber,
   });
 
   const NotesCompanion.insert({
+    required this.userId,
     required this.bookId,
     required this.content,
     this.pageNumber,
   });
 
+  final String userId;
   final int bookId;
   final String content;
   final Value<int?>? pageNumber;
@@ -210,6 +224,7 @@ class NotesCompanion {
 
 class ActionsCompanion {
   const ActionsCompanion({
+    required this.userId,
     this.bookId,
     this.noteId,
     required this.title,
@@ -220,6 +235,7 @@ class ActionsCompanion {
   });
 
   const ActionsCompanion.insert({
+    required this.userId,
     this.bookId,
     this.noteId,
     required this.title,
@@ -229,6 +245,7 @@ class ActionsCompanion {
     this.status = const Value('pending'),
   });
 
+  final String userId;
   final Value<int?>? bookId;
   final Value<int?>? noteId;
   final String title;
@@ -240,6 +257,7 @@ class ActionsCompanion {
 
 class ReadingLogsCompanion {
   const ReadingLogsCompanion({
+    required this.userId,
     required this.bookId,
     this.startPage,
     this.endPage,
@@ -247,12 +265,14 @@ class ReadingLogsCompanion {
   });
 
   const ReadingLogsCompanion.insert({
+    required this.userId,
     required this.bookId,
     this.startPage,
     this.endPage,
     this.durationMinutes,
   });
 
+  final String userId;
   final int bookId;
   final Value<int?>? startPage;
   final Value<int?>? endPage;
@@ -268,6 +288,7 @@ class BookDao {
     final newId = ++db._bookId;
     final row = BookRow(
       id: newId,
+      userId: entry.userId,
       googleBooksId: entry.googleBooksId,
       title: entry.title,
       authors: entry.authors?.value,
@@ -285,25 +306,36 @@ class BookDao {
     return newId;
   }
 
-  Future<List<BookRow>> getAllBooks() async {
-    return List.unmodifiable(db._bookRows);
+  Future<List<BookRow>> getAllBooks(String userId) async {
+    return db._bookRows
+        .where((row) => row.userId == userId)
+        .toList(growable: false);
   }
 
-  Stream<List<BookRow>> watchAllBooks() => db._bookStream;
+  Stream<List<BookRow>> watchAllBooks(String userId) =>
+      db._bookStream.map(
+        (books) => books
+            .where((book) => book.userId == userId)
+            .toList(growable: false),
+      );
 
-  Future<BookRow?> getBookByGoogleId(String googleBooksId) async {
+  Future<BookRow?> getBookByGoogleId(
+    String userId,
+    String googleBooksId,
+  ) async {
     try {
-      return db._bookRows
-          .firstWhere((row) => row.googleBooksId == googleBooksId);
+      return db._bookRows.firstWhere(
+        (row) => row.userId == userId && row.googleBooksId == googleBooksId,
+      );
     } catch (_) {
       return null;
     }
   }
 
-  Stream<BookRow?> watchBookByGoogleId(String googleBooksId) {
+  Stream<BookRow?> watchBookByGoogleId(String userId, String googleBooksId) {
     return db._bookStream.map((books) {
       for (final book in books) {
-        if (book.googleBooksId == googleBooksId) {
+        if (book.userId == userId && book.googleBooksId == googleBooksId) {
           return book;
         }
       }
@@ -311,8 +343,12 @@ class BookDao {
     });
   }
 
-  Future<int> updateBookStatus(String googleBooksId, int status) async {
-    final book = await getBookByGoogleId(googleBooksId);
+  Future<int> updateBookStatus(
+    String userId,
+    String googleBooksId,
+    int status,
+  ) async {
+    final book = await getBookByGoogleId(userId, googleBooksId);
     if (book == null) {
       return 0;
     }
@@ -324,12 +360,13 @@ class BookDao {
   }
 
   Future<int> updateBookReadingInfo(
+    String userId,
     String googleBooksId, {
     required int status,
     DateTime? startedAt,
     DateTime? finishedAt,
   }) async {
-    final book = await getBookByGoogleId(googleBooksId);
+    final book = await getBookByGoogleId(userId, googleBooksId);
     if (book == null) {
       return 0;
     }
@@ -348,8 +385,10 @@ class NoteDao {
 
   final AppDatabase db;
 
-  Future<List<NoteRow>> getAllNotes() async {
-    return List.unmodifiable(db._noteRows);
+  Future<List<NoteRow>> getAllNotes(String userId) async {
+    return db._noteRows
+        .where((row) => row.userId == userId)
+        .toList(growable: false);
   }
 
   Future<int> insertNote(NotesCompanion entry) async {
@@ -357,6 +396,7 @@ class NoteDao {
     db._noteRows.add(
       NoteRow(
         id: newId,
+        userId: entry.userId,
         bookId: entry.bookId,
         content: entry.content,
         pageNumber: entry.pageNumber?.value,
@@ -366,18 +406,20 @@ class NoteDao {
     return newId;
   }
 
-  Future<List<NoteRow>> getNotesForBook(int bookId) async {
+  Future<List<NoteRow>> getNotesForBook(String userId, int bookId) async {
     return db._noteRows
-        .where((note) => note.bookId == bookId)
+        .where((note) => note.userId == userId && note.bookId == bookId)
         .toList(growable: false);
   }
 
   Future<int> updateNote({
+    required String userId,
     required int noteId,
     required String content,
     int? pageNumber,
   }) async {
-    final index = db._noteRows.indexWhere((note) => note.id == noteId);
+    final index = db._noteRows
+        .indexWhere((note) => note.id == noteId && note.userId == userId);
     if (index == -1) {
       return 0;
     }
@@ -385,6 +427,7 @@ class NoteDao {
     final existing = db._noteRows[index];
     db._noteRows[index] = NoteRow(
       id: existing.id,
+      userId: existing.userId,
       bookId: existing.bookId,
       content: content,
       pageNumber: pageNumber,
@@ -395,9 +438,10 @@ class NoteDao {
     return 1;
   }
 
-  Future<int> deleteNote(int noteId) async {
+  Future<int> deleteNote(String userId, int noteId) async {
     final beforeLength = db._noteRows.length;
-    db._noteRows.removeWhere((note) => note.id == noteId);
+    db._noteRows.removeWhere(
+        (note) => note.id == noteId && note.userId == userId);
     return beforeLength == db._noteRows.length ? 0 : 1;
   }
 }
@@ -412,6 +456,7 @@ class ActionDao {
     db._actionRows.add(
       ActionRow(
         id: newId,
+        userId: entry.userId,
         bookId: entry.bookId?.value,
         noteId: entry.noteId?.value,
         title: entry.title,
@@ -425,17 +470,20 @@ class ActionDao {
     return newId;
   }
 
-  Future<List<ActionRow>> getPendingActions() async {
-    return db._actionRows.where((action) => action.status == 'pending').toList();
+  Future<List<ActionRow>> getPendingActions(String userId) async {
+    return db._actionRows
+        .where((action) => action.userId == userId && action.status == 'pending')
+        .toList();
   }
 
-  Future<List<ActionRow>> getActionsForBook(int bookId) async {
+  Future<List<ActionRow>> getActionsForBook(String userId, int bookId) async {
     return db._actionRows
-        .where((action) => action.bookId == bookId)
+        .where((action) => action.userId == userId && action.bookId == bookId)
         .toList(growable: false);
   }
 
   Future<int> updateAction({
+    required String userId,
     required int actionId,
     String? title,
     String? description,
@@ -444,7 +492,8 @@ class ActionDao {
     String? status,
     int? noteId,
   }) async {
-    final index = db._actionRows.indexWhere((action) => action.id == actionId);
+    final index = db._actionRows
+        .indexWhere((action) => action.id == actionId && action.userId == userId);
     if (index == -1) {
       return 0;
     }
@@ -452,6 +501,7 @@ class ActionDao {
     final existing = db._actionRows[index];
     db._actionRows[index] = ActionRow(
       id: existing.id,
+      userId: existing.userId,
       bookId: existing.bookId,
       noteId: noteId ?? existing.noteId,
       title: title ?? existing.title,
@@ -466,9 +516,10 @@ class ActionDao {
     return 1;
   }
 
-  Future<int> deleteAction(int actionId) async {
+  Future<int> deleteAction(String userId, int actionId) async {
     final beforeLength = db._actionRows.length;
-    db._actionRows.removeWhere((action) => action.id == actionId);
+    db._actionRows.removeWhere(
+        (action) => action.id == actionId && action.userId == userId);
     return beforeLength == db._actionRows.length ? 0 : 1;
   }
 }
@@ -483,6 +534,7 @@ class ReadingLogDao {
     db._readingLogRows.add(
       ReadingLogRow(
         id: newId,
+        userId: entry.userId,
         bookId: entry.bookId,
         startPage: entry.startPage?.value,
         endPage: entry.endPage?.value,
@@ -493,14 +545,16 @@ class ReadingLogDao {
     return newId;
   }
 
-  Future<List<ReadingLogRow>> getLogsForBook(int bookId) async {
+  Future<List<ReadingLogRow>> getLogsForBook(String userId, int bookId) async {
     return db._readingLogRows
-        .where((log) => log.bookId == bookId)
+        .where((log) => log.userId == userId && log.bookId == bookId)
         .toList(growable: false);
   }
 
-  Future<List<ReadingLogRow>> getAllLogs() async {
-    final logs = List<ReadingLogRow>.from(db._readingLogRows)
+  Future<List<ReadingLogRow>> getAllLogs(String userId) async {
+    final logs = List<ReadingLogRow>.from(
+      db._readingLogRows.where((log) => log.userId == userId),
+    )
       ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
     return logs;
   }

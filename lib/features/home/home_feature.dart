@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
 import '../../shared/widgets/app_card.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'ログアウト',
+            onPressed: () async {
+              await ref.read(authServiceProvider).signOut();
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
