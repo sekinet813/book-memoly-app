@@ -9,7 +9,6 @@ import '../../core/models/book.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/theme/tokens/radius.dart';
 import '../../core/theme/tokens/spacing.dart';
 import '../../core/theme/tokens/text_styles.dart';
 import '../../shared/constants/app_icons.dart';
@@ -250,7 +249,8 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
         continue;
       }
 
-      final finishedMonth = DateTime(book.finishedAt!.year, book.finishedAt!.month, 1);
+      final finishedMonth =
+          DateTime(book.finishedAt!.year, book.finishedAt!.month, 1);
       finishedCounts[finishedMonth] = (finishedCounts[finishedMonth] ?? 0) + 1;
     }
 
@@ -565,8 +565,7 @@ class _AnalyticsSection extends StatelessWidget {
       children: [
         Text(
           '読書分析',
-          style:
-              textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(
@@ -684,8 +683,9 @@ class _MonthlyPagesChart extends StatelessWidget {
     final maxY = _maxY();
     final interval = _interval(maxY);
 
-    final lineColor = Color.lerp(colorScheme.primary, colorScheme.secondary, 0.2) ??
-        colorScheme.primary;
+    final lineColor =
+        Color.lerp(colorScheme.primary, colorScheme.secondary, 0.2) ??
+            colorScheme.primary;
     final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.08);
     final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.9);
 
@@ -710,7 +710,8 @@ class _MonthlyPagesChart extends StatelessWidget {
           lineTouchData: LineTouchData(
             handleBuiltInTouches: true,
             touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor: colorScheme.surfaceVariant.withOpacity(0.92),
+              getTooltipColor: (spot) =>
+                  colorScheme.surfaceVariant.withValues(alpha: 0.92),
               tooltipRoundedRadius: 12,
               getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
                 final point = points[spot.x.toInt()];
@@ -810,7 +811,9 @@ class _MonthlyPagesChart extends StatelessWidget {
                   end: Alignment.bottomCenter,
                 ),
               ),
-              spots: points.asMap().entries
+              spots: points
+                  .asMap()
+                  .entries
                   .map((entry) => FlSpot(
                         entry.key.toDouble(),
                         entry.value.value.toDouble(),
@@ -1057,14 +1060,14 @@ class _ReadingLogList extends StatelessWidget {
           final localization = MaterialLocalizations.of(context);
           final logDate = entry.log.loggedAt.toLocal();
           final dateLabel = localization.formatShortDate(logDate);
-        final pages =
-            max(0, (entry.log.endPage ?? 0) - (entry.log.startPage ?? 0));
+          final pages =
+              max(0, (entry.log.endPage ?? 0) - (entry.log.startPage ?? 0));
 
-        return AppCard(
-          padding: const EdgeInsets.all(AppSpacing.large),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          return AppCard(
+            padding: const EdgeInsets.all(AppSpacing.large),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
                     Expanded(
@@ -1074,32 +1077,32 @@ class _ReadingLogList extends StatelessWidget {
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
-                if (entry.log.durationMinutes != null)
-                  Chip(
-                    label: Text('${entry.log.durationMinutes} 分'),
-                    avatar: const Icon(AppIcons.timelapse,
-                        size: AppIconSizes.small),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.small),
-            Row(
-              children: [
-                  Icon(
-                    AppIcons.today,
-                    size: AppIconSizes.small,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppSpacing.small),
-                  Text(
-                    '$dateLabel · $pages ページ',
-                    style: AppTextStyles.bodySmall(context).copyWith(
+                    if (entry.log.durationMinutes != null)
+                      Chip(
+                        label: Text('${entry.log.durationMinutes} 分'),
+                        avatar: const Icon(AppIcons.timelapse,
+                            size: AppIconSizes.small),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.small),
+                Row(
+                  children: [
+                    Icon(
+                      AppIcons.today,
+                      size: AppIconSizes.small,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: AppSpacing.small),
+                    Text(
+                      '$dateLabel · $pages ページ',
+                      style: AppTextStyles.bodySmall(context).copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           );
@@ -1156,8 +1159,7 @@ class _ErrorCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.small),
               Text(
                 '読み込みに失敗しました',
-                style:
-                    AppTextStyles.title(context).copyWith(color: Colors.red),
+                style: AppTextStyles.title(context).copyWith(color: Colors.red),
               ),
               const SizedBox(height: AppSpacing.small),
               Text(

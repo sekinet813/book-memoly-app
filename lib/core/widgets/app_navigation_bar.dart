@@ -29,12 +29,12 @@ class AppNavigationBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: NavigationBar(
               height: 72,
-              backgroundColor: colorScheme.surface.withOpacity(0.4),
+              backgroundColor: colorScheme.surface.withValues(alpha: 0.4),
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              indicatorColor: colorScheme.primary.withOpacity(0.18),
+              indicatorColor: colorScheme.primary.withValues(alpha: 0.18),
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              labelTextStyle: MaterialStatePropertyAll(
+              labelTextStyle: WidgetStatePropertyAll(
                 TextStyle(
                   fontSize: 11,
                   letterSpacing: 0.1,
@@ -42,39 +42,71 @@ class AppNavigationBar extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-              iconTheme: MaterialStateProperty.resolveWith(
-                (states) => IconThemeData(
-                  size: 24,
-                  color: states.contains(MaterialState.selected)
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
-              ),
               selectedIndex: current.index,
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(AppIcons.home),
-                  selectedIcon: Icon(AppIcons.homeFilled),
+                  icon: Icon(
+                    AppIcons.home,
+                    size: 24,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIcon: Icon(
+                    AppIcons.homeFilled,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   label: 'ホーム',
                 ),
                 NavigationDestination(
-                  icon: Icon(AppIcons.search),
-                  selectedIcon: Icon(AppIcons.search),
+                  icon: Icon(
+                    AppIcons.search,
+                    size: 24,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIcon: Icon(
+                    AppIcons.search,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   label: '検索',
                 ),
                 NavigationDestination(
-                  icon: Icon(AppIcons.memo),
-                  selectedIcon: Icon(AppIcons.memo),
+                  icon: Icon(
+                    AppIcons.memo,
+                    size: 24,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIcon: Icon(
+                    AppIcons.memo,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   label: 'メモ',
                 ),
                 NavigationDestination(
-                  icon: Icon(AppIcons.actions),
-                  selectedIcon: Icon(AppIcons.actions),
+                  icon: Icon(
+                    AppIcons.actions,
+                    size: 24,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIcon: Icon(
+                    AppIcons.actions,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   label: 'アクション',
                 ),
                 NavigationDestination(
-                  icon: Icon(AppIcons.person),
-                  selectedIcon: Icon(AppIcons.person),
+                  icon: Icon(
+                    AppIcons.person,
+                    size: 24,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  selectedIcon: Icon(
+                    AppIcons.person,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   label: 'プロフィール',
                 ),
               ],
