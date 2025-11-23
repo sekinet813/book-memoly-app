@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -16,13 +17,28 @@ import '../services/auth_service.dart';
 /// Dummy ChangeNotifier for when Supabase is not configured
 class _DummyChangeNotifier extends ChangeNotifier {}
 
+/// アニメーションなしのページを作成
+Page<dynamic> _buildNoTransitionPage({
+  required Widget child,
+  required GoRouterState state,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: Duration.zero,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return child;
+    },
+  );
+}
+
 final appRouterProvider = StateProvider<GoRouter>((ref) {
   // Read authService once, don't watch it to prevent router recreation
   final authService = ref.read(authServiceProvider);
-  
+
   // Create a dummy ChangeNotifier if authService is null
   final refreshListenable = authService ?? _DummyChangeNotifier();
-  
+
   // Create router once and store it
   final router = GoRouter(
     initialLocation: '/login',
@@ -41,7 +57,7 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
 
       // Read current authService state in redirect
       final currentAuthService = ref.read(authServiceProvider);
-      
+
       // If Supabase is not configured, allow access to all routes
       if (currentAuthService == null) {
         return null;
@@ -85,19 +101,31 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/',
-        builder: (context, state) => const HomePage(),
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const HomePage(),
+          state: state,
+        ),
       ),
       GoRoute(
         path: '/search',
-        builder: (context, state) => const SearchPage(),
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const SearchPage(),
+          state: state,
+        ),
       ),
       GoRoute(
         path: '/memos',
-        builder: (context, state) => const MemosPage(),
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const MemosPage(),
+          state: state,
+        ),
       ),
       GoRoute(
         path: '/actions',
-        builder: (context, state) => const ActionPlansPage(),
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const ActionPlansPage(),
+          state: state,
+        ),
       ),
       GoRoute(
         path: '/reading-speed',
@@ -105,7 +133,10 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfilePage(),
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const ProfilePage(),
+          state: state,
+        ),
       ),
     ],
   );
