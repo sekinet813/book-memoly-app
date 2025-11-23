@@ -9,6 +9,7 @@ class AppDatabase {
     notes = NoteDao(this);
     actions = ActionDao(this);
     readingLogs = ReadingLogDao(this);
+    tags = TagDao(this);
 
     _emitBookSnapshot();
   }
@@ -19,16 +20,23 @@ class AppDatabase {
   late final NoteDao notes;
   late final ActionDao actions;
   late final ReadingLogDao readingLogs;
+  late final TagDao tags;
 
   final _bookRows = <BookRow>[];
   final _noteRows = <NoteRow>[];
   final _actionRows = <ActionRow>[];
   final _readingLogRows = <ReadingLogRow>[];
+  final _tagRows = <TagRow>[];
+  final _bookTagRows = <BookTagRow>[];
+  final _noteTagRows = <NoteTagRow>[];
 
   int _bookId = 0;
   int _noteId = 0;
   int _actionId = 0;
   int _readingLogId = 0;
+  int _tagId = 0;
+  int _bookTagId = 0;
+  int _noteTagId = 0;
 
   final _bookStreamController =
       StreamController<List<BookRow>>.broadcast(onListen: () {});
@@ -159,6 +167,47 @@ class ReadingLogRow {
   final DateTime updatedAt;
 }
 
+class TagRow {
+  TagRow({
+    required this.id,
+    required this.userId,
+    required this.name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  final int id;
+  final String userId;
+  String name;
+  final DateTime createdAt;
+  DateTime updatedAt;
+}
+
+class BookTagRow {
+  BookTagRow({
+    required this.id,
+    required this.bookId,
+    required this.tagId,
+  });
+
+  final int id;
+  final int bookId;
+  final int tagId;
+}
+
+class NoteTagRow {
+  NoteTagRow({
+    required this.id,
+    required this.noteId,
+    required this.tagId,
+  });
+
+  final int id;
+  final int noteId;
+  final int tagId;
+}
+
 class BooksCompanion {
   const BooksCompanion({
     required this.userId,
@@ -277,6 +326,21 @@ class ReadingLogsCompanion {
   final Value<int?>? startPage;
   final Value<int?>? endPage;
   final Value<int?>? durationMinutes;
+}
+
+class TagsCompanion {
+  const TagsCompanion({
+    required this.userId,
+    required this.name,
+  });
+
+  const TagsCompanion.insert({
+    required this.userId,
+    required this.name,
+  });
+
+  final String userId;
+  final String name;
 }
 
 class BookDao {
@@ -442,6 +506,7 @@ class NoteDao {
     final beforeLength = db._noteRows.length;
     db._noteRows.removeWhere(
         (note) => note.id == noteId && note.userId == userId);
+    db._noteTagRows.removeWhere((row) => row.noteId == noteId);
     return beforeLength == db._noteRows.length ? 0 : 1;
   }
 }
@@ -557,5 +622,139 @@ class ReadingLogDao {
     )
       ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
     return logs;
+  }
+}
+
+class TagDao {
+  TagDao(this.db);
+
+  final AppDatabase db;
+
+  Future<List<TagRow>> getAllTags(String userId) async {
+    return db._tagRows
+        .where((tag) => tag.userId == userId)
+        .toList(growable: false);
+  }
+
+  Future<int> insertTag(TagsCompanion entry) async {
+    final newId = ++db._tagId;
+    db._tagRows.add(
+      TagRow(
+        id: newId,
+        userId: entry.userId,
+        name: entry.name,
+      ),
+    );
+
+    return newId;
+  }
+
+  Future<int> updateTag({
+    required String userId,
+    required int tagId,
+    required String name,
+  }) async {
+    final index =
+        db._tagRows.indexWhere((tag) => tag.id == tagId && tag.userId == userId);
+    if (index == -1) {
+      return 0;
+    }
+
+    final existing = db._tagRows[index];
+    existing
+      ..name = name
+      ..updatedAt = DateTime.now();
+
+    return 1;
+  }
+
+  Future<int> deleteTag(String userId, int tagId) async {
+    final before = db._tagRows.length;
+    db._tagRows
+        .removeWhere((tag) => tag.id == tagId && tag.userId == userId);
+
+    if (before == db._tagRows.length) {
+      return 0;
+    }
+
+    db._bookTagRows.removeWhere((row) => row.tagId == tagId);
+    db._noteTagRows.removeWhere((row) => row.tagId == tagId);
+
+    return 1;
+  }
+
+  Future<void> setTagsForBook(
+    String userId,
+    int bookId,
+    List<int> tagIds,
+  ) async {
+    db._bookTagRows.removeWhere(
+      (row) => row.bookId == bookId && _tagBelongsToUser(row.tagId, userId),
+    );
+
+    for (final tagId in tagIds.toSet()) {
+      if (!_tagBelongsToUser(tagId, userId)) {
+        continue;
+      }
+
+      db._bookTagRows.add(
+        BookTagRow(id: ++db._bookTagId, bookId: bookId, tagId: tagId),
+      );
+    }
+  }
+
+  Future<void> setTagsForNote(
+    String userId,
+    int noteId,
+    List<int> tagIds,
+  ) async {
+    db._noteTagRows.removeWhere(
+      (row) => row.noteId == noteId && _tagBelongsToUser(row.tagId, userId),
+    );
+
+    for (final tagId in tagIds.toSet()) {
+      if (!_tagBelongsToUser(tagId, userId)) {
+        continue;
+      }
+
+      db._noteTagRows.add(
+        NoteTagRow(id: ++db._noteTagId, noteId: noteId, tagId: tagId),
+      );
+    }
+  }
+
+  Future<List<TagRow>> getTagsForBook(String userId, int bookId) async {
+    final tagIds = db._bookTagRows
+        .where((row) => row.bookId == bookId)
+        .map((row) => row.tagId)
+        .toSet();
+
+    return db._tagRows
+        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
+        .toList(growable: false);
+  }
+
+  Future<List<TagRow>> getTagsForNote(String userId, int noteId) async {
+    final tagIds = db._noteTagRows
+        .where((row) => row.noteId == noteId)
+        .map((row) => row.tagId)
+        .toSet();
+
+    return db._tagRows
+        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
+        .toList(growable: false);
+  }
+
+  TagRow? _findTag(int tagId) {
+    try {
+      return db._tagRows.firstWhere((tag) => tag.id == tagId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _tagBelongsToUser(int tagId, String userId) {
+    final tag = _findTag(tagId);
+    return tag?.userId == userId;
   }
 }

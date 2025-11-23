@@ -13,7 +13,9 @@ import '../../core/widgets/common_button.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_indicator.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/tag_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/services/google_books_api_client.dart';
 import '../../core/models/google_books/google_books_volume.dart';
@@ -152,6 +154,7 @@ class LocalSearchState {
     this.hasSearched = false,
     this.keyword = '',
     this.statusFilter,
+    this.selectedTagIds = const {},
   });
 
   static const _statusFilterSentinel = Object();
@@ -160,12 +163,14 @@ class LocalSearchState {
   final bool hasSearched;
   final String keyword;
   final BookStatus? statusFilter;
+  final Set<int> selectedTagIds;
 
   LocalSearchState copyWith({
     AsyncValue<List<LocalSearchResult>>? results,
     bool? hasSearched,
     String? keyword,
     Object? statusFilter = _statusFilterSentinel,
+    Set<int>? selectedTagIds,
   }) {
     return LocalSearchState(
       results: results ?? this.results,
@@ -174,6 +179,7 @@ class LocalSearchState {
       statusFilter: statusFilter == _statusFilterSentinel
           ? this.statusFilter
           : statusFilter as BookStatus?,
+      selectedTagIds: selectedTagIds ?? this.selectedTagIds,
     );
   }
 }
@@ -203,6 +209,7 @@ class LocalSearchNotifier extends StateNotifier<LocalSearchState> {
       final results = await _repository.searchBooksAndNotes(
         cleanedKeyword,
         statusFilter: state.statusFilter,
+        tagIds: state.selectedTagIds,
       );
       state = state.copyWith(results: AsyncValue.data(results));
     } catch (error, stackTrace) {
@@ -214,6 +221,14 @@ class LocalSearchNotifier extends StateNotifier<LocalSearchState> {
     state = state.copyWith(statusFilter: status);
 
     if (state.hasSearched && state.keyword.isNotEmpty) {
+      unawaited(search(state.keyword));
+    }
+  }
+
+  void setTagFilters(Set<int> tagIds) {
+    state = state.copyWith(selectedTagIds: tagIds);
+
+    if (state.hasSearched) {
       unawaited(search(state.keyword));
     }
   }
@@ -394,6 +409,32 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                 ],
               ),
               const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(AppIcons.label),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('タグで絞り込む'),
+                        const SizedBox(height: 8),
+                        TagSelector(
+                          selectedTagIds: localSearchState.selectedTagIds,
+                          onSelectionChanged: (ids) {
+                            ref
+                                .read(localSearchNotifierProvider.notifier)
+                                .setTagFilters(ids);
+                          },
+                          showAddButton: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               PrimaryButton(
                 onPressed: _triggerSearch,
                 icon: AppIcons.manageSearch,
@@ -480,7 +521,7 @@ class _LocalSearchResults extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!hasSearched) {
       return const EmptyState(
-        title: 'キーワードを入力して検索してください',
+        title: 'キーワードやタグを選んで検索してください',
         message: '登録済みの本やメモの中から探せます。',
         icon: AppIcons.manageSearch,
       );
@@ -540,6 +581,10 @@ class _LocalSearchResults extends StatelessWidget {
                       ),
                 ),
               ],
+              if (result.bookTags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                TagChipList(tags: result.bookTags),
+              ],
               const SizedBox(height: 8),
               if (result.matchingNotes.isNotEmpty) ...[
                 Text(
@@ -570,6 +615,13 @@ class _LocalSearchResults extends StatelessWidget {
                                     ),
                               ),
                             ),
+                            if ((result.noteTags[note.id] ?? []).isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(left: 8, top: 2),
+                                child:
+                                    TagChipList(tags: result.noteTags[note.id]!),
+                              ),
                           ],
                         ),
                       ),
@@ -778,6 +830,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   DateTime? _startedAt;
   DateTime? _finishedAt;
   bool _isInitialized = false;
+  bool _isLoadingTags = false;
+  int? _bookRowId;
+  Set<int> _selectedTagIds = {};
 
   @override
   void initState() {
@@ -796,7 +851,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       _startedAt = bookRow.startedAt;
       _finishedAt = bookRow.finishedAt;
       _isInitialized = true;
+      _bookRowId = bookRow.id;
+      _selectedTagIds = {};
     });
+
+    _loadTagsForBook(bookRow);
   }
 
   void _updateFromDatabase(BookRow? bookRow) {
@@ -816,6 +875,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       _startedAt = bookRow.startedAt;
       _finishedAt = bookRow.finishedAt;
       needsUpdate = true;
+    }
+
+    if (_bookRowId != bookRow.id) {
+      _bookRowId = bookRow.id;
+      _loadTagsForBook(bookRow);
     }
 
     if (needsUpdate) {
@@ -958,6 +1022,20 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                   : null,
             ),
             const SizedBox(height: 12),
+            _BookTagCard(
+              selectedTagIds: _selectedTagIds,
+              isLoading: _isLoadingTags,
+              onSelectionChanged: (tags) {
+                setState(() {
+                  _selectedTagIds = tags;
+                });
+              },
+              onSave: existingBook == null
+                  ? null
+                  : () => _saveTags(existingBook.id),
+              isRegistered: existingBook != null,
+            ),
+            const SizedBox(height: 12),
             _BookRegistrationCard(
               selectedStatus: _selectedStatus ?? widget.book.status,
               onStatusChanged: (status) {
@@ -986,6 +1064,53 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadTagsForBook(BookRow bookRow) async {
+    setState(() {
+      _isLoadingTags = true;
+      _bookRowId = bookRow.id;
+    });
+
+    try {
+      final repository = ref.read(localDatabaseRepositoryProvider);
+      final tags = await repository.getTagsForBook(bookRow.id);
+      if (!mounted) return;
+      setState(() {
+        _selectedTagIds = tags.map((tag) => tag.id).toSet();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTags = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveTags(int bookId) async {
+    setState(() {
+      _isLoadingTags = true;
+    });
+
+    try {
+      final repository = ref.read(localDatabaseRepositoryProvider);
+      await repository.setTagsForBook(
+        bookId: bookId,
+        tagIds: _selectedTagIds.toList(),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('タグを更新しました')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingTags = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickDate({required bool isStartDate}) async {
@@ -1199,6 +1324,72 @@ class _ReadingPeriodCard extends StatelessWidget {
             date: finishedAt,
             onTap: onTapEndDate,
             onClear: onClearEndDate,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookTagCard extends StatelessWidget {
+  const _BookTagCard({
+    required this.selectedTagIds,
+    required this.onSelectionChanged,
+    required this.onSave,
+    required this.isRegistered,
+    required this.isLoading,
+  });
+
+  final Set<int> selectedTagIds;
+  final ValueChanged<Set<int>> onSelectionChanged;
+  final VoidCallback? onSave;
+  final bool isRegistered;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'タグ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              if (isRegistered)
+                Chip(
+                  label: const Text('保存済み'),
+                  avatar: const Icon(AppIcons.check, size: AppIconSizes.small),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!isRegistered)
+            const Text('タグを設定するには本を登録してください'),
+          const SizedBox(height: 4),
+          if (isLoading)
+            const LoadingIndicator()
+          else
+            Opacity(
+              opacity: isRegistered ? 1 : 0.6,
+              child: IgnorePointer(
+                ignoring: !isRegistered,
+                child: TagSelector(
+                  selectedTagIds: selectedTagIds,
+                  onSelectionChanged: onSelectionChanged,
+                  showAddButton: true,
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            onPressed: isLoading || onSave == null ? null : onSave,
+            icon: AppIcons.save,
+            label: 'タグを保存',
+            expand: true,
           ),
         ],
       ),

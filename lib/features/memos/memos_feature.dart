@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/tag_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_navigation_bar.dart';
@@ -10,6 +11,7 @@ import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_indicator.dart';
+import '../../core/widgets/tag_selector.dart';
 import '../action_plans/action_plans_feature.dart';
 import '../../shared/constants/app_icons.dart';
 
@@ -23,24 +25,28 @@ class MemoState {
   const MemoState({
     required this.books,
     required this.notes,
+    required this.noteTags,
     this.selectedBookId,
     this.isLoadingBooks = false,
   });
 
   final List<BookRow> books;
   final AsyncValue<List<NoteRow>> notes;
+  final Map<int, List<TagRow>> noteTags;
   final int? selectedBookId;
   final bool isLoadingBooks;
 
   MemoState copyWith({
     List<BookRow>? books,
     AsyncValue<List<NoteRow>>? notes,
+    Map<int, List<TagRow>>? noteTags,
     int? selectedBookId,
     bool? isLoadingBooks,
   }) {
     return MemoState(
       books: books ?? this.books,
       notes: notes ?? this.notes,
+      noteTags: noteTags ?? this.noteTags,
       selectedBookId: selectedBookId ?? this.selectedBookId,
       isLoadingBooks: isLoadingBooks ?? this.isLoadingBooks,
     );
@@ -50,7 +56,11 @@ class MemoState {
 class MemosNotifier extends StateNotifier<MemoState> {
   MemosNotifier(this._repository)
       : super(const MemoState(
-          books: [], notes: AsyncValue.data([]), isLoadingBooks: true));
+          books: [],
+          notes: AsyncValue.data([]),
+          noteTags: {},
+          isLoadingBooks: true,
+        ));
 
   final LocalDatabaseRepository _repository;
 
@@ -68,6 +78,7 @@ class MemosNotifier extends StateNotifier<MemoState> {
         notes: selectedBookId != null
             ? const AsyncValue.loading()
             : const AsyncValue.data([]),
+        noteTags: {},
       );
 
       if (selectedBookId != null) {
@@ -85,14 +96,20 @@ class MemosNotifier extends StateNotifier<MemoState> {
     state = state.copyWith(
       selectedBookId: bookId,
       notes: const AsyncValue.loading(),
+      noteTags: {},
     );
 
     try {
       final notes = await _repository.getNotesForBook(bookId);
       final sortedNotes = [...notes]
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final noteTags = await _repository
+          .getTagsForNotes(sortedNotes.map((note) => note.id).toList());
 
-      state = state.copyWith(notes: AsyncValue.data(sortedNotes));
+      state = state.copyWith(
+        notes: AsyncValue.data(sortedNotes),
+        noteTags: noteTags,
+      );
     } catch (error, stackTrace) {
       state = state.copyWith(notes: AsyncValue.error(error, stackTrace));
     }
@@ -102,12 +119,14 @@ class MemosNotifier extends StateNotifier<MemoState> {
     required int bookId,
     required String content,
     int? pageNumber,
+    List<int> tagIds = const [],
   }) async {
-    await _repository.addNote(
+    final noteId = await _repository.addNote(
       bookId: bookId,
       content: content,
       pageNumber: pageNumber,
     );
+    await _repository.setTagsForNote(noteId: noteId, tagIds: tagIds);
     await loadNotesForBook(bookId);
   }
 
@@ -116,12 +135,14 @@ class MemosNotifier extends StateNotifier<MemoState> {
     required int bookId,
     required String content,
     int? pageNumber,
+    List<int> tagIds = const [],
   }) async {
     await _repository.updateNote(
       noteId: noteId,
       content: content,
       pageNumber: pageNumber,
     );
+    await _repository.setTagsForNote(noteId: noteId, tagIds: tagIds);
     await loadNotesForBook(bookId);
   }
 
@@ -147,6 +168,8 @@ class MemosPage extends ConsumerWidget {
       currentDestination: AppDestination.memos,
       child: Column(
         children: [
+          const _TagManagerSection(),
+          const SizedBox(height: 12),
           _BookSelector(state: state),
           const SizedBox(height: 16),
           Expanded(child: _MemoList(state: state)),
@@ -160,6 +183,149 @@ class MemosPage extends ConsumerWidget {
           : null,
     );
   }
+}
+
+class _TagManagerSection extends ConsumerWidget {
+  const _TagManagerSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tagState = ref.watch(tagsNotifierProvider);
+
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(AppIcons.label),
+              const SizedBox(width: 8),
+              const Text(
+                'タグ管理',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'タグを追加',
+                icon: const Icon(AppIcons.add),
+                onPressed: () async {
+                  final name = await _promptForTagName(context);
+                  if (name != null) {
+                    await ref.read(tagsNotifierProvider.notifier).addTag(name);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          tagState.when(
+            loading: () => const LoadingIndicator(),
+            error: (error, _) => Text('タグの取得に失敗しました: $error'),
+            data: (tags) {
+              if (tags.isEmpty) {
+                return const Text('まだタグがありません。追加ボタンから作成できます。');
+              }
+
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: tags
+                    .map(
+                      (tag) => InputChip(
+                        label: Text(tag.name),
+                        onPressed: () async {
+                          final name = await _promptForTagName(
+                            context,
+                            initialValue: tag.name,
+                            title: 'タグを編集',
+                          );
+                          if (name != null) {
+                            await ref
+                                .read(tagsNotifierProvider.notifier)
+                                .renameTag(tag.id, name);
+                          }
+                        },
+                        onDeleted: () async {
+                          final confirmed = await _confirmTagDeletion(
+                            context,
+                            tagName: tag.name,
+                          );
+                          if (confirmed) {
+                            await ref
+                                .read(tagsNotifierProvider.notifier)
+                                .deleteTag(tag.id);
+                          }
+                        },
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<String?> _promptForTagName(
+  BuildContext context, {
+  String? initialValue,
+  String title = 'タグを追加',
+}) async {
+  final controller = TextEditingController(text: initialValue);
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'タグ名'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          PrimaryButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            label: '保存',
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed == true) {
+    return controller.text.trim().isEmpty ? null : controller.text.trim();
+  }
+
+  return null;
+}
+
+Future<bool> _confirmTagDeletion(BuildContext context, {required String tagName}) {
+  return showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('タグを削除しますか？'),
+            content: Text('タグ「$tagName」を削除します。関連付けも解除されます。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('キャンセル'),
+              ),
+              PrimaryButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                label: '削除',
+              ),
+            ],
+          );
+        },
+      ).then((value) => value ?? false);
 }
 
 class _BookSelector extends ConsumerWidget {
@@ -287,6 +453,10 @@ class _MemoCard extends ConsumerWidget {
             note.content,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
+          const SizedBox(height: 8),
+          TagChipList(
+            tags: ref.watch(memosNotifierProvider).noteTags[note.id] ?? const [],
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -353,58 +523,87 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
   final pageController =
       TextEditingController(text: note?.pageNumber?.toString() ?? '');
   final formKey = GlobalKey<FormState>();
+  final initialTagIds = note != null
+      ? ref
+              .read(memosNotifierProvider)
+              .noteTags[note.id]
+              ?.map((tag) => tag.id)
+              .toSet() ??
+          <int>{}
+      : <int>{};
+  var selectedTagIds = {...initialTagIds};
 
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) {
-      return AlertDialog(
-        title: Text(note == null ? 'メモを追加' : 'メモを編集'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: contentController,
-                decoration: const InputDecoration(
-                  labelText: 'メモ',
-                  hintText: '読書メモを入力してください',
+      return StatefulBuilder(builder: (context, setState) {
+        return AlertDialog(
+          title: Text(note == null ? 'メモを追加' : 'メモを編集'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: contentController,
+                  decoration: const InputDecoration(
+                    labelText: 'メモ',
+                    hintText: '読書メモを入力してください',
+                  ),
+                  maxLines: 4,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'メモを入力してください';
+                    }
+                    return null;
+                  },
                 ),
-                maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'メモを入力してください';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: pageController,
-                decoration: const InputDecoration(
-                  labelText: 'ページ番号 (任意)',
-                  hintText: '例: 25',
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: pageController,
+                  decoration: const InputDecoration(
+                    labelText: 'ページ番号 (任意)',
+                    hintText: '例: 25',
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'タグ',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TagSelector(
+                  selectedTagIds: selectedTagIds,
+                  onSelectionChanged: (ids) {
+                    setState(() => selectedTagIds = ids);
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
-          ),
-          PrimaryButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.of(context).pop(true);
-              }
-            },
-            label: '保存',
-          ),
-        ],
-      );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            PrimaryButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(context).pop(true);
+                }
+              },
+              label: '保存',
+            ),
+          ],
+        );
+      });
     },
   );
 
@@ -425,6 +624,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
           bookId: selectedBookId,
           content: contentController.text.trim(),
           pageNumber: pageNumber,
+          tagIds: selectedTagIds.toList(),
         );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -437,6 +637,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
           bookId: selectedBookId,
           content: contentController.text.trim(),
           pageNumber: pageNumber,
+          tagIds: selectedTagIds.toList(),
         );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
