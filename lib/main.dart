@@ -3,7 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/services/supabase_service.dart';
-import 'shared/theme/app_theme.dart';
+import 'core/theme/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
