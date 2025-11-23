@@ -8,13 +8,15 @@ class LocalDatabaseRepository {
       : books = BookDao(db),
         notes = NoteDao(db),
         actions = ActionDao(db),
-        readingLogs = ReadingLogDao(db);
+        readingLogs = ReadingLogDao(db),
+        tags = TagDao(db);
 
   final AppDatabase db;
   final BookDao books;
   final NoteDao notes;
   final ActionDao actions;
   final ReadingLogDao readingLogs;
+  final TagDao tags;
   final String userId;
 
   Future<List<BookRow>> getAllBooks() {
@@ -29,8 +31,66 @@ class LocalDatabaseRepository {
     return notes.getAllNotes(userId);
   }
 
+  Future<List<TagRow>> getTagsForBook(int bookId) {
+    return tags.getTagsForBook(userId, bookId);
+  }
+
+  Future<Map<int, List<TagRow>>> getTagsForBooks(List<int> bookIds) async {
+    final result = <int, List<TagRow>>{};
+    for (final bookId in bookIds) {
+      result[bookId] = await getTagsForBook(bookId);
+    }
+    return result;
+  }
+
+  Future<List<TagRow>> getTagsForNote(int noteId) {
+    return tags.getTagsForNote(userId, noteId);
+  }
+
+  Future<Map<int, List<TagRow>>> getTagsForNotes(List<int> noteIds) async {
+    final result = <int, List<TagRow>>{};
+    for (final noteId in noteIds) {
+      result[noteId] = await getTagsForNote(noteId);
+    }
+    return result;
+  }
+
   Future<List<ActionRow>> getActionsForBook(int bookId) {
     return actions.getActionsForBook(userId, bookId);
+  }
+
+  Future<void> setTagsForBook({
+    required int bookId,
+    required List<int> tagIds,
+  }) {
+    return tags.setTagsForBook(userId, bookId, tagIds);
+  }
+
+  Future<void> setTagsForNote({
+    required int noteId,
+    required List<int> tagIds,
+  }) {
+    return tags.setTagsForNote(userId, noteId, tagIds);
+  }
+
+  Future<List<TagRow>> getAllTags() {
+    return tags.getAllTags(userId);
+  }
+
+  Future<int> createTag(String name) {
+    return tags.insertTag(
+      TagsCompanion.insert(userId: userId, name: name),
+    );
+  }
+
+  Future<bool> updateTag({required int tagId, required String name}) async {
+    final updated = await tags.updateTag(userId: userId, tagId: tagId, name: name);
+    return updated > 0;
+  }
+
+  Future<bool> deleteTag(int tagId) async {
+    final deleted = await tags.deleteTag(userId, tagId);
+    return deleted > 0;
   }
 
   Future<int> addNote({
@@ -132,15 +192,20 @@ class LocalDatabaseRepository {
   Future<List<LocalSearchResult>> searchBooksAndNotes(
     String keyword, {
     BookStatus? statusFilter,
+    Set<int>? tagIds,
   }) async {
     final trimmedKeyword = keyword.trim();
-    if (trimmedKeyword.isEmpty) {
+    final hasTagFilter = tagIds != null && tagIds.isNotEmpty;
+
+    if (trimmedKeyword.isEmpty && !hasTagFilter) {
       return const [];
     }
 
     final lowerKeyword = trimmedKeyword.toLowerCase();
     final allBooks = await getAllBooks();
     final allNotes = await getAllNotes();
+    final bookTagsMap = await getTagsForBooks(allBooks.map((b) => b.id).toList());
+    final noteTagsMap = await getTagsForNotes(allNotes.map((n) => n.id).toList());
 
     final results = <LocalSearchResult>[];
 
@@ -149,22 +214,49 @@ class LocalDatabaseRepository {
         continue;
       }
 
-      final matchesTitle = book.title.toLowerCase().contains(lowerKeyword);
-      final matchesAuthors =
-          (book.authors ?? '').toLowerCase().contains(lowerKeyword);
-      final matchesDescription =
-          (book.description ?? '').toLowerCase().contains(lowerKeyword);
+      final bookTags = bookTagsMap[book.id] ?? const [];
+
+      final matchesTitle =
+          trimmedKeyword.isNotEmpty && book.title.toLowerCase().contains(lowerKeyword);
+      final matchesAuthors = trimmedKeyword.isNotEmpty
+          ? (book.authors ?? '').toLowerCase().contains(lowerKeyword)
+          : false;
+      final matchesDescription = trimmedKeyword.isNotEmpty
+          ? (book.description ?? '').toLowerCase().contains(lowerKeyword)
+          : false;
 
       final matchingNotes = allNotes
           .where((note) => note.bookId == book.id)
-          .where((note) => note.content.toLowerCase().contains(lowerKeyword))
+          .where((note) =>
+              trimmedKeyword.isEmpty || note.content.toLowerCase().contains(lowerKeyword))
           .toList();
 
-      if (matchesTitle || matchesAuthors || matchesDescription || matchingNotes.isNotEmpty) {
+      final matchingNoteTags = <int, List<TagRow>>{};
+      for (final note in matchingNotes) {
+        matchingNoteTags[note.id] = noteTagsMap[note.id] ?? const [];
+      }
+
+      final matchesTagFilter = !hasTagFilter ||
+          bookTags.any((tag) => tagIds!.contains(tag.id)) ||
+          matchingNoteTags.values.any(
+            (tags) => tags.any((tag) => tagIds!.contains(tag.id)),
+          );
+
+      if (!matchesTagFilter) {
+        continue;
+      }
+
+      if (matchesTitle ||
+          matchesAuthors ||
+          matchesDescription ||
+          matchingNotes.isNotEmpty ||
+          (hasTagFilter && bookTags.isNotEmpty)) {
         results.add(
           LocalSearchResult(
             book: book,
             matchingNotes: matchingNotes,
+            bookTags: bookTags,
+            noteTags: matchingNoteTags,
           ),
         );
       }
@@ -323,8 +415,12 @@ class LocalSearchResult {
   LocalSearchResult({
     required this.book,
     required this.matchingNotes,
+    required this.bookTags,
+    required this.noteTags,
   });
 
   final BookRow book;
   final List<NoteRow> matchingNotes;
+  final List<TagRow> bookTags;
+  final Map<int, List<TagRow>> noteTags;
 }

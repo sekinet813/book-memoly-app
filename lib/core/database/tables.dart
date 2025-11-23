@@ -63,3 +63,30 @@ class ReadingLogs extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+@DataClassName('TagRow')
+class Tags extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
+  TextColumn get name => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DataClassName('BookTagRow')
+class BookTags extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get bookId => integer()
+      .references(Books, #id, onDelete: KeyAction.cascade)();
+  IntColumn get tagId => integer()
+      .references(Tags, #id, onDelete: KeyAction.cascade)();
+}
+
+@DataClassName('NoteTagRow')
+class NoteTags extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get noteId => integer()
+      .references(Notes, #id, onDelete: KeyAction.cascade)();
+  IntColumn get tagId => integer()
+      .references(Tags, #id, onDelete: KeyAction.cascade)();
+}
