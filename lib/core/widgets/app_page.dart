@@ -30,6 +30,16 @@ class AppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final gradientStart = theme.brightness == Brightness.dark
+        ? const Color(0xFF123F2D)
+        : const Color(0xFFE8F5EE);
+    final gradientEnd = backgroundColor ??
+        (theme.brightness == Brightness.dark
+            ? const Color(0xFF0C1E16)
+            : Colors.white);
+
     final pageBody = Padding(
       padding: padding,
       child: scrollable
@@ -53,7 +63,25 @@ class AppPage extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: navigationBar,
       backgroundColor: backgroundColor,
-      body: SafeArea(child: pageBody),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              gradientStart,
+              gradientEnd,
+            ],
+            stops: const [0.0, 0.65],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
+            child: pageBody,
+          ),
+        ),
+      ),
     );
   }
 }

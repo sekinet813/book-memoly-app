@@ -80,7 +80,6 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
     final bookshelfState = ref.watch(bookshelfNotifierProvider);
 
     return AppPage(
@@ -104,37 +103,20 @@ class HomePage extends ConsumerWidget {
           icon: const Icon(AppIcons.logout),
         ),
       ],
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       scrollable: true,
       currentDestination: AppDestination.home,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.primaryContainer.withOpacity(0.35),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            stops: const [0.0, 0.25, 1.0],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _HeaderSection(),
-              const SizedBox(height: 18),
-              _ContinueReadingSection(state: bookshelfState),
-              const SizedBox(height: 20),
-              _MagazineGrid(state: bookshelfState),
-              const SizedBox(height: 24),
-              _RecentNotesCarousel(state: bookshelfState),
-            ],
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _HeaderSection(),
+          const SizedBox(height: 18),
+          _ContinueReadingSection(state: bookshelfState),
+          const SizedBox(height: 20),
+          _MagazineGrid(state: bookshelfState),
+          const SizedBox(height: 24),
+          _RecentNotesCarousel(state: bookshelfState),
+        ],
       ),
     );
   }
