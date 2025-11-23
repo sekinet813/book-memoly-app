@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/providers/auth_providers.dart';
 import '../../shared/constants/app_constants.dart';
@@ -16,6 +17,7 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  static const _emailStorageKey = 'login_email';
 
   @override
   void initState() {
@@ -23,6 +25,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authServiceProvider).resetFeedback();
     });
+    _loadSavedEmail();
   }
 
   @override
@@ -31,13 +34,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString(_emailStorageKey);
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      _emailController.text = savedEmail;
+    }
+  }
+
+  Future<void> _storeEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_emailStorageKey, email);
+  }
+
   Future<void> _sendMagicLink() async {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
 
-    await ref.read(authServiceProvider).sendMagicLink(_emailController.text);
+    final email = _emailController.text;
+    await _storeEmail(email);
+    await ref.read(authServiceProvider).sendMagicLink(email);
   }
 
   @override
@@ -94,6 +112,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     AppButton(
                       onPressed: _sendMagicLink,
                       text: 'Magic Linkを送信',
+                    ),
+                    TextButton.icon(
+                      onPressed: _sendMagicLink,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('再送'),
                     ),
                   ],
                 ),
