@@ -90,7 +90,7 @@ class HomePage extends ConsumerWidget {
         IconButton(
           tooltip: '設定',
           onPressed: () {
-            context.push('/profile');
+            context.push('/settings');
           },
           icon: const Icon(AppIcons.settings),
         ),
