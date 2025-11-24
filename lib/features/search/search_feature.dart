@@ -24,36 +24,87 @@ final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
   return BookSearchRepository(ref.read(rakutenBooksApiClientProvider));
 });
 
+class BookSearchResult {
+  const BookSearchResult({
+    required this.books,
+    required this.page,
+    required this.hitsPerPage,
+    this.pageCount,
+    this.totalCount,
+    this.searchMode,
+  });
+
+  factory BookSearchResult.empty({int hitsPerPage = 30}) {
+    return BookSearchResult(
+      books: const [],
+      page: 1,
+      hitsPerPage: hitsPerPage,
+      pageCount: 1,
+      totalCount: 0,
+    );
+  }
+
+  final List<Book> books;
+  final int page;
+  final int hitsPerPage;
+  final int? pageCount;
+  final int? totalCount;
+  final String? searchMode;
+
+  bool get hasMore {
+    if (pageCount != null && pageCount! > 0) {
+      return page < pageCount!;
+    }
+    if (totalCount != null && totalCount! > 0) {
+      return page * hitsPerPage < totalCount!;
+    }
+    return books.length == hitsPerPage;
+  }
+}
+
 class BookSearchRepository {
   BookSearchRepository(this._client);
 
   final RakutenBooksApiClient _client;
 
-  Future<List<Book>> searchBooks(String keyword) async {
+  Future<BookSearchResult> searchBooks(
+    String keyword, {
+    int page = 1,
+    int hits = 30,
+  }) async {
     final cleanedKeyword = keyword.trim();
 
     if (cleanedKeyword.isEmpty) {
-      return const [];
+      return BookSearchResult.empty(hitsPerPage: hits);
     }
 
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
     final queryType =
         isIsbn ? RakutenSearchType.isbn : RakutenSearchType.keywords;
 
-    debugPrint('Rakuten Books API query ($queryType): $cleanedKeyword');
+    debugPrint(
+      'Rakuten Books API query ($queryType): $cleanedKeyword (page: $page, hits: $hits)',
+    );
 
     try {
       final response = await _client.search(
         query: cleanedKeyword,
         searchType: queryType,
+        hits: hits,
+        page: page,
       );
 
       if (response.items.isEmpty) {
         debugPrint('No items found in response');
-        return const [];
+      } else {
+        debugPrint(
+          'Found ${response.items.length} books via Rakuten Books API (page: ${response.page ?? page})',
+        );
       }
 
-      debugPrint('Found ${response.items.length} books via Rakuten Books API');
+      if (response.searchMode != null) {
+        debugPrint('Rakuten search mode: ${response.searchMode}');
+      }
 
       final books = response.items
           .map((item) => item.toBook())
@@ -61,7 +112,15 @@ class BookSearchRepository {
           .toList();
 
       debugPrint('Successfully parsed ${books.length} books');
-      return books;
+
+      return BookSearchResult(
+        books: books,
+        page: response.page ?? page,
+        hitsPerPage: hits,
+        pageCount: response.pageCount,
+        totalCount: response.count,
+        searchMode: response.searchMode,
+      );
     } catch (e, stackTrace) {
       debugPrint('Error searching books: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -74,18 +133,46 @@ class SearchState {
   const SearchState({
     required this.results,
     this.hasSearched = false,
+    this.currentPage = 1,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.lastQuery = '',
+    this.hitsPerPage = 30,
+    this.loadMoreErrorMessage,
   });
+
+  static const _loadMoreErrorSentinel = Object();
 
   final AsyncValue<List<Book>> results;
   final bool hasSearched;
+  final int currentPage;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String lastQuery;
+  final int hitsPerPage;
+  final String? loadMoreErrorMessage;
 
   SearchState copyWith({
     AsyncValue<List<Book>>? results,
     bool? hasSearched,
+    int? currentPage,
+    bool? hasMore,
+    bool? isLoadingMore,
+    String? lastQuery,
+    int? hitsPerPage,
+    Object? loadMoreErrorMessage = _loadMoreErrorSentinel,
   }) {
     return SearchState(
       results: results ?? this.results,
       hasSearched: hasSearched ?? this.hasSearched,
+      currentPage: currentPage ?? this.currentPage,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      lastQuery: lastQuery ?? this.lastQuery,
+      hitsPerPage: hitsPerPage ?? this.hitsPerPage,
+      loadMoreErrorMessage: loadMoreErrorMessage == _loadMoreErrorSentinel
+          ? this.loadMoreErrorMessage
+          : loadMoreErrorMessage as String?,
     );
   }
 }
@@ -103,14 +190,95 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
   final BookSearchRepository _repository;
 
   Future<void> search(String keyword) async {
-    state =
-        state.copyWith(results: const AsyncValue.loading(), hasSearched: true);
+    final trimmed = keyword.trim();
+
+    if (trimmed.isEmpty) {
+      state = state.copyWith(
+        results: const AsyncValue.data([]),
+        hasSearched: false,
+        currentPage: 1,
+        hasMore: false,
+        isLoadingMore: false,
+        lastQuery: '',
+        loadMoreErrorMessage: null,
+      );
+      return;
+    }
+
+    state = state.copyWith(
+      results: const AsyncValue.loading(),
+      hasSearched: true,
+      currentPage: 1,
+      hasMore: false,
+      isLoadingMore: false,
+      lastQuery: trimmed,
+      loadMoreErrorMessage: null,
+    );
 
     try {
-      final books = await _repository.searchBooks(keyword);
-      state = state.copyWith(results: AsyncValue.data(books));
+      final result = await _repository.searchBooks(
+        trimmed,
+        page: 1,
+        hits: state.hitsPerPage,
+      );
+      state = state.copyWith(
+        results: AsyncValue.data(result.books),
+        currentPage: result.page,
+        hasMore: result.hasMore,
+        loadMoreErrorMessage: null,
+      );
     } catch (error, stackTrace) {
-      state = state.copyWith(results: AsyncValue.error(error, stackTrace));
+      state = state.copyWith(
+        results: AsyncValue.error(error, stackTrace),
+        isLoadingMore: false,
+        loadMoreErrorMessage: null,
+      );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!state.hasMore || state.isLoadingMore) {
+      return;
+    }
+
+    final query = state.lastQuery;
+    if (query.isEmpty) {
+      return;
+    }
+
+    state = state.copyWith(
+      isLoadingMore: true,
+      loadMoreErrorMessage: null,
+    );
+
+    try {
+      final nextPage = state.currentPage + 1;
+      final result = await _repository.searchBooks(
+        query,
+        page: nextPage,
+        hits: state.hitsPerPage,
+      );
+
+      final currentBooks = state.results.maybeWhen(
+        data: (books) => books,
+        orElse: () => const <Book>[],
+      );
+
+      final updatedBooks = [...currentBooks, ...result.books];
+
+      state = state.copyWith(
+        results: AsyncValue.data(updatedBooks),
+        currentPage: result.page,
+        hasMore: result.hasMore,
+        isLoadingMore: false,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Error loading more books: $error');
+      debugPrint('Stack trace: $stackTrace');
+      state = state.copyWith(
+        isLoadingMore: false,
+        loadMoreErrorMessage: '追加読み込みに失敗しました。時間をおいて再試行してください。',
+      );
     }
   }
 }
@@ -238,15 +406,20 @@ class _OnlineSearchTab extends ConsumerStatefulWidget {
 
 class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
   late final TextEditingController _keywordController;
+  late final ScrollController _resultsScrollController;
 
   @override
   void initState() {
     super.initState();
     _keywordController = TextEditingController();
+    _resultsScrollController = ScrollController()..addListener(_handleScroll);
   }
 
   @override
   void dispose() {
+    _resultsScrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
     _keywordController.dispose();
     super.dispose();
   }
@@ -289,6 +462,12 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
             data: (books) => _SearchResults(
               books: books,
               hasSearched: searchState.hasSearched,
+              controller: _resultsScrollController,
+              isLoadingMore: searchState.isLoadingMore,
+              loadMoreErrorMessage: searchState.loadMoreErrorMessage,
+              onRetryLoadMore: () {
+                ref.read(searchNotifierProvider.notifier).loadMore();
+              },
             ),
           ),
         ),
@@ -298,6 +477,26 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
 
   void _triggerSearch() {
     ref.read(searchNotifierProvider.notifier).search(_keywordController.text);
+    if (_resultsScrollController.hasClients) {
+      _resultsScrollController.jumpTo(0);
+    }
+  }
+
+  void _handleScroll() {
+    if (!mounted || !_resultsScrollController.hasClients) {
+      return;
+    }
+
+    final searchState = ref.read(searchNotifierProvider);
+    if (!searchState.hasMore || searchState.isLoadingMore) {
+      return;
+    }
+
+    const threshold = 200.0;
+    final position = _resultsScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - threshold) {
+      ref.read(searchNotifierProvider.notifier).loadMore();
+    }
   }
 }
 
@@ -436,10 +635,18 @@ class _SearchResults extends StatelessWidget {
   const _SearchResults({
     required this.books,
     required this.hasSearched,
+    required this.isLoadingMore,
+    this.loadMoreErrorMessage,
+    this.onRetryLoadMore,
+    this.controller,
   });
 
   final List<Book> books;
   final bool hasSearched;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+  final VoidCallback? onRetryLoadMore;
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -459,18 +666,90 @@ class _SearchResults extends StatelessWidget {
       );
     }
 
+    final footerVisible = isLoadingMore || loadMoreErrorMessage != null;
+    final itemCount = books.length + 1 + (footerVisible ? 1 : 0);
+
     return ListView.separated(
+      controller: controller,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: books.length + 1,
+      itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         if (index == 0) {
           return const SectionHeader(title: '検索結果');
         }
 
-        final book = books[index - 1];
-        return _BookListTile(book: book);
+        final bookIndex = index - 1;
+        if (bookIndex < books.length) {
+          final book = books[bookIndex];
+          return _BookListTile(book: book);
+        }
+
+        if (isLoadingMore) {
+          return const _LoadingMoreTile();
+        }
+
+        if (loadMoreErrorMessage != null) {
+          return _LoadMoreErrorTile(
+            message: loadMoreErrorMessage!,
+            onRetry: onRetryLoadMore,
+          );
+        }
+
+        return const SizedBox.shrink();
       },
+    );
+  }
+}
+
+class _LoadingMoreTile extends StatelessWidget {
+  const _LoadingMoreTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadMoreErrorTile extends StatelessWidget {
+  const _LoadMoreErrorTile({
+    required this.message,
+    this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: [
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.error,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              child: const Text('再試行'),
+            ),
+        ],
+      ),
     );
   }
 }

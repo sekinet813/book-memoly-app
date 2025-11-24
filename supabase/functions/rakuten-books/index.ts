@@ -1,6 +1,26 @@
+function toNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
+import { isLikelyAuthorQuery, normalizeQuery } from "./utils.ts";
+
 const APPLICATION_ID = Deno.env.get("RAKUTEN_APPLICATION_ID");
+const MAX_HITS = 30;
+const DEFAULT_HITS = 20;
+const MAX_PAGE = 100;
+const DEFAULT_PAGE = 1;
+const DEFAULT_SORT = "standard";
+
+type SearchMode = "isbn" | "author" | "keyword" | "title-fallback";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -29,6 +49,33 @@ function mapItem(rawItem: Record<string, unknown>) {
     mediumImageUrl: rawItem["mediumImageUrl"] as string | undefined,
     largeImageUrl: rawItem["largeImageUrl"] as string | undefined,
     itemUrl: rawItem["itemUrl"] as string | undefined,
+  };
+}
+
+async function callRakutenApi(params: URLSearchParams) {
+  const url = `https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?${params.toString()}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `Rakuten Books API returned status ${response.status}: ${errorBody}`,
+    );
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  const rawItems = Array.isArray(data["Items"]) ? data["Items"] : [];
+
+  const mappedItems = rawItems
+    .map((item) => (item && typeof item === "object" && "Item" in item
+      ? (item as Record<string, unknown>)["Item"]
+      : item) as Record<string, unknown> | undefined)
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map(mapItem);
+
+  return {
+    data,
+    mappedItems,
   };
 }
 
@@ -62,57 +109,104 @@ serve(async (req) => {
 
   const query = typeof payload.query === "string" ? payload.query.trim() : "";
   const searchType = payload.searchType === "isbn" ? "isbn" : "keywords";
-  const hitsRaw = Number(payload.hits ?? 20);
+  const hitsRaw = Number(payload.hits ?? DEFAULT_HITS);
   const hits = Number.isFinite(hitsRaw)
-    ? Math.min(Math.max(Math.trunc(hitsRaw), 1), 30)
-    : 20;
+    ? Math.min(Math.max(Math.trunc(hitsRaw), 1), MAX_HITS)
+    : DEFAULT_HITS;
+  const pageRaw = Number(payload.page ?? DEFAULT_PAGE);
+  const page = Number.isFinite(pageRaw)
+    ? Math.min(Math.max(Math.trunc(pageRaw), 1), MAX_PAGE)
+    : DEFAULT_PAGE;
 
   if (!query) {
     return errorResponse("Query is required", 400);
   }
 
-  const params = new URLSearchParams({
+  const baseParams = new URLSearchParams({
     applicationId: APPLICATION_ID,
     format: "json",
     formatVersion: "2",
     hits: hits.toString(),
+    page: page.toString(),
   });
 
+  const isIsbnSearch = searchType === "isbn";
+  const normalizedQuery = normalizeQuery(query, { isbn: isIsbnSearch });
+  const authorIntent = !isIsbnSearch && isLikelyAuthorQuery(normalizedQuery);
+
   if (searchType === "isbn") {
-    params.set("isbn", query.replaceAll("-", ""));
-  } else {
-    params.set("title", query);
+    baseParams.set("isbn", normalizedQuery);
+    try {
+      const { data, mappedItems } = await callRakutenApi(baseParams);
+      const count = toNumber(data["count"]) ?? mappedItems.length;
+      const hitsFromApi = toNumber(data["hits"]);
+      const pageFromApi = toNumber(data["page"]);
+      const pageCount = toNumber(data["pageCount"]);
+      return jsonResponse({
+        Items: mappedItems,
+        count,
+        hits: hitsFromApi ?? hits,
+        page: pageFromApi ?? page,
+        pageCount,
+        searchMode: "isbn" as SearchMode,
+      });
+    } catch (error) {
+      return errorResponse("Failed to fetch from Rakuten Books API", 500, error);
+    }
   }
 
-  const url = `https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?${params.toString()}`;
+  if (authorIntent) {
+    const authorParams = new URLSearchParams(baseParams);
+    authorParams.set("author", normalizedQuery);
+    authorParams.set("sort", DEFAULT_SORT);
+    try {
+      const { data, mappedItems } = await callRakutenApi(authorParams);
+      if (mappedItems.length > 0) {
+        const count = toNumber(data["count"]) ?? mappedItems.length;
+        const hitsFromApi = toNumber(data["hits"]);
+        const pageFromApi = toNumber(data["page"]);
+        const pageCount = toNumber(data["pageCount"]);
+        return jsonResponse({
+          Items: mappedItems,
+          count,
+          hits: hitsFromApi ?? hits,
+          page: pageFromApi ?? page,
+          pageCount,
+          searchMode: "author" as SearchMode,
+        });
+      }
+    } catch (error) {
+      console.warn("Author search failed, falling back to keyword search", error);
+    }
+  }
+
+  const keywordParams = new URLSearchParams(baseParams);
+  keywordParams.set("keyword", normalizedQuery);
+  keywordParams.set("orFlag", "1");
+  keywordParams.set("sort", DEFAULT_SORT);
 
   try {
-    const response = await fetch(url);
+    let searchMode: SearchMode = "keyword";
+    let { data, mappedItems } = await callRakutenApi(keywordParams);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      return errorResponse(
-        `Rakuten Books API returned status ${response.status}`,
-        response.status,
-        errorBody,
-      );
+    if (mappedItems.length === 0) {
+      const titleParams = new URLSearchParams(baseParams);
+      titleParams.set("title", normalizedQuery);
+      ({ data, mappedItems } = await callRakutenApi(titleParams));
+      searchMode = "title-fallback";
     }
 
-    const data = (await response.json()) as Record<string, unknown>;
-    const rawItems = Array.isArray(data["Items"]) ? data["Items"] : [];
-
-    const mappedItems = rawItems
-      .map((item) => (item && typeof item === "object" && "Item" in item
-        ? (item as Record<string, unknown>)["Item"]
-        : item) as Record<string, unknown> | undefined)
-      .filter((item): item is Record<string, unknown> => Boolean(item))
-      .map(mapItem);
-
+    const count = toNumber(data["count"]) ?? mappedItems.length;
+    const hitsFromApi = toNumber(data["hits"]);
+    const pageFromApi = toNumber(data["page"]);
+    const pageCount = toNumber(data["pageCount"]);
     return jsonResponse({
       Items: mappedItems,
-      count: (typeof data["count"] === "number" ? data["count"] : mappedItems.length),
-      hits: data["hits"],
-      page: data["page"],
+      count,
+      hits: hitsFromApi ?? hits,
+      page: pageFromApi ?? page,
+      pageCount,
+      searchMode,
     });
   } catch (error) {
     return errorResponse("Failed to fetch from Rakuten Books API", 500, error);

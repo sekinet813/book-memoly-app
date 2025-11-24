@@ -32,7 +32,7 @@ final authSessionProvider = Provider<Session?>((ref) {
       return null; // We use DEBUG_UID directly, not session
     }
   }
-  
+
   final authService = ref.watch(authServiceProvider);
   return authService?.state.session;
 });
@@ -45,7 +45,7 @@ final currentUserIdProvider = Provider<String?>((ref) {
       return debugUid;
     }
   }
-  
+
   final session = ref.watch(authSessionProvider);
   return session?.user.id;
 });
@@ -58,7 +58,7 @@ final authStatusProvider = Provider<AuthStatus>((ref) {
       return AuthStatus.authenticated;
     }
   }
-  
+
   final authService = ref.watch(authServiceProvider);
   return authService?.state.status ?? AuthStatus.unauthenticated;
 });

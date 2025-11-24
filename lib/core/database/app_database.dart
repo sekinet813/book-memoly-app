@@ -376,8 +376,7 @@ class BookDao {
         .toList(growable: false);
   }
 
-  Stream<List<BookRow>> watchAllBooks(String userId) =>
-      db._bookStream.map(
+  Stream<List<BookRow>> watchAllBooks(String userId) => db._bookStream.map(
         (books) => books
             .where((book) => book.userId == userId)
             .toList(growable: false),
@@ -504,8 +503,8 @@ class NoteDao {
 
   Future<int> deleteNote(String userId, int noteId) async {
     final beforeLength = db._noteRows.length;
-    db._noteRows.removeWhere(
-        (note) => note.id == noteId && note.userId == userId);
+    db._noteRows
+        .removeWhere((note) => note.id == noteId && note.userId == userId);
     db._noteTagRows.removeWhere((row) => row.noteId == noteId);
     return beforeLength == db._noteRows.length ? 0 : 1;
   }
@@ -537,7 +536,8 @@ class ActionDao {
 
   Future<List<ActionRow>> getPendingActions(String userId) async {
     return db._actionRows
-        .where((action) => action.userId == userId && action.status == 'pending')
+        .where(
+            (action) => action.userId == userId && action.status == 'pending')
         .toList();
   }
 
@@ -557,8 +557,8 @@ class ActionDao {
     String? status,
     int? noteId,
   }) async {
-    final index = db._actionRows
-        .indexWhere((action) => action.id == actionId && action.userId == userId);
+    final index = db._actionRows.indexWhere(
+        (action) => action.id == actionId && action.userId == userId);
     if (index == -1) {
       return 0;
     }
@@ -619,8 +619,7 @@ class ReadingLogDao {
   Future<List<ReadingLogRow>> getAllLogs(String userId) async {
     final logs = List<ReadingLogRow>.from(
       db._readingLogRows.where((log) => log.userId == userId),
-    )
-      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    )..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
     return logs;
   }
 }
@@ -654,8 +653,8 @@ class TagDao {
     required int tagId,
     required String name,
   }) async {
-    final index =
-        db._tagRows.indexWhere((tag) => tag.id == tagId && tag.userId == userId);
+    final index = db._tagRows
+        .indexWhere((tag) => tag.id == tagId && tag.userId == userId);
     if (index == -1) {
       return 0;
     }
@@ -670,8 +669,7 @@ class TagDao {
 
   Future<int> deleteTag(String userId, int tagId) async {
     final before = db._tagRows.length;
-    db._tagRows
-        .removeWhere((tag) => tag.id == tagId && tag.userId == userId);
+    db._tagRows.removeWhere((tag) => tag.id == tagId && tag.userId == userId);
 
     if (before == db._tagRows.length) {
       return 0;

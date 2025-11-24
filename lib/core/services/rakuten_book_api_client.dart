@@ -34,6 +34,7 @@ class RakutenBooksApiClient {
     required String query,
     required RakutenSearchType searchType,
     int hits = 20,
+    int page = 1,
   }) async {
     if (!_config.isValid) {
       throw const RakutenBooksApiException(
@@ -55,6 +56,7 @@ class RakutenBooksApiClient {
           'query': query,
           'searchType': searchType.name,
           'hits': hits,
+          'page': page,
         },
         options: Options(
           headers: {

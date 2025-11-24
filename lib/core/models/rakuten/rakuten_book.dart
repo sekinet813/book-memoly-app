@@ -65,15 +65,21 @@ class RakutenBook {
   final String? itemUrl;
 
   Book toBook() {
-    final authorNames = author?.split(RegExp(r'[／/,]')).map((a) => a.trim()).where(
+    final authorNames = author
+        ?.split(RegExp(r'[／/,]'))
+        .map((a) => a.trim())
+        .where(
           (name) => name.isNotEmpty,
         )
         .toList();
 
-    final description =
-        (itemCaption != null && itemCaption!.trim().isNotEmpty) ? itemCaption : null;
+    final description = (itemCaption != null && itemCaption!.trim().isNotEmpty)
+        ? itemCaption
+        : null;
     final publisher =
-        (publisherName != null && publisherName!.trim().isNotEmpty) ? publisherName : null;
+        (publisherName != null && publisherName!.trim().isNotEmpty)
+            ? publisherName
+            : null;
     final publishedDate =
         (salesDate != null && salesDate!.trim().isNotEmpty) ? salesDate : null;
     final isbnCode = (isbn != null && isbn!.trim().isNotEmpty) ? isbn : null;
@@ -102,21 +108,26 @@ class RakutenBooksResponse {
     this.count,
     this.hits,
     this.page,
+    this.pageCount,
+    this.searchMode,
   });
 
   factory RakutenBooksResponse.fromJson(Map<String, dynamic> json) {
     final items = (json['Items'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
-        .map((item) =>
-            item['Item'] is Map<String, dynamic> ? item['Item'] as Map<String, dynamic> : item)
+        .map((item) => item['Item'] is Map<String, dynamic>
+            ? item['Item'] as Map<String, dynamic>
+            : item)
         .map(RakutenBook.fromJson)
         .toList();
 
     return RakutenBooksResponse(
       items: items,
-      count: json['count'] as int?,
-      hits: json['hits'] as int?,
-      page: json['page'] as int?,
+      count: _toInt(json['count']),
+      hits: _toInt(json['hits']),
+      page: _toInt(json['page']),
+      pageCount: _toInt(json['pageCount']),
+      searchMode: json['searchMode'] as String?,
     );
   }
 
@@ -124,6 +135,21 @@ class RakutenBooksResponse {
   final int? count;
   final int? hits;
   final int? page;
+  final int? pageCount;
+  final String? searchMode;
+}
+
+int? _toInt(dynamic value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  if (value is String) {
+    return int.tryParse(value);
+  }
+  return null;
 }
 
 class RakutenBooksApiException implements Exception {
