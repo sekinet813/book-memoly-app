@@ -3,5 +3,5 @@ class AppConstants {
   static const String appName = 'Book Memoly App';
 
   // Supabase Edge Functions
-  static const String amazonPaapiFunctionPath = '/functions/v1/amazon-paapi';
+  static const String rakutenBooksFunctionPath = '/functions/v1/rakuten-books';
 }

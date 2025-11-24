@@ -1,0 +1,58 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      flutter_version:
+        description: 'Flutter version or tag to use (e.g. 3.14.1)'
+        required: false
+        default: '3.14.1'
+
+jobs:
+  analyze_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+1
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git xz-utils unzip
+
+      - name: Clone Flutter SDK
+        run: |
+          FLUTTER_VERSION="${{ inputs.flutter_version }}"
+          if [ -z "$FLUTTER_VERSION" ]; then
+            FLUTTER_VERSION="3.14.1"
+          fi
+          git clone --depth 1 -b "$FLUTTER_VERSION" https://github.com/flutter/flutter.git $HOME/flutter
+
+      - name: Add Flutter to PATH
+        run: echo "$HOME/flutter/bin" >> $GITHUB_PATH
+
+      - name: Verify Flutter
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test --coverage
