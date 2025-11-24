@@ -24,7 +24,7 @@ jobs:
             ${{ runner.os }}-pub-
 
       - name: Set up Flutter
-        uses: cirrus-actions/setup-flutter@v2
+        uses: lukechannings/setup-flutter@v1
         with:
           flutter-version: '3.14.1'
           channel: 'stable'
