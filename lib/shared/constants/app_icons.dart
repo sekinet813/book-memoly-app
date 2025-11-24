@@ -31,6 +31,8 @@ class AppIcons {
   static const IconData checkCircleOutline = Symbols.check_circle_rounded;
   static const IconData close = Symbols.close_rounded;
   static const IconData chevronRight = Symbols.chevron_right_rounded;
+  static const IconData chevronUp = Symbols.expand_less_rounded;
+  static const IconData chevronDown = Symbols.expand_more_rounded;
   static const IconData saveAlt = Symbols.save_rounded;
   static const IconData barChart = Symbols.bar_chart_4_bars_rounded;
   static const IconData book = Symbols.menu_book_rounded;
@@ -42,6 +44,13 @@ class AppIcons {
   static const IconData noteAlt = Symbols.note_alt_rounded;
   static const IconData settings = Symbols.settings_rounded;
   static const IconData person = Symbols.person_rounded;
+  static const IconData goal = Symbols.flag_circle_rounded;
+  static const IconData notifications = Symbols.notifications_active_rounded;
+  static const IconData darkMode = Symbols.dark_mode_rounded;
+  static const IconData palette = Symbols.palette_rounded;
+  static const IconData export = Symbols.sim_card_download_rounded;
+  static const IconData shield = Symbols.shield_person_rounded;
+  static const IconData warning = Symbols.warning_rounded;
   static const IconData filter = Symbols.filter_alt_rounded;
   static const IconData manageSearch = Symbols.manage_search_rounded;
   static const IconData today = Symbols.today_rounded;
