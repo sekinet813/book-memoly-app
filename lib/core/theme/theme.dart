@@ -44,7 +44,6 @@ class AppTheme {
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
-        fontFamilyFallback: memoFontFallbacks,
         iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: lightColorScheme.onSurfaceVariant,
@@ -66,7 +65,7 @@ class AppTheme {
           elevation: AppElevation.level1,
           color: Color.lerp(
             lightColorScheme.surface,
-            lightColorScheme.surfaceVariant,
+            lightColorScheme.surfaceContainerHighest,
             0.12,
           ),
           shape: RoundedRectangleBorder(
@@ -91,7 +90,6 @@ class AppTheme {
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
-        fontFamilyFallback: memoFontFallbacks,
         iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onSurfaceVariant,
@@ -113,7 +111,7 @@ class AppTheme {
           elevation: AppElevation.level1,
           color: Color.lerp(
             darkColorScheme.surface,
-            darkColorScheme.surfaceVariant,
+            darkColorScheme.surfaceContainerHighest,
             0.16,
           ),
           shape: RoundedRectangleBorder(

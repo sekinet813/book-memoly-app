@@ -173,7 +173,7 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
     final dailyMap = <DateTime, int>{};
     final monthlyPageMap = <DateTime, int>{};
 
-    DateTime _monthKey(DateTime date) => DateTime(date.year, date.month);
+    DateTime monthKey(DateTime date) => DateTime(date.year, date.month);
 
     for (final entry in logs) {
       final logDate = DateTime(
@@ -184,8 +184,8 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
       final pages = _pagesRead(entry.log);
 
       dailyMap[logDate] = (dailyMap[logDate] ?? 0) + pages;
-      final monthKey = _monthKey(logDate);
-      monthlyPageMap[monthKey] = (monthlyPageMap[monthKey] ?? 0) + pages;
+      final month = monthKey(logDate);
+      monthlyPageMap[month] = (monthlyPageMap[month] ?? 0) + pages;
 
       if (logDate == today) {
         dailyTotal += pages;
@@ -460,7 +460,7 @@ class _ReadingLogForm extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.medium),
             DropdownButtonFormField<int>(
-              value: state.selectedBookId,
+              initialValue: state.selectedBookId,
               decoration: const InputDecoration(
                 labelText: '本を選択',
                 border: OutlineInputBorder(),
@@ -608,13 +608,13 @@ class _ChartCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(18);
 
-    final baseColor =
-        Color.lerp(colorScheme.surface, colorScheme.surfaceVariant, 0.24) ??
-            colorScheme.surface;
+    final baseColor = Color.lerp(
+            colorScheme.surface, colorScheme.surfaceContainerHighest, 0.24) ??
+        colorScheme.surface;
 
     return Card(
       elevation: 1.5,
-      shadowColor: colorScheme.shadow.withOpacity(0.08),
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
       color: baseColor,
       shape: RoundedRectangleBorder(borderRadius: radius),
       child: Padding(
@@ -686,8 +686,8 @@ class _MonthlyPagesChart extends StatelessWidget {
     final lineColor =
         Color.lerp(colorScheme.primary, colorScheme.secondary, 0.2) ??
             colorScheme.primary;
-    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.08);
-    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.9);
+    final gridColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.08);
+    final labelColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.9);
 
     return SizedBox(
       height: 220,
@@ -711,7 +711,7 @@ class _MonthlyPagesChart extends StatelessWidget {
             handleBuiltInTouches: true,
             touchTooltipData: LineTouchTooltipData(
               getTooltipColor: (spot) =>
-                  colorScheme.surfaceVariant.withValues(alpha: 0.92),
+                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.92),
               tooltipRoundedRadius: 12,
               getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
                 final point = points[spot.x.toInt()];
@@ -804,8 +804,8 @@ class _MonthlyPagesChart extends StatelessWidget {
                 show: true,
                 gradient: LinearGradient(
                   colors: [
-                    lineColor.withOpacity(0.26),
-                    lineColor.withOpacity(0.05),
+                    lineColor.withValues(alpha: 0.26),
+                    lineColor.withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -871,8 +871,8 @@ class _FinishedBooksChart extends StatelessWidget {
           0.15,
         ) ??
         colorScheme.secondary;
-    final gridColor = colorScheme.onSurfaceVariant.withOpacity(0.08);
-    final labelColor = colorScheme.onSurfaceVariant.withOpacity(0.9);
+    final gridColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.08);
+    final labelColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.9);
 
     return SizedBox(
       height: 220,
@@ -897,7 +897,7 @@ class _FinishedBooksChart extends StatelessWidget {
               tooltipPadding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               getTooltipColor: (group) =>
-                  colorScheme.surfaceVariant.withOpacity(0.92),
+                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.92),
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final point = points[groupIndex];
                 return BarTooltipItem(
@@ -988,7 +988,7 @@ class _FinishedBooksChart extends StatelessWidget {
                     BarChartRodStackItem(
                       0,
                       point.value.toDouble(),
-                      barColor.withOpacity(0.2),
+                      barColor.withValues(alpha: 0.2),
                     ),
                   ],
                 ),
@@ -1013,7 +1013,7 @@ class _EmptyChartMessage extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.35),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(14),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),

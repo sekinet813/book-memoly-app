@@ -5,7 +5,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
-import '../../core/theme/tokens/radius.dart';
 import '../../core/theme/tokens/spacing.dart';
 import '../../core/theme/tokens/text_styles.dart';
 import '../../core/widgets/app_navigation_bar.dart';
@@ -236,15 +235,6 @@ class ActionPlansPage extends ConsumerWidget {
       title: 'アクションプラン',
       padding: const EdgeInsets.all(AppSpacing.large),
       currentDestination: AppDestination.actions,
-      child: Column(
-        children: [
-          _BookSelector(state: state),
-          const SizedBox(height: AppSpacing.large),
-          _StatusFilterRow(state: state),
-          const SizedBox(height: AppSpacing.small),
-          Expanded(child: _ActionList(state: state)),
-        ],
-      ),
       floatingActionButton: state.selectedBookId != null
           ? FloatingActionButton(
               onPressed: () => showActionPlanDialog(
@@ -255,6 +245,15 @@ class ActionPlansPage extends ConsumerWidget {
               child: const Icon(AppIcons.addTask),
             )
           : null,
+      child: Column(
+        children: [
+          _BookSelector(state: state),
+          const SizedBox(height: AppSpacing.large),
+          _StatusFilterRow(state: state),
+          const SizedBox(height: AppSpacing.small),
+          Expanded(child: _ActionList(state: state)),
+        ],
+      ),
     );
   }
 }
@@ -367,7 +366,8 @@ class _ActionList extends ConsumerWidget {
 
         return ListView.separated(
           itemCount: filteredActions.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.medium),
+          separatorBuilder: (_, __) =>
+              const SizedBox(height: AppSpacing.medium),
           itemBuilder: (context, index) {
             final action = filteredActions[index];
             return _ActionTile(action: action, notes: state.notes);
@@ -411,7 +411,7 @@ class _ActionTile extends ConsumerWidget {
     final isReminderDue =
         action.remindAt != null && action.remindAt!.isBefore(DateTime.now());
 
-    Future<void> _selectReminder() async {
+    Future<void> selectReminder() async {
       final picked = await showDatePicker(
         context: context,
         initialDate: action.remindAt ?? action.dueDate ?? DateTime.now(),
@@ -436,7 +436,7 @@ class _ActionTile extends ConsumerWidget {
       }
     }
 
-    Future<void> _clearReminder() async {
+    Future<void> clearReminder() async {
       await ref
           .read(actionPlansNotifierProvider.notifier)
           .updateReminder(action, const Value<DateTime?>(null));
@@ -476,7 +476,8 @@ class _ActionTile extends ConsumerWidget {
                       ),
                       if (action.description?.isNotEmpty ?? false)
                         Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xSmall),
+                          padding:
+                              const EdgeInsets.only(top: AppSpacing.xSmall),
                           child: Text(
                             action.description!,
                             style: AppTextStyles.bodyMedium(context),
@@ -489,7 +490,9 @@ class _ActionTile extends ConsumerWidget {
                         children: [
                           Chip(
                             avatar: Icon(
-                              isDone ? AppIcons.checkCircle : AppIcons.timelapse,
+                              isDone
+                                  ? AppIcons.checkCircle
+                                  : AppIcons.timelapse,
                               color: isDone
                                   ? theme.colorScheme.primary
                                   : theme.colorScheme.secondary,
@@ -527,7 +530,7 @@ class _ActionTile extends ConsumerWidget {
                         ],
                       ),
                     ],
-                    ),
+                  ),
                 ),
                 _ActionMenu(action: action),
               ],
@@ -556,13 +559,13 @@ class _ActionTile extends ConsumerWidget {
                 TextButton.icon(
                   icon: const Icon(AppIcons.addAlarm),
                   label: Text(action.remindAt == null ? 'リマインド設定' : 'リマインド変更'),
-                  onPressed: _selectReminder,
+                  onPressed: selectReminder,
                 ),
                 if (action.remindAt != null)
                   IconButton(
                     tooltip: 'リマインドを解除',
                     icon: const Icon(AppIcons.alarmOff),
-                    onPressed: _clearReminder,
+                    onPressed: clearReminder,
                   ),
               ],
             ),
@@ -626,6 +629,10 @@ Future<void> showActionPlanDialog(
   final notifier = ref.read(actionPlansNotifierProvider.notifier);
   await notifier.ensureBooksLoaded(initialBookId: bookId);
   final notes = await notifier.loadNotesForBook(bookId);
+
+  if (!context.mounted) {
+    return;
+  }
 
   final titleController = TextEditingController(
     text: action?.title ?? note?.content ?? '',
@@ -720,7 +727,7 @@ Future<void> showActionPlanDialog(
                               });
                             },
                             icon: const Icon(AppIcons.close),
-                        ),
+                          ),
                         TextButton.icon(
                           onPressed: pickDate,
                           icon: const Icon(AppIcons.calendar),
@@ -747,7 +754,7 @@ Future<void> showActionPlanDialog(
                               });
                             },
                             icon: const Icon(AppIcons.alarmOff),
-                        ),
+                          ),
                         TextButton.icon(
                           onPressed: pickReminderDate,
                           icon: const Icon(AppIcons.alarm),
@@ -757,7 +764,7 @@ Future<void> showActionPlanDialog(
                     ),
                     const SizedBox(height: AppSpacing.medium),
                     DropdownButtonFormField<int?>(
-                      value: selectedNoteId,
+                      initialValue: selectedNoteId,
                       decoration: const InputDecoration(
                         labelText: '関連メモ (任意)',
                       ),

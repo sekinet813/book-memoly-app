@@ -23,10 +23,10 @@ class AppCard extends StatelessWidget {
     const radius = AppRadius.largeRadius;
     final baseColor = backgroundColor ??
         Color.lerp(
-              colorScheme.surface,
-              colorScheme.surfaceVariant,
-              0.18,
-            ) ??
+          colorScheme.surface,
+          colorScheme.surfaceContainerHighest,
+          0.18,
+        ) ??
         colorScheme.surface;
 
     final card = DecoratedBox(
@@ -34,11 +34,11 @@ class AppCard extends StatelessWidget {
         borderRadius: radius,
         color: baseColor,
         border: Border.all(
-          color: colorScheme.outlineVariant.withOpacity(0.35),
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.06),
+            color: colorScheme.shadow.withValues(alpha: 0.06),
             blurRadius: AppSpacing.large,
             offset: const Offset(0, AppSpacing.small),
           ),
@@ -58,8 +58,8 @@ class AppCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
-          splashColor: colorScheme.primary.withOpacity(0.08),
-          highlightColor: colorScheme.primary.withOpacity(0.04),
+          splashColor: colorScheme.primary.withValues(alpha: 0.08),
+          highlightColor: colorScheme.primary.withValues(alpha: 0.04),
           child: card,
         ),
       );

@@ -232,7 +232,7 @@ class _ContinueReadingSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(
+        const _SectionTitle(
           icon: AppIcons.books,
           title: 'Continue Reading',
           subtitle: 'いま読んでいる本を続けましょう',
@@ -283,7 +283,7 @@ class _MagazineGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(
+        const _SectionTitle(
           icon: AppIcons.books,
           title: 'My Magazine Shelf',
           subtitle: '表紙で並べる、美しい本棚',
@@ -341,7 +341,7 @@ class _RecentNotesCarousel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(
+        const _SectionTitle(
           icon: AppIcons.memo,
           title: 'Recent Notes',
           subtitle: '余韻を残したメモを振り返る',
@@ -411,7 +411,7 @@ class _BookTile extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 6),
           ),
@@ -430,11 +430,11 @@ class _BookTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.08),
+                        Colors.white.withValues(alpha: 0.08),
                         Theme.of(context)
                             .colorScheme
                             .surfaceTint
-                            .withOpacity(0.06),
+                            .withValues(alpha: 0.06),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -450,7 +450,7 @@ class _BookTile extends StatelessWidget {
                     color: Theme.of(context)
                         .colorScheme
                         .outlineVariant
-                        .withOpacity(0.4),
+                        .withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -484,18 +484,18 @@ class _BookTile extends StatelessWidget {
                       color: Theme.of(context)
                           .colorScheme
                           .surface
-                          .withOpacity(0.16),
+                          .withValues(alpha: 0.16),
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.24),
-                          Colors.black.withOpacity(0.08),
+                          Colors.black.withValues(alpha: 0.24),
+                          Colors.black.withValues(alpha: 0.08),
                         ],
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                       ),
                       border: Border(
                         top: BorderSide(
-                          color: Colors.white.withOpacity(0.14),
+                          color: Colors.white.withValues(alpha: 0.14),
                         ),
                       ),
                     ),
@@ -524,7 +524,8 @@ class _BookTile extends StatelessWidget {
                                 .textTheme
                                 .bodySmall
                                 ?.copyWith(
-                                    color: Colors.white.withOpacity(0.86)),
+                                    color:
+                                        Colors.white.withValues(alpha: 0.86)),
                           ),
                         ],
                       ],
@@ -550,7 +551,7 @@ class _BookCover extends StatelessWidget {
     if (thumbnailUrl == null || thumbnailUrl!.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           gradient: LinearGradient(
             colors: [
               Theme.of(context).colorScheme.primaryContainer,
@@ -564,7 +565,8 @@ class _BookCover extends StatelessWidget {
           child: Icon(
             AppIcons.menuBook,
             size: 44,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
       );
@@ -660,11 +662,11 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
+        color: color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -703,7 +705,8 @@ class _SectionTitle extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+            color:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: Theme.of(context).colorScheme.primary),

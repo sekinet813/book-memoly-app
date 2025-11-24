@@ -17,7 +17,7 @@ void main() {
     await db.close();
   });
 
-  Book _createBook() {
+  Book createBook() {
     return const Book(
       id: 'google-books-id',
       title: 'Test Book',
@@ -28,7 +28,7 @@ void main() {
 
   test('saveBook inserts book and prevents duplicates', () async {
     final inserted = await repository.saveBook(
-      _createBook(),
+      createBook(),
       status: BookStatus.reading,
     );
 
@@ -39,7 +39,7 @@ void main() {
     expect(insertedRow!.status, BookStatus.reading.toDbValue);
 
     final secondAttempt = await repository.saveBook(
-      _createBook(),
+      createBook(),
       status: BookStatus.finished,
     );
 
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('updateBookStatus updates existing book status', () async {
-    await repository.saveBook(_createBook());
+    await repository.saveBook(createBook());
 
     await repository.updateBookStatus('google-books-id', BookStatus.finished);
 
@@ -59,7 +59,7 @@ void main() {
   });
 
   test('addReadingLog stores logs for aggregation', () async {
-    await repository.saveBook(_createBook());
+    await repository.saveBook(createBook());
     final book = await repository.findBookByGoogleId('google-books-id');
 
     expect(book, isNotNull);

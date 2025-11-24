@@ -87,7 +87,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
+          const Center(
             child: AppLogo(
               subtitle: '読みたい本とアイデアを鮮やかに残す',
             ),
@@ -167,7 +167,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     AppIcons.email,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
-                    const SizedBox(width: AppSpacing.medium),
+                  const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
                       'Magic Linkを送信しました。メールボックスを確認してください。',
@@ -192,17 +192,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     AppIcons.error,
                     color: Theme.of(context).colorScheme.error,
                   ),
-                    const SizedBox(width: AppSpacing.medium),
+                  const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
                       authError,
-                      style: Theme.of(context)
-                          .textTheme
-                        .bodyLarge
-                          ?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onErrorContainer,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
+                          ),
                     ),
                   ),
                 ],

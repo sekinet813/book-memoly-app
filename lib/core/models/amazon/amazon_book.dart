@@ -1,5 +1,5 @@
-import '../../shared/config/supabase_config.dart';
-import '../../shared/constants/app_constants.dart';
+import 'package:book_memoly_app/shared/config/supabase_config.dart';
+import 'package:book_memoly_app/shared/constants/app_constants.dart';
 import '../book.dart';
 
 enum AmazonSearchType { keywords, isbn }
@@ -75,10 +75,9 @@ class AmazonBook {
     return AmazonBook(
       asin: json['asin'] as String? ?? '',
       title: json['title'] as String? ?? 'タイトル不明',
-      authors: (json['authors'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList() ??
-          const [],
+      authors:
+          (json['authors'] as List<dynamic>?)?.whereType<String>().toList() ??
+              const [],
       publisher: json['publisher'] as String?,
       publicationDate: json['publicationDate'] as String?,
       pageCount: json['pageCount'] as int?,
@@ -172,5 +171,6 @@ class AmazonBooksApiException implements Exception {
 }
 
 extension SupabaseFunctionPathX on SupabaseConfig {
-  String get amazonPaapiUrl => '$supabaseUrl${AppConstants.amazonPaapiFunctionPath}';
+  String get amazonPaapiUrl =>
+      '$supabaseUrl${AppConstants.amazonPaapiFunctionPath}';
 }

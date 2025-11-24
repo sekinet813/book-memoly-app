@@ -60,10 +60,10 @@ class AppNavigationBar extends StatelessWidget {
           curve: Curves.easeOut,
           padding: const EdgeInsets.fromLTRB(14, 20, 14, 10),
           decoration: baseDecoration.copyWith(
-            color: colorScheme.primary.withOpacity(0.9),
+            color: colorScheme.primary.withValues(alpha: 0.9),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.primary.withOpacity(0.25),
+                color: colorScheme.primary.withValues(alpha: 0.25),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
                 spreadRadius: 2,
@@ -97,11 +97,11 @@ class AppNavigationBar extends StatelessWidget {
                 color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: colorScheme.outlineVariant.withOpacity(0.35),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.35),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.08),
+                    color: colorScheme.shadow.withValues(alpha: 0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -114,7 +114,7 @@ class AppNavigationBar extends StatelessWidget {
                   backgroundColor: Colors.transparent,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
-                  indicatorColor: colorScheme.primary.withOpacity(0.18),
+                  indicatorColor: colorScheme.primary.withValues(alpha: 0.18),
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
                   selectedIndex: current.index,
                   destinations: [

@@ -46,7 +46,9 @@ final List<String> memoFontFallbacks = [japaneseFontFamily];
 
 TextTheme _baseTextTheme(Brightness brightness) {
   final material2021 = Typography.material2021();
-  return brightness == Brightness.dark ? material2021.white : material2021.black;
+  return brightness == Brightness.dark
+      ? material2021.white
+      : material2021.black;
 }
 
 TextTheme _applyMemoTypography(TextTheme base, AppFontScale scale) {
@@ -57,7 +59,7 @@ TextTheme _applyMemoTypography(TextTheme base, AppFontScale scale) {
     fontFamilyFallback: memoFontFallbacks,
   );
 
-  TextStyle? _soften(
+  TextStyle? soften(
     TextStyle? style, {
     required FontWeight fontWeight,
     required double height,
@@ -72,90 +74,90 @@ TextTheme _applyMemoTypography(TextTheme base, AppFontScale scale) {
   }
 
   final tuned = withFallback.copyWith(
-    displayLarge: _soften(
+    displayLarge: soften(
       withFallback.displayLarge,
       fontWeight: FontWeight.w600,
       height: 1.15,
       letterSpacing: -0.25,
     ),
-    displayMedium: _soften(
+    displayMedium: soften(
       withFallback.displayMedium,
       fontWeight: FontWeight.w600,
       height: 1.16,
       letterSpacing: -0.2,
     ),
-    displaySmall: _soften(
+    displaySmall: soften(
       withFallback.displaySmall,
       fontWeight: FontWeight.w600,
       height: 1.2,
       letterSpacing: -0.1,
     ),
-    headlineLarge: _soften(
+    headlineLarge: soften(
       withFallback.headlineLarge,
       fontWeight: FontWeight.w600,
       height: 1.2,
       letterSpacing: -0.08,
     ),
-    headlineMedium: _soften(
+    headlineMedium: soften(
       withFallback.headlineMedium,
       fontWeight: FontWeight.w600,
       height: 1.22,
       letterSpacing: -0.04,
     ),
-    headlineSmall: _soften(
+    headlineSmall: soften(
       withFallback.headlineSmall,
       fontWeight: FontWeight.w600,
       height: 1.22,
     ),
-    titleLarge: _soften(
+    titleLarge: soften(
       withFallback.titleLarge,
       fontWeight: FontWeight.w600,
       height: 1.26,
       letterSpacing: -0.02,
     ),
-    titleMedium: _soften(
+    titleMedium: soften(
       withFallback.titleMedium,
       fontWeight: FontWeight.w600,
       height: 1.28,
       letterSpacing: -0.01,
     ),
-    titleSmall: _soften(
+    titleSmall: soften(
       withFallback.titleSmall,
       fontWeight: FontWeight.w600,
       height: 1.3,
       letterSpacing: 0.01,
     ),
-    bodyLarge: _soften(
+    bodyLarge: soften(
       withFallback.bodyLarge,
       fontWeight: FontWeight.w500,
       height: 1.7,
       letterSpacing: 0.01,
     ),
-    bodyMedium: _soften(
+    bodyMedium: soften(
       withFallback.bodyMedium,
       fontWeight: FontWeight.w500,
       height: 1.68,
       letterSpacing: 0.01,
     ),
-    bodySmall: _soften(
+    bodySmall: soften(
       withFallback.bodySmall,
       fontWeight: FontWeight.w500,
       height: 1.6,
       letterSpacing: 0.02,
     ),
-    labelLarge: _soften(
+    labelLarge: soften(
       withFallback.labelLarge,
       fontWeight: FontWeight.w600,
       height: 1.4,
       letterSpacing: 0.08,
     ),
-    labelMedium: _soften(
+    labelMedium: soften(
       withFallback.labelMedium,
       fontWeight: FontWeight.w600,
       height: 1.4,
       letterSpacing: 0.08,
     ),
-    labelSmall: _soften(
+    labelSmall: soften(
       withFallback.labelSmall,
       fontWeight: FontWeight.w600,
       height: 1.4,

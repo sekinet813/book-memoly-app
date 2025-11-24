@@ -172,6 +172,12 @@ class MemosPage extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.large),
       currentDestination: AppDestination.memos,
       backgroundColor: _paperColor,
+      floatingActionButton: state.selectedBookId != null
+          ? FloatingActionButton(
+              onPressed: () => _showNoteDialog(context, ref),
+              child: const Icon(AppIcons.add),
+            )
+          : null,
       child: Column(
         children: [
           const _TagManagerSection(),
@@ -181,12 +187,6 @@ class MemosPage extends ConsumerWidget {
           Expanded(child: _MemoList(state: state)),
         ],
       ),
-      floatingActionButton: state.selectedBookId != null
-          ? FloatingActionButton(
-              onPressed: () => _showNoteDialog(context, ref),
-              child: const Icon(AppIcons.add),
-            )
-          : null,
     );
   }
 }
@@ -365,7 +365,8 @@ class _BookSelector extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.largeRadius,
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.6)),
+        border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,7 +441,8 @@ class _MemoList extends ConsumerWidget {
 
         return ListView.separated(
           itemCount: notes.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.medium),
+          separatorBuilder: (_, __) =>
+              const SizedBox(height: AppSpacing.medium),
           itemBuilder: (context, index) {
             final note = notes[index];
             return _MemoCard(note: note);
@@ -526,10 +528,9 @@ class _MemoContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle =
-        AppTextStyles.bodyLarge(context).copyWith(height: 1.7);
-    final bulletStyle = baseStyle?.copyWith(fontWeight: FontWeight.w600);
-    final quoteStyle = baseStyle?.copyWith(
+    final baseStyle = AppTextStyles.bodyLarge(context).copyWith(height: 1.7);
+    final bulletStyle = baseStyle.copyWith(fontWeight: FontWeight.w600);
+    final quoteStyle = baseStyle.copyWith(
       fontStyle: FontStyle.italic,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
@@ -594,7 +595,7 @@ class _MemoContent extends StatelessWidget {
       return Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surface.withOpacity(0.7),
+          color: colorScheme.surface.withValues(alpha: 0.7),
           borderRadius: AppRadius.mediumRadius,
           border: Border(
             left: BorderSide(
@@ -702,7 +703,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                         color: Theme.of(context)
                             .colorScheme
                             .outlineVariant
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
@@ -711,7 +712,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                         color: Theme.of(context)
                             .colorScheme
                             .outlineVariant
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -751,7 +752,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                         color: Theme.of(context)
                             .colorScheme
                             .outlineVariant
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
@@ -760,7 +761,7 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                         color: Theme.of(context)
                             .colorScheme
                             .outlineVariant
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -898,9 +899,17 @@ Future<void> _showActionFromNoteDialog(
   WidgetRef ref,
   NoteRow note,
 ) async {
+  if (!context.mounted) {
+    return;
+  }
+
   await ref
       .read(actionPlansNotifierProvider.notifier)
       .ensureBooksLoaded(initialBookId: note.bookId);
+
+  if (!context.mounted) {
+    return;
+  }
 
   await showActionPlanDialog(
     context,

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -15,7 +14,6 @@ import '../../core/widgets/loading_indicator.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
-import '../../core/providers/tag_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/models/amazon/amazon_book.dart';
 import '../../core/services/amazon_book_api_client.dart';
@@ -38,7 +36,8 @@ class BookSearchRepository {
     }
 
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
-    final queryType = isIsbn ? AmazonSearchType.isbn : AmazonSearchType.keywords;
+    final queryType =
+        isIsbn ? AmazonSearchType.isbn : AmazonSearchType.keywords;
 
     debugPrint('Amazon PA-API query ($queryType): $cleanedKeyword');
 
@@ -206,19 +205,19 @@ class SearchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 2,
       child: AppPage(
         title: '検索',
         padding: EdgeInsets.zero,
         currentDestination: AppDestination.search,
-        bottom: const TabBar(
+        bottom: TabBar(
           tabs: [
             Tab(text: 'オンライン検索'),
             Tab(text: 'ローカル検索'),
           ],
         ),
-        child: const TabBarView(
+        child: TabBarView(
           children: [
             _OnlineSearchTab(),
             _LocalSearchTab(),
@@ -531,8 +530,10 @@ class _LocalSearchResults extends StatelessWidget {
                   ),
                   Chip(
                     label: Text(status.label),
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.1),
                     labelStyle: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -584,10 +585,9 @@ class _LocalSearchResults extends StatelessWidget {
                             ),
                             if ((result.noteTags[note.id] ?? []).isNotEmpty)
                               Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 8, top: 2),
-                                child:
-                                    TagChipList(tags: result.noteTags[note.id]!),
+                                padding: const EdgeInsets.only(left: 8, top: 2),
+                                child: TagChipList(
+                                    tags: result.noteTags[note.id]!),
                               ),
                           ],
                         ),
@@ -760,16 +760,16 @@ class _ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             const Icon(
               AppIcons.error,
               size: AppIconSizes.extraLarge,
               color: Colors.redAccent,
             ),
-              const SizedBox(height: 12),
-              const Text('検索中にエラーが発生しました'),
+            const SizedBox(height: 12),
+            const Text('検索中にエラーが発生しました'),
             const SizedBox(height: 8),
             Text(
               error.toString(),
@@ -1211,16 +1211,15 @@ class _BookRegistrationCard extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               if (isRegistered)
-                Chip(
+                const Chip(
                   label: Text('登録済み'),
-                  avatar:
-                      const Icon(AppIcons.check, size: AppIconSizes.small),
+                  avatar: Icon(AppIcons.check, size: AppIconSizes.small),
                 ),
             ],
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<BookStatus>(
-            value: selectedStatus,
+            initialValue: selectedStatus,
             decoration: const InputDecoration(
               labelText: 'ステータスを選択',
             ),
@@ -1327,15 +1326,14 @@ class _BookTagCard extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               if (isRegistered)
-                Chip(
-                  label: const Text('保存済み'),
-                  avatar: const Icon(AppIcons.check, size: AppIconSizes.small),
+                const Chip(
+                  label: Text('保存済み'),
+                  avatar: Icon(AppIcons.check, size: AppIconSizes.small),
                 ),
             ],
           ),
           const SizedBox(height: 12),
-          if (!isRegistered)
-            const Text('タグを設定するには本を登録してください'),
+          if (!isRegistered) const Text('タグを設定するには本を登録してください'),
           const SizedBox(height: 4),
           if (isLoading)
             const LoadingIndicator()

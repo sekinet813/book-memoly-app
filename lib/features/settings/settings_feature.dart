@@ -10,6 +10,7 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/app_logo.dart';
 import '../../shared/constants/app_icons.dart';
 import '../../core/theme/tokens/spacing.dart';
+import '../../core/theme/typography.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -30,7 +31,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     return AppPage(
       title: 'Settings',
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.large, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.large, vertical: 12),
       scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +65,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: const Icon(AppIcons.chevronRight, size: 18),
                   label: const Text('近日公開'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                   ),
                 ),
               ),
@@ -82,7 +85,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 subtitle: 'リマインドや新機能のお知らせを受け取る',
                 trailing: Switch(
                   value: notificationsEnabled,
-                  onChanged: (value) => setState(() => notificationsEnabled = value),
+                  onChanged: (value) =>
+                      setState(() => notificationsEnabled = value),
                 ),
               ),
               _SettingsTile(
@@ -91,7 +95,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 subtitle: '1週間の読書ハイライトをまとめて通知',
                 trailing: Switch(
                   value: weeklyDigestEnabled,
-                  onChanged: (value) => setState(() => weeklyDigestEnabled = value),
+                  onChanged: (value) =>
+                      setState(() => weeklyDigestEnabled = value),
                 ),
               ),
               _SettingsTile(
@@ -121,7 +126,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   context,
                   icon: AppIcons.export,
                   title: 'エクスポート',
-                  description: '読書データのエクスポートは次回リリースで提供予定です。\n必要な形式や項目の要望があればフィードバックしてください。',
+                  description:
+                      '読書データのエクスポートは次回リリースで提供予定です。\n必要な形式や項目の要望があればフィードバックしてください。',
                   primaryActionLabel: '要望を送る',
                 ),
               ),
@@ -172,8 +178,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(icon,
+                        color:
+                            Theme.of(context).colorScheme.onPrimaryContainer),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -234,7 +243,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       },
     );
 
-    if (result == true && mounted) {
+    if (!mounted) {
+      return;
+    }
+
+    if (result == true) {
+      if (!context.mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('アカウント削除リクエストを受け付けました。サポートよりご案内します。'),
@@ -265,7 +282,8 @@ class _SettingsHeroCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: colorScheme.onPrimaryContainer.withOpacity(0.1),
+                backgroundColor:
+                    colorScheme.onPrimaryContainer.withValues(alpha: 0.1),
                 child: const Icon(AppIcons.person, size: 30),
               ),
               const SizedBox(width: AppSpacing.medium),
@@ -274,7 +292,9 @@ class _SettingsHeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      profileName?.isNotEmpty == true ? profileName! : '未設定のユーザー',
+                      profileName?.isNotEmpty == true
+                          ? profileName!
+                          : '未設定のユーザー',
                       style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: colorScheme.onPrimaryContainer,
@@ -287,7 +307,8 @@ class _SettingsHeroCard extends StatelessWidget {
                           ? bio!
                           : 'プロフィールを設定して、読書体験をパーソナライズしましょう。',
                       style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer.withOpacity(0.9),
+                        color: colorScheme.onPrimaryContainer
+                            .withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -296,10 +317,10 @@ class _SettingsHeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.medium),
-          Wrap(
+          const Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
+            children: [
               _StatusChip(icon: AppIcons.goal, label: '目標'),
               _StatusChip(icon: AppIcons.notifications, label: '通知'),
               _StatusChip(icon: AppIcons.darkMode, label: 'テーマ'),
@@ -323,9 +344,11 @@ class _StatusChip extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colorScheme.onPrimaryContainer.withOpacity(0.08),
+        color: colorScheme.onPrimaryContainer.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.onPrimaryContainer.withOpacity(0.14)),
+        border: Border.all(
+          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.14),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -367,7 +390,7 @@ class _FontScaleTile extends ConsumerWidget {
             children: [
               DecoratedBox(
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.08),
+                  color: colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Padding(
@@ -422,7 +445,9 @@ class _FontScaleTile extends ConsumerWidget {
                       ref.read(fontScaleProvider.notifier).update(option),
                   selectedColor: colorScheme.primary,
                   backgroundColor:
-                      colorScheme.surfaceVariant.withOpacity(0.5),
+                      colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -507,15 +532,17 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final titleColor = isDestructive ? colorScheme.error : colorScheme.onSurface;
-    final baseIconColor = isDestructive ? colorScheme.error : colorScheme.primary;
+    final titleColor =
+        isDestructive ? colorScheme.error : colorScheme.onSurface;
+    final baseIconColor =
+        isDestructive ? colorScheme.error : colorScheme.primary;
 
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       leading: DecoratedBox(
         decoration: BoxDecoration(
-          color: baseIconColor.withOpacity(0.08),
+          color: baseIconColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Padding(
@@ -536,7 +563,8 @@ class _SettingsTile extends StatelessWidget {
               color: colorScheme.onSurfaceVariant,
             ),
       ),
-      trailing: trailing ?? Icon(AppIcons.chevronRight, color: colorScheme.onSurfaceVariant),
+      trailing: trailing ??
+          Icon(AppIcons.chevronRight, color: colorScheme.onSurfaceVariant),
     );
   }
 }

@@ -84,7 +84,8 @@ class LocalDatabaseRepository {
   }
 
   Future<bool> updateTag({required int tagId, required String name}) async {
-    final updated = await tags.updateTag(userId: userId, tagId: tagId, name: name);
+    final updated =
+        await tags.updateTag(userId: userId, tagId: tagId, name: name);
     return updated > 0;
   }
 
@@ -196,6 +197,7 @@ class LocalDatabaseRepository {
   }) async {
     final trimmedKeyword = keyword.trim();
     final hasTagFilter = tagIds != null && tagIds.isNotEmpty;
+    final activeTagIds = tagIds ?? const <int>{};
 
     if (trimmedKeyword.isEmpty && !hasTagFilter) {
       return const [];
@@ -204,8 +206,10 @@ class LocalDatabaseRepository {
     final lowerKeyword = trimmedKeyword.toLowerCase();
     final allBooks = await getAllBooks();
     final allNotes = await getAllNotes();
-    final bookTagsMap = await getTagsForBooks(allBooks.map((b) => b.id).toList());
-    final noteTagsMap = await getTagsForNotes(allNotes.map((n) => n.id).toList());
+    final bookTagsMap =
+        await getTagsForBooks(allBooks.map((b) => b.id).toList());
+    final noteTagsMap =
+        await getTagsForNotes(allNotes.map((n) => n.id).toList());
 
     final results = <LocalSearchResult>[];
 
@@ -216,8 +220,8 @@ class LocalDatabaseRepository {
 
       final bookTags = bookTagsMap[book.id] ?? const [];
 
-      final matchesTitle =
-          trimmedKeyword.isNotEmpty && book.title.toLowerCase().contains(lowerKeyword);
+      final matchesTitle = trimmedKeyword.isNotEmpty &&
+          book.title.toLowerCase().contains(lowerKeyword);
       final matchesAuthors = trimmedKeyword.isNotEmpty
           ? (book.authors ?? '').toLowerCase().contains(lowerKeyword)
           : false;
@@ -228,7 +232,8 @@ class LocalDatabaseRepository {
       final matchingNotes = allNotes
           .where((note) => note.bookId == book.id)
           .where((note) =>
-              trimmedKeyword.isEmpty || note.content.toLowerCase().contains(lowerKeyword))
+              trimmedKeyword.isEmpty ||
+              note.content.toLowerCase().contains(lowerKeyword))
           .toList();
 
       final matchingNoteTags = <int, List<TagRow>>{};
@@ -237,9 +242,9 @@ class LocalDatabaseRepository {
       }
 
       final matchesTagFilter = !hasTagFilter ||
-          bookTags.any((tag) => tagIds!.contains(tag.id)) ||
+          bookTags.any((tag) => activeTagIds.contains(tag.id)) ||
           matchingNoteTags.values.any(
-            (tags) => tags.any((tag) => tagIds!.contains(tag.id)),
+            (tags) => tags.any((tag) => activeTagIds.contains(tag.id)),
           );
 
       if (!matchesTagFilter) {
