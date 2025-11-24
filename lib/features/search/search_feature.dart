@@ -17,18 +17,18 @@ import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/tag_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
-import '../../core/services/google_books_api_client.dart';
-import '../../core/models/google_books/google_books_volume.dart';
+import '../../core/models/amazon/amazon_book.dart';
+import '../../core/services/amazon_book_api_client.dart';
 import '../../shared/constants/app_icons.dart';
 
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
-  return BookSearchRepository(ref.read(googleBooksApiClientProvider));
+  return BookSearchRepository(ref.read(amazonBooksApiClientProvider));
 });
 
 class BookSearchRepository {
   BookSearchRepository(this._client);
 
-  final GoogleBooksApiClient _client;
+  final AmazonBooksApiClient _client;
 
   Future<List<Book>> searchBooks(String keyword) async {
     final cleanedKeyword = keyword.trim();
@@ -37,59 +37,26 @@ class BookSearchRepository {
       return const [];
     }
 
-    // ISBNの形式（数字とハイフンのみ）の場合は、isbn:プレフィックスを付ける
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
-    String query;
+    final queryType = isIsbn ? AmazonSearchType.isbn : AmazonSearchType.keywords;
 
-    if (isIsbn) {
-      query = 'isbn:$cleanedKeyword';
-    } else {
-      // タイトルと著者の両方で検索するため、intitle:とinauthor:の両方を使用
-      // OR条件で検索するため、複数のクエリを試す
-      // まずは通常のキーワード検索を試し、次に著者名検索も試す
-      query = cleanedKeyword;
-    }
-
-    debugPrint('Google Books API query: $query');
+    debugPrint('Amazon PA-API query ($queryType): $cleanedKeyword');
 
     try {
-      // まず通常のキーワード検索を試す
-      var response = await _client.searchVolumes(query: query);
+      final response = await _client.search(
+        query: cleanedKeyword,
+        searchType: queryType,
+      );
 
-      debugPrint('Google Books API response: ${response.totalItems} items found');
-
-      // 結果が少ない場合、著者名検索も試す
-      if (response.totalItems < 5 && !isIsbn) {
-        final authorQuery = 'inauthor:"$cleanedKeyword"';
-        debugPrint('Trying author search: $authorQuery');
-
-        try {
-          final authorResponse =
-              await _client.searchVolumes(query: authorQuery);
-
-          debugPrint(
-              'Author search response: ${authorResponse.totalItems} items found');
-
-          // 著者名検索の結果の方が多い場合は、そちらを使用
-          if (authorResponse.totalItems > response.totalItems) {
-            response = authorResponse;
-          }
-        } on GoogleBooksApiException catch (error) {
-          debugPrint('Author search failed: $error');
-          // 著者名検索が失敗しても、通常の検索結果を返す
-        }
-      }
-
-      final items = response.items;
-      if (items.isEmpty) {
+      if (response.items.isEmpty) {
         debugPrint('No items found in response');
         return const [];
       }
 
-      debugPrint('Found ${items.length} books');
+      debugPrint('Found ${response.items.length} books via Amazon PA-API');
 
-      final books = items
-          .map((volume) => volume.toBook())
+      final books = response.items
+          .map((item) => item.toBook())
           .where((book) => book.id.isNotEmpty)
           .toList();
 
