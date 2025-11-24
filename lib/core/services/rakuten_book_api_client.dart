@@ -2,9 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../shared/config/supabase_config.dart';
-import '../models/amazon/amazon_book.dart';
+import '../../shared/constants/app_constants.dart';
+import '../models/rakuten/rakuten_book.dart';
 
-final amazonBooksDioProvider = Provider<Dio>((ref) {
+final rakutenBooksDioProvider = Provider<Dio>((ref) {
   return Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 15),
@@ -17,36 +18,36 @@ final amazonBooksDioProvider = Provider<Dio>((ref) {
   );
 });
 
-final amazonBooksApiClientProvider = Provider<AmazonBooksApiClient>((ref) {
-  final dio = ref.read(amazonBooksDioProvider);
+final rakutenBooksApiClientProvider = Provider<RakutenBooksApiClient>((ref) {
+  final dio = ref.read(rakutenBooksDioProvider);
   final config = SupabaseConfig.fromEnvironment();
-  return AmazonBooksApiClient(dio, config);
+  return RakutenBooksApiClient(dio, config);
 });
 
-class AmazonBooksApiClient {
-  AmazonBooksApiClient(this._dio, this._config);
+class RakutenBooksApiClient {
+  RakutenBooksApiClient(this._dio, this._config);
 
   final Dio _dio;
   final SupabaseConfig _config;
 
-  Future<AmazonBooksResponse> search({
+  Future<RakutenBooksResponse> search({
     required String query,
-    required AmazonSearchType searchType,
-    int maxResults = 20,
+    required RakutenSearchType searchType,
+    int hits = 20,
   }) async {
     if (!_config.isValid) {
-      throw const AmazonBooksApiException(
-        'Supabase configuration missing. Provide SUPABASE_URL and SUPABASE_ANON_KEY to use Amazon PA-API.',
+      throw const RakutenBooksApiException(
+        'Supabase configuration missing. Provide SUPABASE_URL and SUPABASE_ANON_KEY to use Rakuten Books API.',
       );
     }
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        _config.amazonPaapiUrl,
+        '${_config.supabaseUrl}${AppConstants.rakutenBooksFunctionPath}',
         data: {
           'query': query,
           'searchType': searchType.name,
-          'maxResults': maxResults,
+          'hits': hits,
         },
         options: Options(
           headers: {
@@ -57,16 +58,16 @@ class AmazonBooksApiClient {
 
       final data = response.data;
       if (data == null) {
-        throw const AmazonBooksApiException('Empty response body from Amazon PA-API edge function');
+        throw const RakutenBooksApiException('Empty response body from Rakuten Books edge function');
       }
 
-      return AmazonBooksResponse.fromJson(data);
+      return RakutenBooksResponse.fromJson(data);
     } on DioException catch (error, stackTrace) {
       Error.throwWithStackTrace(_mapDioError(error), stackTrace);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        AmazonBooksApiException(
-          'Failed to fetch books from Amazon PA-API.',
+        RakutenBooksApiException(
+          'Failed to fetch books from Rakuten Books API.',
           error: error,
         ),
         stackTrace,
@@ -74,35 +75,35 @@ class AmazonBooksApiClient {
     }
   }
 
-  AmazonBooksApiException _mapDioError(DioException error) {
+  RakutenBooksApiException _mapDioError(DioException error) {
     final statusCode = error.response?.statusCode;
 
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return const AmazonBooksApiException(
-          'Amazon PA-API request timed out. Please try again.',
+        return const RakutenBooksApiException(
+          'Rakuten Books request timed out. Please try again.',
           statusCode: 408,
         );
       case DioExceptionType.badResponse:
-        return AmazonBooksApiException(
-          'Amazon PA-API returned an error response.',
+        return RakutenBooksApiException(
+          'Rakuten Books API returned an error response.',
           statusCode: statusCode,
           error: error.response?.data,
         );
       case DioExceptionType.cancel:
-        return const AmazonBooksApiException('Amazon PA-API request was cancelled.');
+        return const RakutenBooksApiException('Rakuten Books request was cancelled.');
       case DioExceptionType.unknown:
       case DioExceptionType.connectionError:
-        return AmazonBooksApiException(
-          'Network error while contacting Amazon PA-API.',
+        return RakutenBooksApiException(
+          'Network error while contacting Rakuten Books API.',
           statusCode: statusCode,
           error: error.error,
         );
       case DioExceptionType.badCertificate:
-        return const AmazonBooksApiException(
-          'Certificate verification failed when contacting Amazon PA-API.',
+        return const RakutenBooksApiException(
+          'Certificate verification failed when contacting Rakuten Books API.',
         );
     }
   }

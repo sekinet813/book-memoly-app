@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
@@ -15,18 +16,18 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
-import '../../core/models/amazon/amazon_book.dart';
-import '../../core/services/amazon_book_api_client.dart';
+import '../../core/models/rakuten/rakuten_book.dart';
+import '../../core/services/rakuten_book_api_client.dart';
 import '../../shared/constants/app_icons.dart';
 
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
-  return BookSearchRepository(ref.read(amazonBooksApiClientProvider));
+  return BookSearchRepository(ref.read(rakutenBooksApiClientProvider));
 });
 
 class BookSearchRepository {
   BookSearchRepository(this._client);
 
-  final AmazonBooksApiClient _client;
+  final RakutenBooksApiClient _client;
 
   Future<List<Book>> searchBooks(String keyword) async {
     final cleanedKeyword = keyword.trim();
@@ -36,10 +37,9 @@ class BookSearchRepository {
     }
 
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
-    final queryType =
-        isIsbn ? AmazonSearchType.isbn : AmazonSearchType.keywords;
+    final queryType = isIsbn ? RakutenSearchType.isbn : RakutenSearchType.keywords;
 
-    debugPrint('Amazon PA-API query ($queryType): $cleanedKeyword');
+    debugPrint('Rakuten Books API query ($queryType): $cleanedKeyword');
 
     try {
       final response = await _client.search(
@@ -52,7 +52,7 @@ class BookSearchRepository {
         return const [];
       }
 
-      debugPrint('Found ${response.items.length} books via Amazon PA-API');
+      debugPrint('Found ${response.items.length} books via Rakuten Books API');
 
       final books = response.items
           .map((item) => item.toBook())
@@ -664,10 +664,20 @@ class _BookListTile extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    if (book.publisher != null)
+                      _MetaChip(
+                        icon: AppIcons.label,
+                        label: book.publisher!,
+                      ),
                     if (book.publishedDate != null)
                       _MetaChip(
                         icon: AppIcons.calendar,
                         label: book.publishedDate!,
+                      ),
+                    if (book.isbn != null)
+                      _MetaChip(
+                        icon: AppIcons.manageSearch,
+                        label: 'ISBN: ${book.isbn!}',
                       ),
                     if (book.pageCount != null)
                       _MetaChip(
@@ -926,10 +936,20 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                           spacing: 10,
                           runSpacing: 8,
                           children: [
+                            if (widget.book.publisher != null)
+                              _MetaChip(
+                                icon: AppIcons.label,
+                                label: widget.book.publisher!,
+                              ),
                             if (widget.book.publishedDate != null)
                               _MetaChip(
                                 icon: AppIcons.calendar,
                                 label: widget.book.publishedDate!,
+                              ),
+                            if (widget.book.isbn != null)
+                              _MetaChip(
+                                icon: AppIcons.manageSearch,
+                                label: 'ISBN: ${widget.book.isbn!}',
                               ),
                             if (widget.book.pageCount != null)
                               _MetaChip(
@@ -944,6 +964,30 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                 ],
               ),
             ),
+            if (widget.book.rakutenUrl != null) ...[
+              const SizedBox(height: 12),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'オンラインで確認',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    PrimaryButton(
+                      onPressed: _openRakutenUrl,
+                      icon: AppIcons.export,
+                      label: '楽天で見る',
+                      expand: true,
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             AppCard(
               child: Column(
@@ -1077,6 +1121,32 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
           _isLoadingTags = false;
         });
       }
+    }
+  }
+
+  Future<void> _openRakutenUrl() async {
+    final url = widget.book.rakutenUrl;
+    if (url == null) {
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('有効なURLが見つかりませんでした')),
+      );
+      return;
+    }
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('リンクを開けませんでした')),
+      );
     }
   }
 
