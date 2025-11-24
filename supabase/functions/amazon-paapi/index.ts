@@ -3,6 +3,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 const encoder = new TextEncoder();
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 async function sha256(data: string | ArrayBuffer): Promise<string> {
   const encoded = typeof data === "string" ? encoder.encode(data) : data;
@@ -232,14 +237,25 @@ async function buildSignedRequest(
   });
 }
 
-function errorResponse(message: string, status = 400) {
-  return new Response(JSON.stringify({ message }), {
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
   });
 }
 
+function errorResponse(message: string, status = 400) {
+  return jsonResponse({ message }, status);
+}
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405);
   }
@@ -314,16 +330,11 @@ serve(async (req) => {
     const items = (data.SearchResult?.Items ?? data.ItemsResult?.Items ?? []) as Array<Record<string, unknown>>;
     const mappedItems = items.map(mapItem);
 
-    return new Response(
-      JSON.stringify({
-        items: mappedItems,
-        requestId: data.RequestId ?? data?.SearchResult?.SearchCompletedRequestId,
-        searchType,
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({
+      items: mappedItems,
+      requestId: data.RequestId ?? data?.SearchResult?.SearchCompletedRequestId,
+      searchType,
+    });
   } catch (error) {
     console.error("Amazon PA-API proxy error", error);
     return errorResponse("Failed to complete Amazon PA-API request", 500);
