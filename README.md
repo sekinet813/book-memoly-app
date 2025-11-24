@@ -1,4 +1,4 @@
-# Book Memoly App
+# Book Memoly
 
 読書ログ + メモアプリ
 

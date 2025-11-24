@@ -41,9 +41,16 @@ class RakutenBooksApiClient {
       );
     }
 
+    final functionsBaseUrl = _config.functionsBaseUrl;
+    if (functionsBaseUrl.isEmpty) {
+      throw const RakutenBooksApiException(
+        'Supabase Functions URL could not be determined. Set SUPABASE_FUNCTION_URL or a valid SUPABASE_URL.',
+      );
+    }
+
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '${_config.supabaseUrl}${AppConstants.rakutenBooksFunctionPath}',
+        '$functionsBaseUrl${AppConstants.rakutenBooksFunctionPath}',
         data: {
           'query': query,
           'searchType': searchType.name,

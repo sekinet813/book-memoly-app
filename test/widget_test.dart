@@ -19,6 +19,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Book Memoly App'), findsOneWidget);
+    expect(find.text('Book Memoly'), findsOneWidget);
   });
 }

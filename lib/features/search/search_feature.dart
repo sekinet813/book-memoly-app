@@ -37,7 +37,8 @@ class BookSearchRepository {
     }
 
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
-    final queryType = isIsbn ? RakutenSearchType.isbn : RakutenSearchType.keywords;
+    final queryType =
+        isIsbn ? RakutenSearchType.isbn : RakutenSearchType.keywords;
 
     debugPrint('Rakuten Books API query ($queryType): $cleanedKeyword');
 
