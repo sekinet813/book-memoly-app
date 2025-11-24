@@ -22,12 +22,21 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
+1
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git xz-utils unzip
 
-      - name: Set up Flutter
-        uses: lukechannings/setup-flutter@v1
-        with:
-          flutter-version: '3.14.1'
-          channel: 'stable'
+      - name: Clone Flutter SDK
+        run: |
+          git clone --depth 1 -b 3.14.1 https://github.com/flutter/flutter.git $HOME/flutter
+
+      - name: Add Flutter to PATH
+        run: echo "$HOME/flutter/bin" >> $GITHUB_PATH
+
+      - name: Verify Flutter
+        run: flutter --version
 
       - name: Install dependencies
         run: flutter pub get
