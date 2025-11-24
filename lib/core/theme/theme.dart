@@ -52,6 +52,26 @@ class AppTheme {
           size: AppIconSizes.medium,
           color: lightColorScheme.onPrimary,
         ),
+        scaffoldBackgroundColor:
+            Color.lerp(lightColorScheme.surface, Colors.white, 0.6),
+        appBarTheme: AppBarTheme(
+          elevation: 0,
+          backgroundColor:
+              Color.lerp(lightColorScheme.surface, Colors.white, 0.75),
+          foregroundColor: lightColorScheme.onSurface,
+          centerTitle: true,
+        ),
+        cardTheme: CardThemeData(
+          elevation: AppElevation.level1,
+          color: Color.lerp(
+            lightColorScheme.surface,
+            lightColorScheme.surfaceVariant,
+            0.12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.large),
+          ),
+        ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           elevation: AppElevation.level2,
           shape: RoundedRectangleBorder(
@@ -77,6 +97,26 @@ class AppTheme {
         primaryIconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onPrimary,
+        ),
+        scaffoldBackgroundColor:
+            Color.lerp(darkColorScheme.surface, Colors.black, 0.4),
+        appBarTheme: AppBarTheme(
+          elevation: 0,
+          backgroundColor:
+              Color.lerp(darkColorScheme.surface, Colors.black, 0.3),
+          foregroundColor: darkColorScheme.onSurface,
+          centerTitle: true,
+        ),
+        cardTheme: CardThemeData(
+          elevation: AppElevation.level1,
+          color: Color.lerp(
+            darkColorScheme.surface,
+            darkColorScheme.surfaceVariant,
+            0.16,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.large),
+          ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           elevation: AppElevation.level2,

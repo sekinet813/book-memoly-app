@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,117 +17,187 @@ class AppNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    Widget buildNavIcon(
+      IconData icon, {
+      required bool selected,
+      bool isCenter = false,
+    }) {
+      final defaultColor =
+          selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+      final iconSize = isCenter ? 44.0 : 28.0;
+
+      if (!isCenter) {
+        return Icon(
+          icon,
+          size: iconSize,
+          color: defaultColor,
+        );
+      }
+
+      final baseDecoration = BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.primary,
+      );
+
+      Widget centralIcon;
+      if (selected) {
+        centralIcon = AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 12),
+          decoration: baseDecoration.copyWith(
+            boxShadow: const [],
+          ),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: colorScheme.onPrimary,
+          ),
+        );
+      } else {
+        centralIcon = AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.fromLTRB(14, 20, 14, 10),
+          decoration: baseDecoration.copyWith(
+            color: colorScheme.primary.withOpacity(0.9),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: colorScheme.onPrimary,
+          ),
+        );
+      }
+
+      return Transform.translate(
+        offset: const Offset(0, -18),
+        child: centralIcon,
+      );
+    }
+
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: NavigationBar(
-              height: 72,
-              backgroundColor: colorScheme.surface.withValues(alpha: 0.4),
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              indicatorColor: colorScheme.primary.withValues(alpha: 0.18),
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              labelTextStyle: WidgetStatePropertyAll(
-                TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 0.1,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Align(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withOpacity(0.35),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                height: 80,
+                child: NavigationBar(
+                  height: 70,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  indicatorColor: colorScheme.primary.withOpacity(0.18),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+                  selectedIndex: current.index,
+                  destinations: [
+                    NavigationDestination(
+                      icon: buildNavIcon(
+                        AppIcons.home,
+                        selected: false,
+                      ),
+                      selectedIcon: buildNavIcon(
+                        AppIcons.homeFilled,
+                        selected: true,
+                      ),
+                      label: '',
+                    ),
+                    NavigationDestination(
+                      icon: buildNavIcon(
+                        AppIcons.search,
+                        selected: false,
+                      ),
+                      selectedIcon: buildNavIcon(
+                        AppIcons.search,
+                        selected: true,
+                      ),
+                      label: '',
+                    ),
+                    NavigationDestination(
+                      icon: buildNavIcon(
+                        AppIcons.memo,
+                        selected: false,
+                        isCenter: true,
+                      ),
+                      selectedIcon: buildNavIcon(
+                        AppIcons.memo,
+                        selected: true,
+                        isCenter: true,
+                      ),
+                      label: '',
+                    ),
+                    NavigationDestination(
+                      icon: buildNavIcon(
+                        AppIcons.actions,
+                        selected: false,
+                      ),
+                      selectedIcon: buildNavIcon(
+                        AppIcons.actions,
+                        selected: true,
+                      ),
+                      label: '',
+                    ),
+                    NavigationDestination(
+                      icon: buildNavIcon(
+                        AppIcons.person,
+                        selected: false,
+                      ),
+                      selectedIcon: buildNavIcon(
+                        AppIcons.person,
+                        selected: true,
+                      ),
+                      label: '',
+                    ),
+                  ],
+                  onDestinationSelected: (index) {
+                    final destination = AppDestination.values[index];
+                    switch (destination) {
+                      case AppDestination.home:
+                        context.go('/');
+                        break;
+                      case AppDestination.search:
+                        context.go('/search');
+                        break;
+                      case AppDestination.memos:
+                        context.go('/memos');
+                        break;
+                      case AppDestination.actions:
+                        context.go('/actions');
+                        break;
+                      case AppDestination.profile:
+                        context.go('/profile');
+                        break;
+                    }
+                  },
                 ),
               ),
-              selectedIndex: current.index,
-              destinations: [
-                NavigationDestination(
-                  icon: Icon(
-                    AppIcons.home,
-                    size: 24,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  selectedIcon: Icon(
-                    AppIcons.homeFilled,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                  label: 'ホーム',
-                ),
-                NavigationDestination(
-                  icon: Icon(
-                    AppIcons.search,
-                    size: 24,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  selectedIcon: Icon(
-                    AppIcons.search,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                  label: '検索',
-                ),
-                NavigationDestination(
-                  icon: Icon(
-                    AppIcons.memo,
-                    size: 24,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  selectedIcon: Icon(
-                    AppIcons.memo,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                  label: 'メモ',
-                ),
-                NavigationDestination(
-                  icon: Icon(
-                    AppIcons.actions,
-                    size: 24,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  selectedIcon: Icon(
-                    AppIcons.actions,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                  label: 'アクション',
-                ),
-                NavigationDestination(
-                  icon: Icon(
-                    AppIcons.person,
-                    size: 24,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  selectedIcon: Icon(
-                    AppIcons.person,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                  label: 'プロフィール',
-                ),
-              ],
-              onDestinationSelected: (index) {
-                final destination = AppDestination.values[index];
-                switch (destination) {
-                  case AppDestination.home:
-                    context.go('/');
-                    break;
-                  case AppDestination.search:
-                    context.go('/search');
-                    break;
-                  case AppDestination.memos:
-                    context.go('/memos');
-                    break;
-                  case AppDestination.actions:
-                    context.go('/actions');
-                    break;
-                  case AppDestination.profile:
-                    context.go('/profile');
-                    break;
-                }
-              },
             ),
           ),
         ),

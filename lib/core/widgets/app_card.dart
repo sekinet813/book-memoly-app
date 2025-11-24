@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../theme/tokens/radius.dart';
@@ -23,49 +21,40 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     const radius = AppRadius.largeRadius;
-    final baseColor = backgroundColor ?? colorScheme.surface;
+    final baseColor = backgroundColor ??
+        Color.lerp(
+              colorScheme.surface,
+              colorScheme.surfaceVariant,
+              0.18,
+            ) ??
+        colorScheme.surface;
 
-    final card = ClipRRect(
-      borderRadius: radius,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: AppSpacing.xLarge,
-          sigmaY: AppSpacing.xLarge,
+    final card = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        color: baseColor,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withOpacity(0.35),
         ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            color: baseColor.withOpacity(0.18),
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.18),
-                baseColor.withOpacity(0.12),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withOpacity(0.4),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withOpacity(0.04),
-                blurRadius: AppSpacing.small,
-                offset: const Offset(0, AppSpacing.medium),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.06),
+            blurRadius: AppSpacing.large,
+            offset: const Offset(0, AppSpacing.small),
           ),
-          child: Padding(
-            padding: padding,
-            child: child,
-          ),
-        ),
+        ],
+      ),
+      child: Padding(
+        padding: padding,
+        child: child,
       ),
     );
 
     if (onTap != null) {
       return Material(
         color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
