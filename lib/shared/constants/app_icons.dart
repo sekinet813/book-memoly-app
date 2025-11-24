@@ -48,6 +48,7 @@ class AppIcons {
   static const IconData notifications = Symbols.notifications_active_rounded;
   static const IconData darkMode = Symbols.dark_mode_rounded;
   static const IconData palette = Symbols.palette_rounded;
+  static const IconData text = Symbols.text_fields_rounded;
   static const IconData export = Symbols.sim_card_download_rounded;
   static const IconData shield = Symbols.shield_person_rounded;
   static const IconData warning = Symbols.warning_rounded;
