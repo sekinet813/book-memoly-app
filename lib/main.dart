@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'core/routing/app_router.dart';
+import 'core/providers/settings_providers.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/theme.dart';
 
@@ -33,11 +34,12 @@ class BookMemolyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final fontScale = ref.watch(fontScaleProvider);
 
     return MaterialApp.router(
       title: 'Book Memoly',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme(fontScale),
+      darkTheme: AppTheme.darkTheme(fontScale),
       themeMode: ThemeMode.system,
       routerConfig: router,
     );

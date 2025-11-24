@@ -34,16 +34,17 @@ class AppTheme {
     navigationBarOpacity: 0.95,
   );
 
-  static ThemeData get lightTheme => FlexThemeData.light(
+  static ThemeData lightTheme(AppFontScale fontScale) => FlexThemeData.light(
         colors: lightScheme,
         surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
         blendLevel: 9,
         useMaterial3: true,
-        textTheme: lightTextTheme(),
+        textTheme: lightTextTheme(fontScale),
         fontFamily: primaryFontFamily,
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
+        fontFamilyFallback: memoFontFallbacks,
         iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: lightColorScheme.onSurfaceVariant,
@@ -80,16 +81,17 @@ class AppTheme {
         ),
       );
 
-  static ThemeData get darkTheme => FlexThemeData.dark(
+  static ThemeData darkTheme(AppFontScale fontScale) => FlexThemeData.dark(
         colors: darkScheme,
         surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
         blendLevel: 15,
         useMaterial3: true,
-        textTheme: darkTextTheme(),
+        textTheme: darkTextTheme(fontScale),
         fontFamily: primaryFontFamily,
         subThemesData: _subThemes,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ).copyWith(
+        fontFamilyFallback: memoFontFallbacks,
         iconTheme: IconThemeData(
           size: AppIconSizes.medium,
           color: darkColorScheme.onSurfaceVariant,
