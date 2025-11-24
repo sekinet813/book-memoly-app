@@ -2,7 +2,7 @@
   xmlns="http://www.w3.org/2000/svg"
   viewBox="0 0 512 512"
 >
-  <!-- 本の表紙（緑） -->
+  <!-- Book Memoly brand mark -->
   <rect
     x="80"
     y="64"
@@ -10,10 +10,9 @@
     height="384"
     rx="40"
     ry="40"
-    fill="#2f855a"
+    fill="#3e8f7b"
   />
 
-  <!-- 本の背表紙（濃い緑） -->
   <rect
     x="336"
     y="64"
@@ -21,10 +20,9 @@
     height="384"
     rx="16"
     ry="16"
-    fill="#25694a"
+    fill="#2f6f64"
   />
 
-  <!-- 上部ページライン -->
   <rect
     x="112"
     y="96"
@@ -32,11 +30,10 @@
     height="22"
     rx="11"
     ry="11"
-    fill="#f7fafc"
-    opacity="0.92"
+    fill="#f0f7f3"
+    opacity="0.96"
   />
 
-  <!-- 柔らかいフォント風のBM -->
   <text
     x="215"
     y="292"

@@ -9,6 +9,7 @@ import '../../core/theme/tokens/spacing.dart';
 import '../../core/theme/tokens/text_styles.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/common_button.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../shared/constants/app_constants.dart';
 import '../../shared/constants/app_icons.dart';
 
@@ -86,6 +87,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Center(
+            child: AppLogo(
+              subtitle: '読みたい本とアイデアを鮮やかに残す',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.large),
           Text(
             'メールアドレスでログイン',
             style: AppTextStyles.pageTitle(context),

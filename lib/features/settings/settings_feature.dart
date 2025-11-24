@@ -7,6 +7,7 @@ import '../../core/providers/settings_providers.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/section_header.dart';
+import '../../core/widgets/app_logo.dart';
 import '../../shared/constants/app_icons.dart';
 import '../../core/theme/tokens/spacing.dart';
 
@@ -141,6 +142,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ],
           ),
+          const _BrandFooter(),
         ],
       ),
     );
@@ -535,6 +537,54 @@ class _SettingsTile extends StatelessWidget {
             ),
       ),
       trailing: trailing ?? Icon(AppIcons.chevronRight, color: colorScheme.onSurfaceVariant),
+    );
+  }
+}
+
+class _BrandFooter extends StatelessWidget {
+  const _BrandFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.large),
+      child: Column(
+        children: [
+          Divider(color: colorScheme.outlineVariant),
+          const SizedBox(height: AppSpacing.medium),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const AppLogo(
+                size: 72,
+                showWordmark: false,
+              ),
+              const SizedBox(width: AppSpacing.medium),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Book Memoly',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  Text(
+                    '読書の記憶を、美しく。',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

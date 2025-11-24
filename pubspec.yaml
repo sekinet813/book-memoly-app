@@ -17,6 +17,7 @@ dependencies:
 
   # Icons
   material_symbols_icons: ^4.2801.0
+  flutter_svg: ^2.0.10+1
 
   # State Management
   flutter_riverpod: ^2.5.1
@@ -57,8 +58,35 @@ dev_dependencies:
   freezed: ^2.4.6
   json_serializable: ^6.7.1
   drift_dev: ^2.14.1
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - img/icon.svg
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "img/icon.svg"
+  adaptive_icon_foreground: "img/icon.svg"
+  adaptive_icon_background: "#E6F2EB"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#E9F5EF"
+  color_dark: "#0E2019"
+  image: img/icon.svg
+  image_dark: img/icon.svg
+  android_12:
+    color: "#E9F5EF"
+    color_dark: "#0E2019"
+    image: img/icon.svg
+    image_dark: img/icon.svg
+  android: true
+  ios: true
+  web: false
 
 
