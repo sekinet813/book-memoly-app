@@ -24,11 +24,10 @@ jobs:
             ${{ runner.os }}-pub-
 
       - name: Set up Flutter
-        uses: google-github-actions/setup-flutter@v1
+        uses: cirrus-actions/setup-flutter@v2
         with:
           flutter-version: '3.14.1'
           channel: 'stable'
-          cache: true
 
       - name: Install dependencies
         run: flutter pub get
