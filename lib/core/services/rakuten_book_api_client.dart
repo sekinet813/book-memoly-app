@@ -65,7 +65,8 @@ class RakutenBooksApiClient {
 
       final data = response.data;
       if (data == null) {
-        throw const RakutenBooksApiException('Empty response body from Rakuten Books edge function');
+        throw const RakutenBooksApiException(
+            'Empty response body from Rakuten Books edge function');
       }
 
       return RakutenBooksResponse.fromJson(data);
@@ -100,7 +101,8 @@ class RakutenBooksApiClient {
           error: error.response?.data,
         );
       case DioExceptionType.cancel:
-        return const RakutenBooksApiException('Rakuten Books request was cancelled.');
+        return const RakutenBooksApiException(
+            'Rakuten Books request was cancelled.');
       case DioExceptionType.unknown:
       case DioExceptionType.connectionError:
         return RakutenBooksApiException(
