@@ -106,6 +106,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       title: AppConstants.appName,
       actions: [
         IconButton(
+          tooltip: 'タイムライン',
+          onPressed: () {
+            context.push('/timeline');
+          },
+          icon: const Icon(AppIcons.calendarViewWeek),
+        ),
+        IconButton(
           tooltip: '統計',
           onPressed: () {
             context.push('/statistics');
