@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
+import '../models/goal.dart';
+
 /// In-memory stand-in for the Drift database until code generation is wired up.
 class AppDatabase {
   AppDatabase({QueryExecutor? executor}) {
@@ -10,6 +12,7 @@ class AppDatabase {
     actions = ActionDao(this);
     readingLogs = ReadingLogDao(this);
     tags = TagDao(this);
+    goals = GoalDao(this);
 
     _emitBookSnapshot();
   }
@@ -21,6 +24,7 @@ class AppDatabase {
   late final ActionDao actions;
   late final ReadingLogDao readingLogs;
   late final TagDao tags;
+  late final GoalDao goals;
 
   final _bookRows = <BookRow>[];
   final _noteRows = <NoteRow>[];
@@ -29,6 +33,7 @@ class AppDatabase {
   final _tagRows = <TagRow>[];
   final _bookTagRows = <BookTagRow>[];
   final _noteTagRows = <NoteTagRow>[];
+  final _goalRows = <GoalRow>[];
 
   int _bookId = 0;
   int _noteId = 0;
@@ -37,6 +42,7 @@ class AppDatabase {
   int _tagId = 0;
   int _bookTagId = 0;
   int _noteTagId = 0;
+  int _goalId = 0;
 
   final _bookStreamController =
       StreamController<List<BookRow>>.broadcast(onListen: () {});
@@ -208,6 +214,31 @@ class NoteTagRow {
   final int tagId;
 }
 
+class GoalRow {
+  GoalRow({
+    required this.id,
+    required this.userId,
+    required this.period,
+    required this.year,
+    this.month,
+    required this.targetType,
+    required this.targetValue,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  final int id;
+  final String userId;
+  final GoalPeriod period;
+  final int year;
+  final int? month;
+  final GoalMetric targetType;
+  final int targetValue;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
 class BooksCompanion {
   const BooksCompanion({
     required this.userId,
@@ -341,6 +372,33 @@ class TagsCompanion {
 
   final String userId;
   final String name;
+}
+
+class GoalsCompanion {
+  const GoalsCompanion({
+    required this.userId,
+    required this.period,
+    required this.year,
+    this.month,
+    required this.targetType,
+    required this.targetValue,
+  });
+
+  const GoalsCompanion.insert({
+    required this.userId,
+    required this.period,
+    required this.year,
+    this.month,
+    required this.targetType,
+    required this.targetValue,
+  });
+
+  final String userId;
+  final GoalPeriod period;
+  final int year;
+  final Value<int?>? month;
+  final GoalMetric targetType;
+  final int targetValue;
 }
 
 class BookDao {
@@ -787,9 +845,101 @@ class TagDao {
 
       db._noteTagRows.add(
         NoteTagRow(id: ++db._noteTagId, noteId: noteId, tagId: tagId),
+    );
+  }
+}
+
+class GoalDao {
+  GoalDao(this.db);
+
+  final AppDatabase db;
+
+  Future<List<GoalRow>> getAllGoals(String userId) async {
+    final goals = db._goalRows
+        .where((goal) => goal.userId == userId)
+        .toList(growable: false);
+
+    goals.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return goals;
+  }
+
+  Future<GoalRow?> getGoalForPeriod(
+    String userId,
+    GoalPeriod period, {
+    required int year,
+    int? month,
+  }) async {
+    try {
+      return db._goalRows.firstWhere(
+        (goal) =>
+            goal.userId == userId &&
+            goal.period == period &&
+            goal.year == year &&
+            goal.month == month,
       );
+    } catch (_) {
+      return null;
     }
   }
+
+  Future<int> upsertGoal(GoalsCompanion entry) async {
+    final targetMonth = entry.month?.value;
+    final index = db._goalRows.indexWhere(
+      (goal) =>
+          goal.userId == entry.userId &&
+          goal.period == entry.period &&
+          goal.year == entry.year &&
+          goal.month == targetMonth,
+    );
+
+    if (index == -1) {
+      final newId = ++db._goalId;
+      db._goalRows.add(
+        GoalRow(
+          id: newId,
+          userId: entry.userId,
+          period: entry.period,
+          year: entry.year,
+          month: targetMonth,
+          targetType: entry.targetType,
+          targetValue: entry.targetValue,
+        ),
+      );
+      return newId;
+    }
+
+    final existing = db._goalRows[index];
+    db._goalRows[index] = GoalRow(
+      id: existing.id,
+      userId: existing.userId,
+      period: existing.period,
+      year: existing.year,
+      month: existing.month,
+      targetType: entry.targetType,
+      targetValue: entry.targetValue,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    return existing.id;
+  }
+
+  Future<void> upsertFromRemote(GoalRow row) async {
+    final index = db._goalRows.indexWhere(
+      (goal) => goal.id == row.id && goal.userId == row.userId,
+    );
+
+    if (index == -1) {
+      db._goalRows.add(row);
+    } else {
+      db._goalRows[index] = row;
+    }
+
+    if (db._goalId < row.id) {
+      db._goalId = row.id;
+    }
+  }
+}
 
   Future<List<TagRow>> getTagsForBook(String userId, int bookId) async {
     final tagIds = db._bookTagRows

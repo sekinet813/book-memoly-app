@@ -17,6 +17,7 @@ import '../../core/widgets/app_page.dart';
 import '../../core/widgets/loading_indicator.dart';
 import '../../shared/constants/app_constants.dart';
 import '../../shared/constants/app_icons.dart';
+import '../goals/goals_feature.dart';
 
 final bookshelfNotifierProvider =
     StateNotifierProvider<BookshelfNotifier, BookshelfState>((ref) {
@@ -137,6 +138,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           const _HeaderSection(),
           const SizedBox(height: 18),
+          const _GoalProgressOverview(),
+          const SizedBox(height: 18),
           _ContinueReadingSection(state: bookshelfState),
           const SizedBox(height: 20),
           _MagazineGrid(state: bookshelfState),
@@ -180,6 +183,161 @@ class _HeaderSection extends ConsumerWidget {
           const SizedBox(height: 12),
           _ProfileSummaryCard(profileState: profileState),
         ],
+      ],
+    );
+  }
+}
+
+class _GoalProgressOverview extends ConsumerWidget {
+  const _GoalProgressOverview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(goalsNotifierProvider);
+
+    if (state.isLoading) {
+      return const LoadingIndicator();
+    }
+
+    if (state.error != null) {
+      return _ErrorText(error: state.error!);
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  AppIcons.goal,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '今月の進捗',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '設定した読書目標に対する現在の達成度を確認できます。',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => context.push('/goals'),
+                icon: const Icon(AppIcons.chevronRight),
+                label: const Text('目標を編集'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _GoalProgressRow(
+            label: '今月',
+            goal: state.monthlyGoal,
+            progress: state.monthlyProgressValue,
+            defaultMetric: GoalMetric.pages,
+          ),
+          const Divider(height: 28),
+          _GoalProgressRow(
+            label: '今年',
+            goal: state.yearlyGoal,
+            progress: state.yearlyProgressValue,
+            defaultMetric: GoalMetric.books,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalProgressRow extends StatelessWidget {
+  const _GoalProgressRow({
+    required this.label,
+    required this.goal,
+    required this.progress,
+    required this.defaultMetric,
+  });
+
+  final String label;
+  final GoalRow? goal;
+  final int progress;
+  final GoalMetric defaultMetric;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = goal?.targetValue ?? 0;
+    final metric = goal?.targetType ?? defaultMetric;
+    final unit = metric.unitSuffix;
+    final ratio = target == 0 ? 0.0 : (progress / target).clamp(0, 1).toDouble();
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '$label (${metric.label})',
+              style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              target == 0
+                  ? '$progress $unit'
+                  : '$progress / $target $unit',
+              style: textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 10,
+            backgroundColor: colorScheme.surfaceVariant.withValues(alpha: 0.6),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(colorScheme.primary),
+          ),
+        ),
+        if (goal == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '目標未設定です',
+              style: textTheme.bodySmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
       ],
     );
   }
