@@ -434,11 +434,13 @@ class BookDao {
         .toList(growable: false);
   }
 
-  Stream<List<BookRow>> watchAllBooks(String userId) => db._bookStream.map(
-        (books) => books
-            .where((book) => book.userId == userId)
-            .toList(growable: false),
-      );
+  Stream<List<BookRow>> watchAllBooks(String userId) async* {
+    yield await getAllBooks(userId);
+    yield* db._bookStream.map(
+      (books) =>
+          books.where((book) => book.userId == userId).toList(growable: false),
+    );
+  }
 
   Future<BookRow?> getBookByGoogleId(
     String userId,
@@ -453,8 +455,10 @@ class BookDao {
     }
   }
 
-  Stream<BookRow?> watchBookByGoogleId(String userId, String googleBooksId) {
-    return db._bookStream.map((books) {
+  Stream<BookRow?> watchBookByGoogleId(
+      String userId, String googleBooksId) async* {
+    yield await getBookByGoogleId(userId, googleBooksId);
+    yield* db._bookStream.map((books) {
       for (final book in books) {
         if (book.userId == userId && book.googleBooksId == googleBooksId) {
           return book;
