@@ -105,6 +105,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       title: AppConstants.appName,
       actions: [
         IconButton(
+          tooltip: '統計',
+          onPressed: () {
+            context.push('/statistics');
+          },
+          icon: const Icon(AppIcons.barChart),
+        ),
+        IconButton(
           tooltip: '設定',
           onPressed: () {
             context.push('/settings');
