@@ -7,6 +7,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/notification_providers.dart';
+import '../../core/providers/reading_activity_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/theme/tokens/spacing.dart';
@@ -16,7 +18,7 @@ import '../../shared/constants/app_icons.dart';
 final readingSpeedNotifierProvider =
     StateNotifierProvider<ReadingSpeedNotifier, ReadingSpeedState>((ref) {
   final repository = ref.read(localDatabaseRepositoryProvider);
-  return ReadingSpeedNotifier(repository)..load();
+  return ReadingSpeedNotifier(repository, ref)..load();
 });
 
 class ReadingSpeedState {
@@ -97,9 +99,11 @@ class MonthlyStatPoint {
 }
 
 class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
-  ReadingSpeedNotifier(this._repository) : super(ReadingSpeedState.initial());
+  ReadingSpeedNotifier(this._repository, this._ref)
+      : super(ReadingSpeedState.initial());
 
   final LocalDatabaseRepository _repository;
+  final Ref _ref;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -154,6 +158,7 @@ class ReadingSpeedNotifier extends StateNotifier<ReadingSpeedState> {
       pagesRead: pagesRead,
       durationMinutes: durationMinutes,
     );
+    _ref.invalidate(todayReadingSessionsProvider);
     await load();
     state = state.copyWith(selectedBookId: bookId);
   }
@@ -538,6 +543,10 @@ class _ReadingLogForm extends ConsumerWidget {
           pagesRead: pages,
           durationMinutes: duration,
         );
+
+    await ref
+        .read(notificationSettingsNotifierProvider.notifier)
+        .triggerPostReadingPrompt();
 
     pagesController.clear();
     durationController.clear();

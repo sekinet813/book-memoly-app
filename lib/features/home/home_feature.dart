@@ -8,6 +8,8 @@ import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/providers/auth_providers.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/notification_providers.dart';
+import '../../core/providers/reading_activity_providers.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/providers/sync_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
@@ -90,7 +92,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(_startSync);
+    Future.microtask(() {
+      _startSync();
+      ref.read(notificationSettingsNotifierProvider);
+    });
   }
 
   Future<void> _startSync() async {
@@ -145,6 +150,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         children: [
           const _HeaderSection(),
           const SizedBox(height: 18),
+          const _TodayReadingDashboard(),
+          const SizedBox(height: 18),
           const _GoalProgressOverview(),
           const SizedBox(height: 18),
           _ContinueReadingSection(state: bookshelfState),
@@ -191,6 +198,85 @@ class _HeaderSection extends ConsumerWidget {
           _ProfileSummaryCard(profileState: profileState),
         ],
       ],
+    );
+  }
+}
+
+class _TodayReadingDashboard extends ConsumerWidget {
+  const _TodayReadingDashboard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionCount = ref.watch(todayReadingSessionsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return sessionCount.when(
+      loading: () => const LoadingIndicator(),
+      error: (error, _) => _ErrorText(error: error.toString()),
+      data: (count) {
+        return AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      colorScheme.primaryContainer.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  AppIcons.menuBook,
+                  color: colorScheme.onPrimaryContainer,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '今日の読書回数',
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '小さな積み重ねが習慣になります。いまの気分で数ページから始めましょう。',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$count 回',
+                    style: textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    count > 0 ? '素敵なリズムです' : '最初の1回を記録',
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
