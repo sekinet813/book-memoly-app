@@ -126,14 +126,22 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/actions',
-        pageBuilder: (context, state) => _buildNoTransitionPage(
-          child: const ActionPlansPage(),
-          state: state,
-        ),
+        pageBuilder: (context, state) {
+          final bookId =
+              int.tryParse(state.uri.queryParameters['bookId'] ?? '');
+          return _buildNoTransitionPage(
+            child: ActionPlansPage(initialBookId: bookId),
+            state: state,
+          );
+        },
       ),
       GoRoute(
         path: '/reading-speed',
-        builder: (context, state) => const ReadingSpeedPage(),
+        builder: (context, state) {
+          final bookId =
+              int.tryParse(state.uri.queryParameters['bookId'] ?? '');
+          return ReadingSpeedPage(initialBookId: bookId);
+        },
       ),
       GoRoute(
         path: '/statistics',

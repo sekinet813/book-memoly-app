@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/notification_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/theme/tokens/spacing.dart';
 import '../../core/theme/tokens/text_styles.dart';
@@ -16,7 +17,7 @@ enum ActionStatusFilter { all, pending, done }
 final actionPlansNotifierProvider =
     StateNotifierProvider<ActionPlansNotifier, ActionPlansState>((ref) {
   final repository = ref.read(localDatabaseRepositoryProvider);
-  return ActionPlansNotifier(repository)..loadBooks();
+  return ActionPlansNotifier(repository, ref)..loadBooks();
 });
 
 class ActionPlansState {
@@ -56,7 +57,7 @@ class ActionPlansState {
 }
 
 class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
-  ActionPlansNotifier(this._repository)
+  ActionPlansNotifier(this._repository, this._ref)
       : super(const ActionPlansState(
           books: [],
           actions: AsyncValue.data([]),
@@ -66,6 +67,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
         ));
 
   final LocalDatabaseRepository _repository;
+  final Ref _ref;
 
   Future<void> loadBooks({int? initialBookId}) async {
     state = state.copyWith(isLoadingBooks: true);
@@ -146,7 +148,7 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     DateTime? remindAt,
     int? noteId,
   }) async {
-    await _repository.addAction(
+    final actionId = await _repository.addAction(
       bookId: bookId,
       title: title,
       description: description,
@@ -155,6 +157,11 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
       noteId: noteId,
     );
     await loadActionsForBook(bookId);
+
+    final newAction = _findAction(actionId);
+    if (newAction != null) {
+      await _scheduleActionReminder(newAction);
+    }
   }
 
   void setStatusFilter(ActionStatusFilter filter) {
@@ -181,6 +188,17 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
       noteId: noteId,
     );
     await loadActionsForBook(bookId);
+
+    final updated = _findAction(actionId);
+    if (updated != null) {
+      if (status == 'done') {
+        await _ref
+            .read(notificationServiceProvider)
+            .cancelActionPlanReminder(actionId);
+      } else {
+        await _scheduleActionReminder(updated);
+      }
+    }
   }
 
   Future<void> deleteAction({
@@ -188,6 +206,9 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     required int bookId,
   }) async {
     await _repository.deleteAction(actionId);
+    await _ref
+        .read(notificationServiceProvider)
+        .cancelActionPlanReminder(actionId);
     await loadActionsForBook(bookId);
   }
 
@@ -202,6 +223,17 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
       status: newStatus,
     );
     await loadActionsForBook(action.bookId!);
+
+    if (isDone) {
+      await _ref
+          .read(notificationServiceProvider)
+          .cancelActionPlanReminder(action.id);
+    } else {
+      final refreshed = _findAction(action.id);
+      if (refreshed != null) {
+        await _scheduleActionReminder(refreshed);
+      }
+    }
   }
 
   Future<void> updateReminder(
@@ -221,14 +253,87 @@ class ActionPlansNotifier extends StateNotifier<ActionPlansState> {
     );
 
     await loadActionsForBook(action.bookId!);
+
+    final refreshed = _findAction(action.id);
+    if (refreshed != null) {
+      await _scheduleActionReminder(refreshed);
+    }
+  }
+
+  ActionRow? _findAction(int actionId) {
+    final actions = state.actions.valueOrNull;
+    if (actions == null) {
+      return null;
+    }
+
+    for (final action in actions) {
+      if (action.id == actionId) {
+        return action;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _scheduleActionReminder(ActionRow action) async {
+    final settings =
+        _ref.read(notificationSettingsNotifierProvider).valueOrNull;
+    if (settings == null ||
+        !settings.permissionGranted ||
+        !settings.actionPlanRemindersEnabled) {
+      return;
+    }
+
+    final remindAt = action.remindAt;
+    if (remindAt == null || remindAt.isBefore(DateTime.now())) {
+      await _ref
+          .read(notificationServiceProvider)
+          .cancelActionPlanReminder(action.id);
+      return;
+    }
+
+    await _ref.read(notificationServiceProvider).scheduleActionPlanReminder(
+          actionId: action.id,
+          actionTitle: action.title,
+          remindAt: remindAt,
+          bookId: action.bookId,
+          bookTitle: _bookTitleForAction(action),
+        );
+  }
+
+  String? _bookTitleForAction(ActionRow action) {
+    for (final book in state.books) {
+      if (book.id == action.bookId) {
+        return book.title;
+      }
+    }
+
+    return null;
   }
 }
 
-class ActionPlansPage extends ConsumerWidget {
-  const ActionPlansPage({super.key});
+class ActionPlansPage extends ConsumerStatefulWidget {
+  const ActionPlansPage({super.key, this.initialBookId});
+
+  final int? initialBookId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActionPlansPage> createState() => _ActionPlansPageState();
+}
+
+class _ActionPlansPageState extends ConsumerState<ActionPlansPage> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref
+          .read(actionPlansNotifierProvider.notifier)
+          .ensureBooksLoaded(initialBookId: widget.initialBookId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(actionPlansNotifierProvider);
 
     return AppPage(
