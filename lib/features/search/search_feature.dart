@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/database/app_database.dart';
@@ -15,13 +16,20 @@ import '../../core/widgets/loading_indicator.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
+import '../../core/providers/auth_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/models/rakuten/rakuten_book.dart';
 import '../../core/services/rakuten_book_api_client.dart';
+import '../../core/services/supabase_service.dart';
 import '../../shared/constants/app_icons.dart';
 
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
   return BookSearchRepository(ref.read(rakutenBooksApiClientProvider));
+});
+
+final allBooksProvider = FutureProvider<List<BookRow>>((ref) async {
+  final repository = ref.read(localDatabaseRepositoryProvider);
+  return repository.getAllBooks();
 });
 
 class BookSearchResult {
@@ -369,13 +377,346 @@ class LocalSearchNotifier extends StateNotifier<LocalSearchState> {
   }
 }
 
+final memoSearchRepositoryProvider = Provider<MemoSearchRepository>((ref) {
+  final localRepository = ref.read(localDatabaseRepositoryProvider);
+  final supabase = ref.read(supabaseServiceProvider);
+  final userId = ref.read(currentUserIdProvider);
+
+  return MemoSearchRepository(
+    localRepository: localRepository,
+    supabaseClient: supabase?.client,
+    userId: userId,
+  );
+});
+
+class MemoSearchRepository {
+  MemoSearchRepository({
+    required LocalDatabaseRepository localRepository,
+    required SupabaseClient? supabaseClient,
+    required String? userId,
+  })  : _localRepository = localRepository,
+        _client = supabaseClient,
+        _userId = userId;
+
+  final LocalDatabaseRepository _localRepository;
+  final SupabaseClient? _client;
+  final String? _userId;
+
+  Future<List<LocalSearchResult>> search({
+    required String keyword,
+    int? bookId,
+    Set<int>? tagIds,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final supabaseResults = await _searchWithSupabase(
+        keyword: keyword,
+        bookId: bookId,
+        tagIds: tagIds,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      if (supabaseResults != null) {
+        return supabaseResults;
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Supabase memo search failed: $error');
+      debugPrint('Stack trace: $stackTrace');
+    }
+
+    return _localRepository.searchBooksAndNotes(
+      keyword,
+      tagIds: tagIds,
+      bookId: bookId,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  Future<List<LocalSearchResult>?> _searchWithSupabase({
+    required String keyword,
+    int? bookId,
+    Set<int>? tagIds,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    if (_client == null || _userId == null) {
+      return null;
+    }
+
+    final response = await _client.rpc(
+      'search_notes',
+      params: {
+        'p_user_id': _userId,
+        'p_query': keyword.trim().isEmpty ? null : keyword,
+        'p_book_ids': bookId != null ? [bookId] : null,
+        'p_tag_ids': tagIds?.toList(),
+        'p_start_date': startDate?.toIso8601String(),
+        'p_end_date': endDate?.toIso8601String(),
+      },
+    );
+
+    final rows = (response as List<dynamic>).cast<Map<String, dynamic>>();
+
+    final builders = <int, _MemoResultBuilder>{};
+    final bookIds = <int>{};
+    final noteIds = <int>{};
+
+    for (final row in rows) {
+      final parsedBookId = _parseInt(row['book_id']);
+      final parsedNoteId = _parseInt(row['note_id']);
+
+      if (parsedBookId == null || parsedNoteId == null) {
+        continue;
+      }
+
+      final builder = builders.putIfAbsent(parsedBookId, () {
+        final book = _bookFromRow(row, parsedBookId);
+        return _MemoResultBuilder(book);
+      });
+
+      final note = _noteFromRow(row, parsedNoteId, parsedBookId);
+      if (note != null) {
+        builder.addNote(note);
+        noteIds.add(note.id);
+      }
+
+      bookIds.add(parsedBookId);
+    }
+
+    if (builders.isEmpty) {
+      return <LocalSearchResult>[];
+    }
+
+    final bookTags = await _localRepository.getTagsForBooks(bookIds.toList());
+    final noteTags = await _localRepository.getTagsForNotes(noteIds.toList());
+
+    return builders.values
+        .map((builder) => builder.toResult(bookTags, noteTags))
+        .toList();
+  }
+
+  BookRow _bookFromRow(Map<String, dynamic> row, int bookId) {
+    final createdAt = _parseDate(row['book_created_at']) ?? DateTime.now();
+    return BookRow(
+      id: bookId,
+      userId: _userId!,
+      googleBooksId: (row['google_books_id'] as String?) ?? '',
+      title: (row['book_title'] as String?) ?? 'Untitled',
+      authors: row['book_authors'] as String?,
+      description: row['book_description'] as String?,
+      thumbnailUrl: row['book_thumbnail_url'] as String?,
+      publishedDate: row['book_published_date'] as String?,
+      pageCount: _parseInt(row['book_page_count']),
+      status: _parseInt(row['book_status']) ?? 0,
+      startedAt: _parseDate(row['book_started_at']),
+      finishedAt: _parseDate(row['book_finished_at']),
+      createdAt: createdAt,
+      updatedAt: _parseDate(row['book_updated_at']) ?? createdAt,
+    );
+  }
+
+  NoteRow? _noteFromRow(Map<String, dynamic> row, int noteId, int bookId) {
+    final createdAt = _parseDate(row['created_at']);
+    final updatedAt = _parseDate(row['updated_at']);
+    final content = row['content'] as String?;
+
+    if (createdAt == null || updatedAt == null || content == null) {
+      return null;
+    }
+
+    return NoteRow(
+      id: noteId,
+      userId: _userId!,
+      bookId: bookId,
+      content: content,
+      pageNumber: _parseInt(row['page_number']),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    return null;
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return null;
+  }
+}
+
+class _MemoResultBuilder {
+  _MemoResultBuilder(this.book);
+
+  final BookRow book;
+  final List<NoteRow> notes = [];
+
+  void addNote(NoteRow note) {
+    notes.add(note);
+  }
+
+  LocalSearchResult toResult(
+    Map<int, List<TagRow>> bookTags,
+    Map<int, List<TagRow>> noteTags,
+  ) {
+    final noteTagMap = <int, List<TagRow>>{};
+    for (final note in notes) {
+      noteTagMap[note.id] = noteTags[note.id] ?? const [];
+    }
+
+    return LocalSearchResult(
+      book: book,
+      matchingNotes: notes,
+      bookTags: bookTags[book.id] ?? const [],
+      noteTags: noteTagMap,
+    );
+  }
+}
+
+class MemoSearchState {
+  const MemoSearchState({
+    required this.results,
+    this.hasSearched = false,
+    this.keyword = '',
+    this.selectedBookId,
+    this.selectedTagIds = const {},
+    this.startDate,
+    this.endDate,
+  });
+
+  final AsyncValue<List<LocalSearchResult>> results;
+  final bool hasSearched;
+  final String keyword;
+  final int? selectedBookId;
+  final Set<int> selectedTagIds;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  MemoSearchState copyWith({
+    AsyncValue<List<LocalSearchResult>>? results,
+    bool? hasSearched,
+    String? keyword,
+    int? selectedBookId,
+    Set<int>? selectedTagIds,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    return MemoSearchState(
+      results: results ?? this.results,
+      hasSearched: hasSearched ?? this.hasSearched,
+      keyword: keyword ?? this.keyword,
+      selectedBookId: selectedBookId ?? this.selectedBookId,
+      selectedTagIds: selectedTagIds ?? this.selectedTagIds,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+    );
+  }
+}
+
+final memoSearchNotifierProvider =
+    StateNotifierProvider<MemoSearchNotifier, MemoSearchState>((ref) {
+  final repository = ref.read(memoSearchRepositoryProvider);
+  return MemoSearchNotifier(repository);
+});
+
+class MemoSearchNotifier extends StateNotifier<MemoSearchState> {
+  MemoSearchNotifier(this._repository)
+      : super(const MemoSearchState(results: AsyncValue.data([])));
+
+  final MemoSearchRepository _repository;
+
+  Future<void> search(String keyword) async {
+    state = state.copyWith(
+      results: const AsyncValue.loading(),
+      hasSearched: true,
+      keyword: keyword.trim(),
+    );
+
+    try {
+      final results = await _repository.search(
+        keyword: keyword,
+        bookId: state.selectedBookId,
+        tagIds: state.selectedTagIds,
+        startDate: state.startDate,
+        endDate: state.endDate,
+      );
+
+      state = state.copyWith(results: AsyncValue.data(results));
+    } catch (error, stackTrace) {
+      state = state.copyWith(results: AsyncValue.error(error, stackTrace));
+    }
+  }
+
+  void setBook(int? bookId) {
+    state = state.copyWith(selectedBookId: bookId);
+
+    if (state.hasSearched) {
+      unawaited(search(state.keyword));
+    }
+  }
+
+  void setTags(Set<int> tagIds) {
+    state = state.copyWith(selectedTagIds: tagIds);
+
+    if (state.hasSearched) {
+      unawaited(search(state.keyword));
+    }
+  }
+
+  void setStartDate(DateTime? date) {
+    final normalizedEnd = state.endDate;
+    final adjustedStart =
+        (normalizedEnd != null && date != null && date.isAfter(normalizedEnd))
+            ? normalizedEnd
+            : date;
+
+    state = state.copyWith(startDate: adjustedStart);
+
+    if (state.hasSearched) {
+      unawaited(search(state.keyword));
+    }
+  }
+
+  void setEndDate(DateTime? date) {
+    final normalizedStart = state.startDate;
+    final adjustedEnd =
+        (normalizedStart != null && date != null && date.isBefore(normalizedStart))
+            ? normalizedStart
+            : date;
+
+    state = state.copyWith(endDate: adjustedEnd);
+
+    if (state.hasSearched) {
+      unawaited(search(state.keyword));
+    }
+  }
+}
+
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const DefaultTabController(
-      length: 2,
+      length: 3,
       child: AppPage(
         title: '検索',
         padding: EdgeInsets.zero,
@@ -384,12 +725,14 @@ class SearchPage extends StatelessWidget {
           tabs: [
             Tab(text: 'オンライン検索'),
             Tab(text: 'ローカル検索'),
+            Tab(text: '全文メモ検索'),
           ],
         ),
         child: TabBarView(
           children: [
             _OnlineSearchTab(),
             _LocalSearchTab(),
+            _MemoSearchTab(),
           ],
         ),
       ),
@@ -631,6 +974,207 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
   }
 }
 
+class _MemoSearchTab extends ConsumerStatefulWidget {
+  const _MemoSearchTab();
+
+  @override
+  ConsumerState<_MemoSearchTab> createState() => _MemoSearchTabState();
+}
+
+class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
+  late final TextEditingController _keywordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _keywordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _keywordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memoState = ref.watch(memoSearchNotifierProvider);
+    final booksAsync = ref.watch(allBooksProvider);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _keywordController,
+                decoration: const InputDecoration(
+                  labelText: '全文検索キーワード',
+                  hintText: 'メモ本文 / 書籍タイトル / 日付',
+                  prefixIcon: Icon(AppIcons.search),
+                ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _triggerSearch(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(AppIcons.book),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: booksAsync.when(
+                      loading: () => const LinearProgressIndicator(),
+                      error: (error, _) => Text('本の読み込みに失敗しました: $error'),
+                      data: (books) {
+                        return DropdownButton<int?>(
+                          value: memoState.selectedBookId,
+                          isExpanded: true,
+                          hint: const Text('すべての本'),
+                          items: [
+                            const DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('すべての本'),
+                            ),
+                            ...books.map(
+                              (book) => DropdownMenuItem<int>(
+                                value: book.id,
+                                child: Text(book.title),
+                              ),
+                            ),
+                          ],
+                          onChanged: (bookId) {
+                            ref
+                                .read(memoSearchNotifierProvider.notifier)
+                                .setBook(bookId);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(AppIcons.label),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('タグで絞り込む'),
+                        const SizedBox(height: 8),
+                        TagSelector(
+                          selectedTagIds: memoState.selectedTagIds,
+                          onSelectionChanged: (ids) {
+                            ref
+                                .read(memoSearchNotifierProvider.notifier)
+                                .setTags(ids);
+                          },
+                          showAddButton: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickDate(context, isStart: true),
+                      icon: const Icon(AppIcons.calendar),
+                      label: Text('開始日: ${_formatDate(context, memoState.startDate)}'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickDate(context, isStart: false),
+                      icon: const Icon(AppIcons.calendar),
+                      label: Text('終了日: ${_formatDate(context, memoState.endDate)}'),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref
+                          .read(memoSearchNotifierProvider.notifier)
+                          .setStartDate(null);
+                      ref
+                          .read(memoSearchNotifierProvider.notifier)
+                          .setEndDate(null);
+                    },
+                    icon: const Icon(AppIcons.close),
+                    tooltip: '日付フィルターをクリア',
+                  )
+                ],
+              ),
+              const SizedBox(height: 12),
+              PrimaryButton(
+                onPressed: _triggerSearch,
+                icon: AppIcons.manageSearch,
+                label: '全文検索を実行',
+                expand: true,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: memoState.results.when(
+            loading: () => const LoadingIndicator(),
+            error: (error, _) => _ErrorView(error: error),
+            data: (results) => _LocalSearchResults(
+              results: results,
+              hasSearched: memoState.hasSearched,
+              headerLabel: '全文検索結果 (${results.length})',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickDate(BuildContext context, {required bool isStart}) async {
+    final memoState = ref.read(memoSearchNotifierProvider);
+    final now = DateTime.now();
+    final initialDate = isStart
+        ? memoState.startDate ?? memoState.endDate ?? now
+        : memoState.endDate ?? memoState.startDate ?? now;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      if (isStart) {
+        ref.read(memoSearchNotifierProvider.notifier).setStartDate(picked);
+      } else {
+        ref.read(memoSearchNotifierProvider.notifier).setEndDate(picked);
+      }
+    }
+  }
+
+  String _formatDate(BuildContext context, DateTime? date) {
+    if (date == null) {
+      return '未指定';
+    }
+
+    return MaterialLocalizations.of(context).formatCompactDate(date);
+  }
+
+  void _triggerSearch() {
+    ref.read(memoSearchNotifierProvider.notifier).search(_keywordController.text);
+  }
+}
+
 class _SearchResults extends StatelessWidget {
   const _SearchResults({
     required this.books,
@@ -758,10 +1302,12 @@ class _LocalSearchResults extends StatelessWidget {
   const _LocalSearchResults({
     required this.results,
     required this.hasSearched,
+    this.headerLabel,
   });
 
   final List<LocalSearchResult> results;
   final bool hasSearched;
+  final String? headerLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -788,7 +1334,7 @@ class _LocalSearchResults extends StatelessWidget {
       itemBuilder: (context, index) {
         if (index == 0) {
           return SectionHeader(
-            title: 'ローカル検索結果 (${results.length})',
+            title: headerLabel ?? 'ローカル検索結果 (${results.length})',
             padding: const EdgeInsets.symmetric(horizontal: 4),
           );
         }
