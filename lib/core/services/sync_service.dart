@@ -17,8 +17,8 @@ class SupabaseSyncService {
         _repository = repository,
         _connectivity = connectivity ?? Connectivity() {
     _connectivitySubscription =
-        _connectivity.onConnectivityChanged.listen((status) {
-      final isConnected = status != ConnectivityResult.none;
+        _connectivity.onConnectivityChanged.listen((statusList) {
+      final isConnected = !statusList.contains(ConnectivityResult.none);
       if (isConnected) {
         syncIfConnected();
       }
@@ -34,7 +34,7 @@ class SupabaseSyncService {
   final SupabaseClient _client;
   final LocalDatabaseRepository _repository;
   final Connectivity _connectivity;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _syncInProgress = false;
 
   String get _userId => _repository.userId;
@@ -77,8 +77,8 @@ class SupabaseSyncService {
   }
 
   Future<bool> _hasNetworkConnection() async {
-    final status = await _connectivity.checkConnectivity();
-    return status != ConnectivityResult.none;
+    final statusList = await _connectivity.checkConnectivity();
+    return !statusList.contains(ConnectivityResult.none);
   }
 
   DateTime? _parseDateTime(dynamic value) {
@@ -121,10 +121,10 @@ class SupabaseSyncService {
   }
 
   Future<void> _syncBooks() async {
-    final remoteRows = await _client
+    final remoteRows = (await _client
         .from(_bookTable)
-        .select<List<Map<String, dynamic>>>('*')
-        .eq('user_id', _userId);
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
 
     final localBooks = await _repository.getAllBooks();
     final localById = {for (final book in localBooks) book.id: book};
@@ -212,10 +212,10 @@ class SupabaseSyncService {
   }
 
   Future<void> _syncNotes() async {
-    final remoteRows = await _client
+    final remoteRows = (await _client
         .from(_noteTable)
-        .select<List<Map<String, dynamic>>>('*')
-        .eq('user_id', _userId);
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
 
     final localNotes = await _repository.getAllNotes();
     final localById = {for (final note in localNotes) note.id: note};
@@ -227,7 +227,8 @@ class SupabaseSyncService {
 
     final payload = mergedNotes.where((note) {
       final remoteUpdated = remoteUpdatedAt[note.id];
-      return remoteUpdated == null || note.updatedAt.toUtc().isAfter(remoteUpdated);
+      return remoteUpdated == null ||
+          note.updatedAt.toUtc().isAfter(remoteUpdated);
     }).map((note) {
       return {
         'local_id': note.id,
@@ -288,10 +289,10 @@ class SupabaseSyncService {
   }
 
   Future<void> _syncActions() async {
-    final remoteRows = await _client
+    final remoteRows = (await _client
         .from(_actionTable)
-        .select<List<Map<String, dynamic>>>('*')
-        .eq('user_id', _userId);
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
 
     final localActions = await _repository.getAllActions();
     final localById = {for (final action in localActions) action.id: action};
@@ -369,10 +370,10 @@ class SupabaseSyncService {
   }
 
   Future<void> _syncReadingLogs() async {
-    final remoteRows = await _client
+    final remoteRows = (await _client
         .from(_readingLogTable)
-        .select<List<Map<String, dynamic>>>('*')
-        .eq('user_id', _userId);
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
 
     final localLogs = await _repository.getAllReadingLogs();
     final localById = {for (final log in localLogs) log.id: log};
@@ -384,7 +385,8 @@ class SupabaseSyncService {
 
     final payload = mergedLogs.where((log) {
       final remoteUpdated = remoteUpdatedAt[log.id];
-      return remoteUpdated == null || log.updatedAt.toUtc().isAfter(remoteUpdated);
+      return remoteUpdated == null ||
+          log.updatedAt.toUtc().isAfter(remoteUpdated);
     }).map((log) {
       return {
         'local_id': log.id,
@@ -445,10 +447,10 @@ class SupabaseSyncService {
   }
 
   Future<void> _syncGoals() async {
-    final remoteRows = await _client
+    final remoteRows = (await _client
         .from(_goalTable)
-        .select<List<Map<String, dynamic>>>('*')
-        .eq('user_id', _userId);
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
 
     final localGoals = await _repository.getAllGoals();
     final localById = {for (final goal in localGoals) goal.id: goal};
@@ -520,10 +522,10 @@ class SupabaseSyncService {
       final goal = GoalRow(
         id: localId,
         userId: _userId,
-        period: GoalPeriod.fromStorage(period),
+        period: GoalPeriodLabel.fromStorage(period),
         year: year,
         month: month,
-        targetType: GoalMetric.fromStorage(targetType),
+        targetType: GoalMetricLabel.fromStorage(targetType),
         targetValue: targetValue,
         createdAt: createdAt,
         updatedAt: updatedAt,

@@ -845,7 +845,43 @@ class TagDao {
 
       db._noteTagRows.add(
         NoteTagRow(id: ++db._noteTagId, noteId: noteId, tagId: tagId),
-    );
+      );
+    }
+  }
+
+  Future<List<TagRow>> getTagsForBook(String userId, int bookId) async {
+    final tagIds = db._bookTagRows
+        .where((row) => row.bookId == bookId)
+        .map((row) => row.tagId)
+        .toSet();
+
+    return db._tagRows
+        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
+        .toList(growable: false);
+  }
+
+  Future<List<TagRow>> getTagsForNote(String userId, int noteId) async {
+    final tagIds = db._noteTagRows
+        .where((row) => row.noteId == noteId)
+        .map((row) => row.tagId)
+        .toSet();
+
+    return db._tagRows
+        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
+        .toList(growable: false);
+  }
+
+  TagRow? _findTag(int tagId) {
+    try {
+      return db._tagRows.firstWhere((tag) => tag.id == tagId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _tagBelongsToUser(int tagId, String userId) {
+    final tag = _findTag(tagId);
+    return tag?.userId == userId;
   }
 }
 
@@ -938,41 +974,5 @@ class GoalDao {
     if (db._goalId < row.id) {
       db._goalId = row.id;
     }
-  }
-}
-
-  Future<List<TagRow>> getTagsForBook(String userId, int bookId) async {
-    final tagIds = db._bookTagRows
-        .where((row) => row.bookId == bookId)
-        .map((row) => row.tagId)
-        .toSet();
-
-    return db._tagRows
-        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
-        .toList(growable: false);
-  }
-
-  Future<List<TagRow>> getTagsForNote(String userId, int noteId) async {
-    final tagIds = db._noteTagRows
-        .where((row) => row.noteId == noteId)
-        .map((row) => row.tagId)
-        .toSet();
-
-    return db._tagRows
-        .where((tag) => tag.userId == userId && tagIds.contains(tag.id))
-        .toList(growable: false);
-  }
-
-  TagRow? _findTag(int tagId) {
-    try {
-      return db._tagRows.firstWhere((tag) => tag.id == tagId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool _tagBelongsToUser(int tagId, String userId) {
-    final tag = _findTag(tagId);
-    return tag?.userId == userId;
   }
 }

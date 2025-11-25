@@ -349,7 +349,11 @@ class _NotificationSettingsTile extends ConsumerWidget {
                         ),
                       )
                       .toList(),
-                  onChanged: notifier.updateWeeklyWeekday,
+                  onChanged: (value) {
+                    if (value != null) {
+                      notifier.updateWeeklyWeekday(value);
+                    }
+                  },
                 ),
               ],
               const Divider(height: 24),

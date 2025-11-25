@@ -1274,14 +1274,12 @@ class _PaceChart extends StatelessWidget {
           ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              tooltipBgColor:
-                  colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
                   final point = points[spot.x.toInt()];
                   return LineTooltipItem(
                     '${dateFormat.format(point.date)}\n${point.pages} ページ',
-                    textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+                    (textTheme.bodyMedium ?? const TextStyle()).copyWith(color: colorScheme.onSurface),
                   );
                 }).toList();
               },

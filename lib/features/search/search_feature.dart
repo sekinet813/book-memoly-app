@@ -446,7 +446,7 @@ class MemoSearchRepository {
       return null;
     }
 
-    final response = await _client.rpc(
+    final response = await _client?.rpc(
       'search_notes',
       params: {
         'p_user_id': _userId,
@@ -457,6 +457,10 @@ class MemoSearchRepository {
         'p_end_date': endDate?.toIso8601String(),
       },
     );
+
+    if (response == null) {
+      return null;
+    }
 
     final rows = (response as List<dynamic>).cast<Map<String, dynamic>>();
 

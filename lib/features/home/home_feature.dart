@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
+import '../../core/models/goal.dart';
 import '../../core/providers/auth_providers.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/notification_providers.dart';

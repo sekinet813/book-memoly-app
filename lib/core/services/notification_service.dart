@@ -106,11 +106,6 @@ class NotificationService {
   Future<bool> ensurePermissionsGranted() async {
     await initialize();
 
-    final areEnabled = await _plugin.areNotificationsEnabled();
-    if (areEnabled ?? false) {
-      return true;
-    }
-
     final androidPlugin =
         _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
