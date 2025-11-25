@@ -59,6 +59,14 @@ class LocalDatabaseRepository {
     return actions.getActionsForBook(userId, bookId);
   }
 
+  Future<List<ActionRow>> getAllActions() {
+    return actions.getAllActions(userId);
+  }
+
+  Future<List<ReadingLogRow>> getAllReadingLogs() {
+    return readingLogs.getAllLogs(userId);
+  }
+
   Future<void> setTagsForBook({
     required int bookId,
     required List<int> tagIds,

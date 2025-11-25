@@ -541,6 +541,14 @@ class ActionDao {
         .toList();
   }
 
+  Future<List<ActionRow>> getAllActions(String userId) async {
+    final actions = List<ActionRow>.from(
+      db._actionRows.where((action) => action.userId == userId),
+    )..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    return actions;
+  }
+
   Future<List<ActionRow>> getActionsForBook(String userId, int bookId) async {
     return db._actionRows
         .where((action) => action.userId == userId && action.bookId == bookId)
