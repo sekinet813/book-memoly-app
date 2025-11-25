@@ -2139,9 +2139,9 @@ class _BookRegistrationCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           PrimaryButton(
-            onPressed: isLoading ? null : onSave,
-            icon: isRegistered ? AppIcons.save : AppIcons.addLibrary,
-            label: isRegistered ? 'ステータスを更新' : '本を登録',
+            onPressed: (!isRegistered && !isLoading) ? onSave : null,
+            icon: isRegistered ? AppIcons.check : AppIcons.addLibrary,
+            label: isRegistered ? '登録済み' : '本を登録',
             expand: true,
           ),
         ],
