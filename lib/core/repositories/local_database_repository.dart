@@ -67,6 +67,22 @@ class LocalDatabaseRepository {
     return readingLogs.getAllLogs(userId);
   }
 
+  Future<void> upsertBookFromRemote(BookRow book) async {
+    await books.upsertFromRemote(book);
+  }
+
+  Future<void> upsertNoteFromRemote(NoteRow note) async {
+    await notes.upsertFromRemote(note);
+  }
+
+  Future<void> upsertActionFromRemote(ActionRow action) async {
+    await actions.upsertFromRemote(action);
+  }
+
+  Future<void> upsertReadingLogFromRemote(ReadingLogRow log) async {
+    await readingLogs.upsertFromRemote(log);
+  }
+
   Future<void> setTagsForBook({
     required int bookId,
     required List<int> tagIds,

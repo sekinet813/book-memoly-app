@@ -441,6 +441,22 @@ class BookDao {
     db._notifyBooksChanged();
     return 1;
   }
+
+  Future<void> upsertFromRemote(BookRow row) async {
+    final index = db._bookRows
+        .indexWhere((book) => book.id == row.id && book.userId == row.userId);
+    if (index == -1) {
+      db._bookRows.add(row);
+    } else {
+      db._bookRows[index] = row;
+    }
+
+    if (db._bookId < row.id) {
+      db._bookId = row.id;
+    }
+
+    db._notifyBooksChanged();
+  }
 }
 
 class NoteDao {
@@ -507,6 +523,20 @@ class NoteDao {
         .removeWhere((note) => note.id == noteId && note.userId == userId);
     db._noteTagRows.removeWhere((row) => row.noteId == noteId);
     return beforeLength == db._noteRows.length ? 0 : 1;
+  }
+
+  Future<void> upsertFromRemote(NoteRow row) async {
+    final index = db._noteRows
+        .indexWhere((note) => note.id == row.id && note.userId == row.userId);
+    if (index == -1) {
+      db._noteRows.add(row);
+    } else {
+      db._noteRows[index] = row;
+    }
+
+    if (db._noteId < row.id) {
+      db._noteId = row.id;
+    }
   }
 }
 
@@ -595,6 +625,22 @@ class ActionDao {
         (action) => action.id == actionId && action.userId == userId);
     return beforeLength == db._actionRows.length ? 0 : 1;
   }
+
+  Future<void> upsertFromRemote(ActionRow row) async {
+    final index = db._actionRows.indexWhere(
+      (action) => action.id == row.id && action.userId == row.userId,
+    );
+
+    if (index == -1) {
+      db._actionRows.add(row);
+    } else {
+      db._actionRows[index] = row;
+    }
+
+    if (db._actionId < row.id) {
+      db._actionId = row.id;
+    }
+  }
 }
 
 class ReadingLogDao {
@@ -629,6 +675,22 @@ class ReadingLogDao {
       db._readingLogRows.where((log) => log.userId == userId),
     )..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
     return logs;
+  }
+
+  Future<void> upsertFromRemote(ReadingLogRow row) async {
+    final index = db._readingLogRows.indexWhere(
+      (log) => log.id == row.id && log.userId == row.userId,
+    );
+
+    if (index == -1) {
+      db._readingLogRows.add(row);
+    } else {
+      db._readingLogRows[index] = row;
+    }
+
+    if (db._readingLogId < row.id) {
+      db._readingLogId = row.id;
+    }
   }
 }
 
