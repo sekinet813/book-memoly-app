@@ -59,6 +59,14 @@ class AppIcons {
   static const IconData calendarViewWeek = Symbols.calendar_view_week_rounded;
   static const IconData calendarMonth = Symbols.calendar_month_rounded;
   static const IconData speed = Symbols.speed_rounded;
+  static const IconData event = Symbols.event_rounded;
+  static const IconData schedule = Symbols.schedule_rounded;
+  static const IconData donutSmall = Symbols.donut_small_rounded;
+  static const IconData trendingFlat = Symbols.trending_flat_rounded;
+  static const IconData repeat = Symbols.repeat_rounded;
+  static const IconData leaderboard = Symbols.leaderboard_rounded;
+  static const IconData beachAccess = Symbols.beach_access_rounded;
+  static const IconData infinity = Symbols.all_inclusive_rounded;
 }
 
 class AppIconSizes {
