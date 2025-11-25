@@ -9,6 +9,7 @@ import '../../core/models/book.dart';
 import '../../core/providers/auth_providers.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/profile_providers.dart';
+import '../../core/providers/sync_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_navigation_bar.dart';
@@ -77,11 +78,27 @@ class BookshelfNotifier extends StateNotifier<BookshelfState> {
   }
 }
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_startSync);
+  }
+
+  Future<void> _startSync() async {
+    final syncService = ref.read(supabaseSyncServiceProvider);
+    await syncService?.syncIfConnected();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bookshelfState = ref.watch(bookshelfNotifierProvider);
 
     return AppPage(
