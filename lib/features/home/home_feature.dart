@@ -519,28 +519,57 @@ class _ContinueReadingSection extends StatelessWidget {
           error: (error, _) => _ErrorText(error: error),
           data: (books) {
             final readingBooks = books
-                .where((book) =>
-                    bookStatusFromDbValue(book.status) == BookStatus.reading)
+                .where(
+                  (book) =>
+                      bookStatusFromDbValue(book.status) == BookStatus.reading,
+                )
                 .toList();
 
-            if (readingBooks.isEmpty) {
-              return const Text('読書中の本がここに表示されます');
+            final unreadBooks = books
+                .where(
+                  (book) =>
+                      bookStatusFromDbValue(book.status) == BookStatus.unread,
+                )
+                .toList();
+
+            final showingUnreadSuggestion =
+                readingBooks.isEmpty && unreadBooks.isNotEmpty;
+            final displayBooks =
+                showingUnreadSuggestion ? unreadBooks : readingBooks;
+
+            if (displayBooks.isEmpty) {
+              return const Text('登録済みの本を検索から追加するとここに表示されます');
             }
 
-            return SizedBox(
-              height: 200,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) {
-                  final book = readingBooks[index];
-                  return SizedBox(
-                    width: 160,
-                    child: _BookTile(book: book),
-                  );
-                },
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemCount: readingBooks.length,
-              ),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showingUnreadSuggestion)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '未読の本から読み始めてみませんか？',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                SizedBox(
+                  height: 200,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (context, index) {
+                      final book = displayBooks[index];
+                      return SizedBox(
+                        width: 160,
+                        child: _BookTile(book: book),
+                      );
+                    },
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemCount: displayBooks.length,
+                  ),
+                ),
+              ],
             );
           },
         ),

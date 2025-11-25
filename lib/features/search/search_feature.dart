@@ -22,6 +22,7 @@ import '../../core/models/rakuten/rakuten_book.dart';
 import '../../core/services/rakuten_book_api_client.dart';
 import '../../core/services/supabase_service.dart';
 import '../../shared/constants/app_icons.dart';
+import '../home/home_feature.dart';
 
 final bookSearchRepositoryProvider = Provider<BookSearchRepository>((ref) {
   return BookSearchRepository(ref.read(rakutenBooksApiClientProvider));
@@ -701,10 +702,11 @@ class MemoSearchNotifier extends StateNotifier<MemoSearchState> {
 
   void setEndDate(DateTime? date) {
     final normalizedStart = state.startDate;
-    final adjustedEnd =
-        (normalizedStart != null && date != null && date.isBefore(normalizedStart))
-            ? normalizedStart
-            : date;
+    final adjustedEnd = (normalizedStart != null &&
+            date != null &&
+            date.isBefore(normalizedStart))
+        ? normalizedStart
+        : date;
 
     state = state.copyWith(endDate: adjustedEnd);
 
@@ -1093,7 +1095,8 @@ class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(context, isStart: true),
                       icon: const Icon(AppIcons.calendar),
-                      label: Text('開始日: ${_formatDate(context, memoState.startDate)}'),
+                      label: Text(
+                          '開始日: ${_formatDate(context, memoState.startDate)}'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1101,7 +1104,8 @@ class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
                     child: OutlinedButton.icon(
                       onPressed: () => _pickDate(context, isStart: false),
                       icon: const Icon(AppIcons.calendar),
-                      label: Text('終了日: ${_formatDate(context, memoState.endDate)}'),
+                      label: Text(
+                          '終了日: ${_formatDate(context, memoState.endDate)}'),
                     ),
                   ),
                   IconButton(
@@ -1175,7 +1179,9 @@ class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
   }
 
   void _triggerSearch() {
-    ref.read(memoSearchNotifierProvider.notifier).search(_keywordController.text);
+    ref
+        .read(memoSearchNotifierProvider.notifier)
+        .search(_keywordController.text);
   }
 }
 
@@ -2046,6 +2052,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
 
         if (!mounted) return;
         if (inserted) {
+          ref.invalidate(bookshelfNotifierProvider);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('本を登録しました')),
           );
@@ -2061,6 +2068,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
           startedAt: startedAt,
           finishedAt: finishedAt,
         );
+        ref.invalidate(bookshelfNotifierProvider);
 
         // UIの状態も更新
         setState(() {
