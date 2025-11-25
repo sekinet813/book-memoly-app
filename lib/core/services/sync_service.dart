@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import '../models/goal.dart';
 import '../repositories/local_database_repository.dart';
 
 class SupabaseSyncService {
@@ -28,6 +29,7 @@ class SupabaseSyncService {
   static const _noteTable = 'notes';
   static const _actionTable = 'actions';
   static const _readingLogTable = 'reading_logs';
+  static const _goalTable = 'goals';
 
   final SupabaseClient _client;
   final LocalDatabaseRepository _repository;
@@ -58,6 +60,7 @@ class SupabaseSyncService {
         _syncNotes(),
         _syncActions(),
         _syncReadingLogs(),
+        _syncGoals(),
       ]);
     } catch (error, stackTrace) {
       debugPrint('Supabase sync failed: $error');
@@ -438,6 +441,95 @@ class SupabaseSyncService {
       );
 
       await _repository.upsertReadingLogFromRemote(log);
+    }
+  }
+
+  Future<void> _syncGoals() async {
+    final remoteRows = await _client
+        .from(_goalTable)
+        .select<List<Map<String, dynamic>>>('*')
+        .eq('user_id', _userId);
+
+    final localGoals = await _repository.getAllGoals();
+    final localById = {for (final goal in localGoals) goal.id: goal};
+
+    await _applyRemoteGoals(remoteRows, localById);
+
+    final mergedGoals = await _repository.getAllGoals();
+    final remoteUpdatedAt = _buildRemoteUpdatedAtMap(remoteRows);
+
+    final payload = mergedGoals.where((goal) {
+      final remoteUpdated = remoteUpdatedAt[goal.id];
+      return remoteUpdated == null ||
+          goal.updatedAt.toUtc().isAfter(remoteUpdated);
+    }).map((goal) {
+      return {
+        'local_id': goal.id,
+        'user_id': _userId,
+        'period': goal.period.storageValue,
+        'year': goal.year,
+        'month': goal.month,
+        'target_type': goal.targetType.storageValue,
+        'target_value': goal.targetValue,
+        'created_at': goal.createdAt.toUtc().toIso8601String(),
+        'updated_at': goal.updatedAt.toUtc().toIso8601String(),
+      };
+    }).toList();
+
+    if (payload.isEmpty) {
+      return;
+    }
+
+    await _client
+        .from(_goalTable)
+        .upsert(payload, onConflict: 'user_id,local_id');
+  }
+
+  Future<void> _applyRemoteGoals(
+    List<dynamic> remoteRows,
+    Map<int, GoalRow> localById,
+  ) async {
+    for (final row in remoteRows) {
+      final localId = row['local_id'];
+      final updatedAt = _parseDateTime(row['updated_at']);
+      final period = row['period'];
+      final targetType = row['target_type'];
+      final year = _parseInt(row['year']);
+
+      if (localId is! int ||
+          updatedAt == null ||
+          period is! String ||
+          targetType is! String ||
+          year == null) {
+        continue;
+      }
+
+      final localUpdated = localById[localId]?.updatedAt.toUtc();
+      if (localUpdated != null && !updatedAt.isAfter(localUpdated)) {
+        continue;
+      }
+
+      final createdAt = _parseDateTime(row['created_at']) ?? updatedAt;
+      final month = _parseInt(row['month']);
+      final targetValue = _parseInt(row['target_value']);
+
+      if (targetValue == null) {
+        continue;
+      }
+
+      final goal = GoalRow(
+        id: localId,
+        userId: _userId,
+        period: GoalPeriod.fromStorage(period),
+        year: year,
+        month: month,
+        targetType: GoalMetric.fromStorage(targetType),
+        targetValue: targetValue,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
+      await _repository.upsertGoalFromRemote(goal);
     }
   }
 }

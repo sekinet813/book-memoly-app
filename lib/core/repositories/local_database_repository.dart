@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
 import '../models/book.dart';
+import '../models/goal.dart';
 
 class LocalDatabaseRepository {
   LocalDatabaseRepository(this.db, {required this.userId})
@@ -9,7 +10,8 @@ class LocalDatabaseRepository {
         notes = NoteDao(db),
         actions = ActionDao(db),
         readingLogs = ReadingLogDao(db),
-        tags = TagDao(db);
+        tags = TagDao(db),
+        goals = GoalDao(db);
 
   final AppDatabase db;
   final BookDao books;
@@ -17,6 +19,7 @@ class LocalDatabaseRepository {
   final ActionDao actions;
   final ReadingLogDao readingLogs;
   final TagDao tags;
+  final GoalDao goals;
   final String userId;
 
   Future<List<BookRow>> getAllBooks() {
@@ -65,6 +68,50 @@ class LocalDatabaseRepository {
 
   Future<List<ReadingLogRow>> getAllReadingLogs() {
     return readingLogs.getAllLogs(userId);
+  }
+
+  Future<GoalRow?> getMonthlyGoal(DateTime date) {
+    return goals.getGoalForPeriod(
+      userId,
+      GoalPeriod.monthly,
+      year: date.year,
+      month: date.month,
+    );
+  }
+
+  Future<GoalRow?> getYearlyGoal(int year) {
+    return goals.getGoalForPeriod(
+      userId,
+      GoalPeriod.yearly,
+      year: year,
+    );
+  }
+
+  Future<List<GoalRow>> getAllGoals() {
+    return goals.getAllGoals(userId);
+  }
+
+  Future<int> upsertGoal({
+    required GoalPeriod period,
+    required GoalMetric targetType,
+    required int targetValue,
+    required int year,
+    int? month,
+  }) {
+    return goals.upsertGoal(
+      GoalsCompanion.insert(
+        userId: userId,
+        period: period,
+        year: year,
+        month: Value(month),
+        targetType: targetType,
+        targetValue: targetValue,
+      ),
+    );
+  }
+
+  Future<void> upsertGoalFromRemote(GoalRow goal) {
+    return goals.upsertFromRemote(goal);
   }
 
   Future<void> upsertBookFromRemote(BookRow book) async {

@@ -53,22 +53,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _SettingsTile(
                 icon: AppIcons.goal,
                 title: '読書目標',
-                subtitle: '月の読了数や読書時間を設定して進捗を確認',
-                trailing: FilledButton.icon(
-                  onPressed: () => _showSheet(
-                    context,
-                    icon: AppIcons.goal,
-                    title: '読書目標',
-                    description: '読書目標の作成と進捗管理機能を準備しています。\nまもなく利用できるようになります。',
-                    primaryActionLabel: 'アップデート通知を受け取る',
-                  ),
-                  icon: const Icon(AppIcons.chevronRight, size: 18),
-                  label: const Text('近日公開'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                  ),
-                ),
+                subtitle: '年間・月間の目標値を設定して進捗を確認',
+                onTap: () => context.push('/goals'),
               ),
             ],
           ),

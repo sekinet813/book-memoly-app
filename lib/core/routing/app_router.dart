@@ -7,6 +7,7 @@ import '../../features/action_plans/action_plans_feature.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/signup_page.dart';
 import '../../features/home/home_feature.dart';
+import '../../features/goals/goals_feature.dart';
 import '../../features/memos/memos_feature.dart';
 import '../../features/reading_speed/reading_speed_feature.dart';
 import '../../features/statistics/statistics_feature.dart';
@@ -137,6 +138,13 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         path: '/statistics',
         pageBuilder: (context, state) => _buildNoTransitionPage(
           child: const StatisticsPage(),
+          state: state,
+        ),
+      ),
+      GoRoute(
+        path: '/goals',
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const GoalsPage(),
           state: state,
         ),
       ),

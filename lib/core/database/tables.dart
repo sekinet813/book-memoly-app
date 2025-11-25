@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../models/goal.dart';
 
 @DataClassName('BookRow')
 class Books extends Table {
@@ -62,6 +63,22 @@ class ReadingLogs extends Table {
   DateTimeColumn get loggedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DataClassName('GoalRow')
+class Goals extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get userId => text()();
+  TextColumn get period => text()(); // monthly, yearly
+  IntColumn get year => integer()();
+  IntColumn get month => integer().nullable()();
+  TextColumn get targetType => text()(); // pages, books
+  IntColumn get targetValue => integer()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {id};
 }
 
 @DataClassName('TagRow')
