@@ -22,7 +22,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool notificationsEnabled = true;
   bool weeklyDigestEnabled = false;
-  bool darkModeEnabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +64,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             icon: AppIcons.palette,
             children: [
               const _FontScaleTile(),
+              const _ThemeModeTile(),
               _SettingsTile(
                 icon: AppIcons.notifications,
                 title: '通知',
@@ -83,25 +83,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   value: weeklyDigestEnabled,
                   onChanged: (value) =>
                       setState(() => weeklyDigestEnabled = value),
-                ),
-              ),
-              _SettingsTile(
-                icon: AppIcons.darkMode,
-                title: 'ダークモード',
-                subtitle: '目に優しい配色で集中する',
-                trailing: Switch(
-                  value: darkModeEnabled,
-                  onChanged: (value) {
-                    setState(() => darkModeEnabled = value);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        behavior: SnackBarBehavior.floating,
-                        content: Text(value
-                            ? 'ダークテーマを適用しました (デバイス設定と連動)'
-                            : 'システム設定のテーマを使用します'),
-                      ),
-                    );
-                  },
                 ),
               ),
               _SettingsTile(
@@ -455,6 +436,110 @@ class _FontScaleTile extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+class _ThemeModeTile extends ConsumerWidget {
+  const _ThemeModeTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final themeMode = ref.watch(themeModeProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(AppIcons.darkMode, color: colorScheme.secondary),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'テーマモード',
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'ライト / ダーク / システムから選択できます',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<AppThemeMode>(
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              side: WidgetStateProperty.resolveWith(
+                (states) => BorderSide(
+                  color: states.contains(WidgetState.selected)
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant,
+                ),
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurface,
+              ),
+            ),
+            segments: [
+              for (final option in AppThemeMode.values)
+                ButtonSegment(value: option, label: Text(option.label)),
+            ],
+            selected: {themeMode},
+            onSelectionChanged: (value) =>
+                ref.read(themeModeProvider.notifier).update(value.first),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _themeModeDescription(themeMode),
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _themeModeDescription(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.system:
+        return 'デバイスの設定に合わせてテーマを自動切り替えます。';
+      case AppThemeMode.light:
+        return 'やわらかなライトテーマで明るく閲覧できます。';
+      case AppThemeMode.dark:
+        return '目に優しい深緑のダークテーマで集中できます。';
+    }
   }
 }
 

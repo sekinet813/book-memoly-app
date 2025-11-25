@@ -35,12 +35,13 @@ class BookMemolyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final fontScale = ref.watch(fontScaleProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Book Memoly',
       theme: AppTheme.lightTheme(fontScale),
       darkTheme: AppTheme.darkTheme(fontScale),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode.toMaterialThemeMode(),
       routerConfig: router,
     );
   }
