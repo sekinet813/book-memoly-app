@@ -14,6 +14,7 @@ import '../../features/statistics/statistics_feature.dart';
 import '../../features/search/search_feature.dart';
 import '../../features/profile/profile_feature.dart';
 import '../../features/settings/settings_feature.dart';
+import '../../features/reading_history/reading_history_feature.dart';
 import '../providers/auth_providers.dart';
 import '../services/auth_service.dart';
 
@@ -145,6 +146,13 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         path: '/goals',
         pageBuilder: (context, state) => _buildNoTransitionPage(
           child: const GoalsPage(),
+          state: state,
+        ),
+      ),
+      GoRoute(
+        path: '/timeline',
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const ReadingTimelinePage(),
           state: state,
         ),
       ),
