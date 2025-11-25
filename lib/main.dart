@@ -5,6 +5,7 @@ import 'core/routing/app_router.dart';
 import 'core/providers/settings_providers.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/theme.dart';
+import 'core/providers/notification_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,9 @@ class BookMemolyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Setup notification navigation handler
+    ref.watch(notificationNavigationProvider);
+
     final router = ref.watch(appRouterProvider);
     final fontScale = ref.watch(fontScaleProvider);
     final themeMode = ref.watch(themeModeProvider);

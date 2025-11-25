@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/providers/notification_providers.dart';
 import '../../core/providers/settings_providers.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/section_header.dart';
@@ -285,7 +286,7 @@ class _NotificationSettingsTile extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '毎日のリマインド',
+                          '読書リマインド',
                           style: textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -297,6 +298,17 @@ class _NotificationSettingsTile extends ConsumerWidget {
                             color: colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '頻度: ${state.reminderFrequency.label}' +
+                              (state.reminderFrequency ==
+                                      ReminderFrequency.weekly
+                                  ? '（${_weekdayLabel(state.weeklyWeekday)}）'
+                                  : ''),
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -304,6 +316,97 @@ class _NotificationSettingsTile extends ConsumerWidget {
                     onPressed: () => _pickTime(context, notifier, state),
                     icon: const Icon(AppIcons.schedule),
                     label: const Text('時間を変更'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.small),
+              SegmentedButton<ReminderFrequency>(
+                segments: ReminderFrequency.values
+                    .map(
+                      (frequency) => ButtonSegment(
+                        value: frequency,
+                        label: Text(frequency.label),
+                      ),
+                    )
+                    .toList(),
+                selected: {state.reminderFrequency},
+                onSelectionChanged: (selection) => notifier
+                    .updateReminderFrequency(selection.first),
+              ),
+              if (state.reminderFrequency == ReminderFrequency.weekly) ...[
+                const SizedBox(height: AppSpacing.small),
+                DropdownButtonFormField<int>(
+                  value: state.weeklyWeekday,
+                  decoration: const InputDecoration(
+                    labelText: '通知する曜日',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _weekdayItems()
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.$1,
+                          child: Text(entry.$2),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: notifier.updateWeeklyWeekday,
+                ),
+              ],
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '続き読むリマインダー',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'いま読んでいる本を指定時間にお知らせします。',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: state.continueReminderEnabled,
+                    onChanged: notifier.updateContinueReminderEnabled,
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'アクションプランの期限',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'リマインダー日時を設定したプランを通知します。',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: state.actionPlanRemindersEnabled,
+                    onChanged: notifier.updateActionPlanReminderEnabled,
                   ),
                 ],
               ),
@@ -341,6 +444,32 @@ class _NotificationSettingsTile extends ConsumerWidget {
         );
       },
     );
+  }
+
+  String _weekdayLabel(int weekday) {
+    const labels = {
+      DateTime.monday: '月曜日',
+      DateTime.tuesday: '火曜日',
+      DateTime.wednesday: '水曜日',
+      DateTime.thursday: '木曜日',
+      DateTime.friday: '金曜日',
+      DateTime.saturday: '土曜日',
+      DateTime.sunday: '日曜日',
+    };
+
+    return labels[weekday] ?? '未設定';
+  }
+
+  List<(int, String)> _weekdayItems() {
+    return const [
+      (DateTime.monday, '月曜日'),
+      (DateTime.tuesday, '火曜日'),
+      (DateTime.wednesday, '水曜日'),
+      (DateTime.thursday, '木曜日'),
+      (DateTime.friday, '金曜日'),
+      (DateTime.saturday, '土曜日'),
+      (DateTime.sunday, '日曜日'),
+    ];
   }
 
   Future<void> _pickTime(

@@ -293,7 +293,9 @@ class _ReadingStats {
 }
 
 class ReadingSpeedPage extends ConsumerStatefulWidget {
-  const ReadingSpeedPage({super.key});
+  const ReadingSpeedPage({super.key, this.initialBookId});
+
+  final int? initialBookId;
 
   @override
   ConsumerState<ReadingSpeedPage> createState() => _ReadingSpeedPageState();
@@ -302,6 +304,7 @@ class ReadingSpeedPage extends ConsumerStatefulWidget {
 class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
   final _pagesController = TextEditingController();
   final _durationController = TextEditingController();
+  bool _initialBookApplied = false;
 
   @override
   void dispose() {
@@ -313,6 +316,8 @@ class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(readingSpeedNotifierProvider);
+
+    _maybeApplyInitialSelection(state);
 
     return Scaffold(
       appBar: AppBar(
@@ -345,6 +350,19 @@ class _ReadingSpeedPageState extends ConsumerState<ReadingSpeedPage> {
         ),
       ),
     );
+  }
+
+  void _maybeApplyInitialSelection(ReadingSpeedState state) {
+    if (_initialBookApplied || widget.initialBookId == null) {
+      return;
+    }
+
+    if (state.books.any((book) => book.id == widget.initialBookId)) {
+      ref
+          .read(readingSpeedNotifierProvider.notifier)
+          .selectBook(widget.initialBookId!);
+      _initialBookApplied = true;
+    }
   }
 }
 
@@ -543,6 +561,10 @@ class _ReadingLogForm extends ConsumerWidget {
           pagesRead: pages,
           durationMinutes: duration,
         );
+
+    await ref
+        .read(notificationSettingsNotifierProvider.notifier)
+        .refreshContinueReadingReminder();
 
     await ref
         .read(notificationSettingsNotifierProvider.notifier)
