@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/providers/profile_providers.dart';
+import '../../core/providers/notification_providers.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_page.dart';
@@ -20,13 +21,11 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool notificationsEnabled = true;
-  bool weeklyDigestEnabled = false;
-
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileNotifierProvider);
     final profile = profileState.profile;
+    final notificationSettings = ref.watch(notificationSettingsNotifierProvider);
 
     return AppPage(
       title: 'Settings',
@@ -65,26 +64,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               const _FontScaleTile(),
               const _ThemeModeTile(),
-              _SettingsTile(
-                icon: AppIcons.notifications,
-                title: '通知',
-                subtitle: 'リマインドや新機能のお知らせを受け取る',
-                trailing: Switch(
-                  value: notificationsEnabled,
-                  onChanged: (value) =>
-                      setState(() => notificationsEnabled = value),
-                ),
-              ),
-              _SettingsTile(
-                icon: AppIcons.notifications,
-                title: 'ウィークリーダイジェスト',
-                subtitle: '1週間の読書ハイライトをまとめて通知',
-                trailing: Switch(
-                  value: weeklyDigestEnabled,
-                  onChanged: (value) =>
-                      setState(() => weeklyDigestEnabled = value),
-                ),
-              ),
+              _NotificationSettingsTile(settings: notificationSettings),
               _SettingsTile(
                 icon: AppIcons.export,
                 title: 'エクスポート',
@@ -224,6 +204,157 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           content: Text('アカウント削除リクエストを受け付けました。サポートよりご案内します。'),
         ),
       );
+    }
+  }
+}
+
+class _NotificationSettingsTile extends ConsumerWidget {
+  const _NotificationSettingsTile({required this.settings});
+
+  final AsyncValue<NotificationSettingsState> settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return settings.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: LinearProgressIndicator(),
+      ),
+      error: (error, _) => _SettingsTile(
+        icon: AppIcons.notifications,
+        title: '通知設定',
+        subtitle: '読み込みに失敗しました: $error',
+        trailing: const Icon(AppIcons.refresh),
+        onTap: () =>
+            ref.invalidate(notificationSettingsNotifierProvider),
+      ),
+      data: (state) {
+        final notifier =
+            ref.read(notificationSettingsNotifierProvider.notifier);
+        final subtitle = state.permissionGranted
+            ? '毎日の読書リマインドと読後メモの促しを受け取る'
+            : '通知許可が必要です。端末の設定を確認してください。';
+
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: Icon(
+                      AppIcons.notifications,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.medium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '読書習慣サポート',
+                          style: textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: state.reminderEnabled,
+                    onChanged: notifier.updateReminderEnabled,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.medium),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '毎日のリマインド',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '通知時間: ${state.reminderTime.format(context)}',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _pickTime(context, notifier, state),
+                    icon: const Icon(AppIcons.schedule),
+                    label: const Text('時間を変更'),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '読了後の振り返り',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'ログを記録した後に「今日の学びを書く？」を提案します。',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: state.reflectionPromptEnabled,
+                    onChanged: notifier.updateReflectionPromptEnabled,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickTime(
+    BuildContext context,
+    NotificationSettingsNotifier notifier,
+    NotificationSettingsState state,
+  ) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: state.reminderTime,
+    );
+
+    if (picked != null) {
+      await notifier.updateReminderTime(picked);
     }
   }
 }
