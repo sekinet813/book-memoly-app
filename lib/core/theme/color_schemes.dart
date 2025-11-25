@@ -13,13 +13,13 @@ const FlexSchemeColor lightScheme = FlexSchemeColor(
 );
 
 const FlexSchemeColor darkScheme = FlexSchemeColor(
-  primary: Color(0xFF7DD0BA),
-  primaryContainer: Color(0xFF1C4D43),
-  secondary: Color(0xFF6FB6A4),
-  secondaryContainer: Color(0xFF244F46),
-  tertiary: Color(0xFFF2B57F),
-  tertiaryContainer: Color(0xFF5C3A1F),
-  appBarColor: Color(0xFF1C4D43),
+  primary: Color(0xFF7FD3BE),
+  primaryContainer: Color(0xFF214338),
+  secondary: Color(0xFF6EC2AD),
+  secondaryContainer: Color(0xFF1A4B3F),
+  tertiary: Color(0xFFF0B07A),
+  tertiaryContainer: Color(0xFF4B3623),
+  appBarColor: Color(0xFF214338),
   error: Color(0xFFF2B8B5),
 );
 
@@ -32,5 +32,22 @@ final ColorScheme lightColorScheme = FlexColorScheme.light(
 final ColorScheme darkColorScheme = FlexColorScheme.dark(
   colors: darkScheme,
   surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-  blendLevel: 15,
-).toScheme.copyWith(brightness: Brightness.dark);
+  blendLevel: 12,
+).toScheme.copyWith(
+  brightness: Brightness.dark,
+  surface: const Color(0xFF101C17),
+  surfaceDim: const Color(0xFF0E1814),
+  surfaceBright: const Color(0xFF1B2722),
+  surfaceContainerLowest: const Color(0xFF0C1511),
+  surfaceContainerLow: const Color(0xFF111B16),
+  surfaceContainer: const Color(0xFF15201B),
+  surfaceContainerHigh: const Color(0xFF1A2621),
+  surfaceContainerHighest: const Color(0xFF1F2C27),
+  onPrimary: const Color(0xFF072018),
+  onPrimaryContainer: const Color(0xFFD2F5EA),
+  onSecondary: const Color(0xFF072018),
+  onSecondaryContainer: const Color(0xFFD1F3E9),
+  onSurface: const Color(0xFFE4ECE8),
+  onSurfaceVariant: const Color(0xFFB6C7BF),
+  outlineVariant: const Color(0xFF3C4B45),
+);

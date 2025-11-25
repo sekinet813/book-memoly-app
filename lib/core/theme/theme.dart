@@ -83,7 +83,7 @@ class AppTheme {
   static ThemeData darkTheme(AppFontScale fontScale) => FlexThemeData.dark(
         colors: darkScheme,
         surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-        blendLevel: 15,
+        blendLevel: 12,
         useMaterial3: true,
         textTheme: darkTextTheme(fontScale),
         fontFamily: primaryFontFamily,
@@ -98,28 +98,28 @@ class AppTheme {
           size: AppIconSizes.medium,
           color: darkColorScheme.onPrimary,
         ),
-        scaffoldBackgroundColor:
-            Color.lerp(darkColorScheme.surface, Colors.black, 0.4),
+        scaffoldBackgroundColor: darkColorScheme.surface,
         appBarTheme: AppBarTheme(
           elevation: 0,
-          backgroundColor:
-              Color.lerp(darkColorScheme.surface, Colors.black, 0.3),
+          backgroundColor: darkColorScheme.surfaceBright,
           foregroundColor: darkColorScheme.onSurface,
           centerTitle: true,
         ),
         cardTheme: CardThemeData(
-          elevation: AppElevation.level1,
-          color: Color.lerp(
-            darkColorScheme.surface,
-            darkColorScheme.surfaceContainerHighest,
-            0.16,
-          ),
+          elevation: AppElevation.level0,
+          shadowColor: Colors.transparent,
+          color: darkColorScheme.surfaceContainer,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.large),
+            side: BorderSide(
+              color: darkColorScheme.outlineVariant.withValues(alpha: 0.6),
+            ),
           ),
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          elevation: AppElevation.level2,
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          elevation: AppElevation.level1,
+          backgroundColor: darkColorScheme.primaryContainer,
+          foregroundColor: darkColorScheme.onPrimaryContainer,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(AppRadius.large)),
           ),
