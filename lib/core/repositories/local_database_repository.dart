@@ -265,12 +265,17 @@ class LocalDatabaseRepository {
     String keyword, {
     BookStatus? statusFilter,
     Set<int>? tagIds,
+    int? bookId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final trimmedKeyword = keyword.trim();
     final hasTagFilter = tagIds != null && tagIds.isNotEmpty;
     final activeTagIds = tagIds ?? const <int>{};
+    final hasFilters =
+        hasTagFilter || bookId != null || startDate != null || endDate != null;
 
-    if (trimmedKeyword.isEmpty && !hasTagFilter) {
+    if (trimmedKeyword.isEmpty && !hasFilters) {
       return const [];
     }
 
@@ -285,6 +290,10 @@ class LocalDatabaseRepository {
     final results = <LocalSearchResult>[];
 
     for (final book in allBooks) {
+      if (bookId != null && book.id != bookId) {
+        continue;
+      }
+
       if (statusFilter != null && book.status != statusFilter.toDbValue) {
         continue;
       }
@@ -302,10 +311,16 @@ class LocalDatabaseRepository {
 
       final matchingNotes = allNotes
           .where((note) => note.bookId == book.id)
-          .where((note) =>
-              trimmedKeyword.isEmpty ||
-              note.content.toLowerCase().contains(lowerKeyword))
-          .toList();
+          .where((note) {
+            final matchesKeyword = trimmedKeyword.isEmpty ||
+                note.content.toLowerCase().contains(lowerKeyword);
+
+            final matchesStart =
+                startDate == null || !note.createdAt.isBefore(startDate);
+            final matchesEnd = endDate == null || !note.createdAt.isAfter(endDate);
+
+            return matchesKeyword && matchesStart && matchesEnd;
+          }).toList();
 
       final matchingNoteTags = <int, List<TagRow>>{};
       for (final note in matchingNotes) {
