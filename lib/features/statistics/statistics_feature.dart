@@ -23,42 +23,31 @@ final statisticsNotifierProvider =
 
 class StatisticsState {
   const StatisticsState({
-    required this.monthlyFinishedBooks,
-    required this.monthlyPages,
-    required this.pacePoints,
-    this.averageCompletionDays,
+    required this.snapshot,
+    this.selectedRange = StatisticsRange.monthly,
     this.isLoading = false,
     this.error,
   });
 
   factory StatisticsState.initial() => const StatisticsState(
-        monthlyFinishedBooks: 0,
-        monthlyPages: 0,
-        pacePoints: [],
+        snapshot: _StatisticsSnapshot.empty(),
         isLoading: true,
       );
 
-  final int monthlyFinishedBooks;
-  final int monthlyPages;
-  final double? averageCompletionDays;
-  final List<DailyPacePoint> pacePoints;
+  final _StatisticsSnapshot snapshot;
+  final StatisticsRange selectedRange;
   final bool isLoading;
   final String? error;
 
   StatisticsState copyWith({
-    int? monthlyFinishedBooks,
-    int? monthlyPages,
-    double? averageCompletionDays,
-    List<DailyPacePoint>? pacePoints,
+    _StatisticsSnapshot? snapshot,
+    StatisticsRange? selectedRange,
     bool? isLoading,
     String? error,
   }) {
     return StatisticsState(
-      monthlyFinishedBooks: monthlyFinishedBooks ?? this.monthlyFinishedBooks,
-      monthlyPages: monthlyPages ?? this.monthlyPages,
-      averageCompletionDays:
-          averageCompletionDays ?? this.averageCompletionDays,
-      pacePoints: pacePoints ?? this.pacePoints,
+      snapshot: snapshot ?? this.snapshot,
+      selectedRange: selectedRange ?? this.selectedRange,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -72,24 +61,67 @@ class DailyPacePoint {
   final int pages;
 }
 
+class GenreRatio {
+  const GenreRatio({
+    required this.name,
+    required this.count,
+    required this.percentage,
+  });
+
+  final String name;
+  final int count;
+  final double percentage;
+}
+
+class BarValue {
+  const BarValue({required this.label, required this.value});
+
+  final String label;
+  final int value;
+}
+
+class StreakStats {
+  const StreakStats({
+    required this.currentStreak,
+    required this.longestStreak,
+    required this.longestGap,
+  });
+
+  final int currentStreak;
+  final int longestStreak;
+  final int longestGap;
+}
+
+class BestReadingPeriod {
+  const BestReadingPeriod({required this.label, required this.pages});
+
+  final String label;
+  final int pages;
+}
+
+enum StatisticsRange { monthly, all }
+
 class StatisticsNotifier extends StateNotifier<StatisticsState> {
   StatisticsNotifier(this._repository) : super(StatisticsState.initial());
 
   final LocalDatabaseRepository _repository;
+  List<BookRow> _books = [];
+  List<ReadingLogRow> _logs = [];
+  Map<int, List<TagRow>> _bookTags = {};
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final books = await _repository.getAllBooks();
-      final logs = await _repository.getReadingLogs();
+      _books = await _repository.getAllBooks();
+      _logs = await _repository.getReadingLogs();
+      _bookTags = await _repository.getTagsForBooks(
+        _books.map((book) => book.id).toList(),
+      );
 
-      final snapshot = _calculateStats(books, logs);
+      final snapshot = _calculateStats(state.selectedRange);
 
       state = state.copyWith(
-        monthlyFinishedBooks: snapshot.monthlyFinishedBooks,
-        monthlyPages: snapshot.monthlyPages,
-        averageCompletionDays: snapshot.averageCompletionDays,
-        pacePoints: snapshot.pacePoints,
+        snapshot: snapshot,
         isLoading: false,
       );
     } catch (error) {
@@ -97,41 +129,49 @@ class StatisticsNotifier extends StateNotifier<StatisticsState> {
     }
   }
 
-  _StatisticsSnapshot _calculateStats(
-    List<BookRow> books,
-    List<ReadingLogRow> logs,
-  ) {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-
-    var monthlyPages = 0;
-    for (final log in logs) {
-      if (log.loggedAt.isBefore(startOfMonth)) {
-        continue;
-      }
-      monthlyPages += _pagesRead(log);
+  void changeRange(StatisticsRange range) {
+    if (range == state.selectedRange) {
+      return;
     }
 
-    final monthlyFinishedBooks = books.where((book) {
-      if (book.finishedAt == null) {
-        return false;
+    final snapshot = _calculateStats(range);
+    state = state.copyWith(snapshot: snapshot, selectedRange: range);
+  }
+
+  _StatisticsSnapshot _calculateStats(StatisticsRange range) {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final rangeStart =
+        range == StatisticsRange.monthly ? startOfMonth : DateTime(1970);
+
+    final filteredLogs = _logs
+        .where((log) => !log.loggedAt.isBefore(rangeStart))
+        .toList();
+    final filteredBooks = _books.where((book) {
+      if (range == StatisticsRange.all) {
+        return true;
       }
-      final status = bookStatusFromDbValue(book.status);
-      if (status != BookStatus.finished) {
-        return false;
-      }
-      return book.finishedAt!.year == now.year &&
+      return book.finishedAt != null &&
+          book.finishedAt!.year == now.year &&
           book.finishedAt!.month == now.month;
+    }).toList();
+
+    final totalPages = filteredLogs.fold<int>(0, (sum, log) {
+      return sum + _pagesRead(log);
+    });
+
+    final finishedBooks = filteredBooks.where((book) {
+      final status = bookStatusFromDbValue(book.status);
+      return status == BookStatus.finished && book.finishedAt != null;
     }).length;
 
-    final completionDurations = books.where((book) {
+    final completionDurations = filteredBooks.where((book) {
       final status = bookStatusFromDbValue(book.status);
       return status == BookStatus.finished &&
           book.startedAt != null &&
           book.finishedAt != null;
     }).map((book) {
       final duration = book.finishedAt!.difference(book.startedAt!);
-      // Include both start and finish days.
       return duration.inDays + 1;
     }).toList();
 
@@ -140,13 +180,27 @@ class StatisticsNotifier extends StateNotifier<StatisticsState> {
         : completionDurations.reduce((a, b) => a + b) /
             completionDurations.length;
 
-    final pacePoints = _buildPacePoints(now, logs);
+    final pacePoints = _buildPacePoints(now, filteredLogs);
+    final averageSpeed = _calculateAverageSpeed(filteredLogs);
+    final weekdayBreakdown = _buildWeekdayBreakdown(filteredLogs);
+    final hourlyBreakdown = _buildHourlyBreakdown(filteredLogs);
+    final bestWeekday = _calculateBestPeriod(weekdayBreakdown);
+    final bestHour = _calculateBestPeriod(hourlyBreakdown);
+    final genreRatios = _buildGenreRatios(filteredBooks);
+    final streak = _calculateStreak(filteredLogs, now);
 
     return _StatisticsSnapshot(
-      monthlyFinishedBooks: monthlyFinishedBooks,
-      monthlyPages: monthlyPages,
+      finishedBooks: finishedBooks,
+      pages: totalPages,
       averageCompletionDays: averageCompletionDays,
       pacePoints: pacePoints,
+      averageReadingSpeed: averageSpeed,
+      weekdayBreakdown: weekdayBreakdown,
+      hourlyBreakdown: hourlyBreakdown,
+      bestWeekday: bestWeekday,
+      bestHour: bestHour,
+      genreRatios: genreRatios,
+      streak: streak,
     );
   }
 
@@ -179,20 +233,195 @@ class StatisticsNotifier extends StateNotifier<StatisticsState> {
     final end = log.endPage ?? 0;
     return max(0, end - start);
   }
+
+  double? _calculateAverageSpeed(List<ReadingLogRow> logs) {
+    var totalPages = 0;
+    var totalMinutes = 0;
+
+    for (final log in logs) {
+      if (log.durationMinutes == null || log.durationMinutes == 0) {
+        continue;
+      }
+
+      final pages = _pagesRead(log);
+      if (pages <= 0) continue;
+
+      totalPages += pages;
+      totalMinutes += log.durationMinutes!;
+    }
+
+    if (totalMinutes == 0) {
+      return null;
+    }
+
+    return totalPages / totalMinutes * 60;
+  }
+
+  List<BarValue> _buildWeekdayBreakdown(List<ReadingLogRow> logs) {
+    const weekdayLabels = {
+      DateTime.monday: '月',
+      DateTime.tuesday: '火',
+      DateTime.wednesday: '水',
+      DateTime.thursday: '木',
+      DateTime.friday: '金',
+      DateTime.saturday: '土',
+      DateTime.sunday: '日',
+    };
+
+    final totals = <int, int>{};
+    for (final log in logs) {
+      totals[log.loggedAt.weekday] =
+          (totals[log.loggedAt.weekday] ?? 0) + _pagesRead(log);
+    }
+
+    return weekdayLabels.entries
+        .map(
+          (entry) => BarValue(
+            label: entry.value,
+            value: totals[entry.key] ?? 0,
+          ),
+        )
+        .toList();
+  }
+
+  List<BarValue> _buildHourlyBreakdown(List<ReadingLogRow> logs) {
+    final totals = <int, int>{};
+    for (final log in logs) {
+      totals[log.loggedAt.hour] =
+          (totals[log.loggedAt.hour] ?? 0) + _pagesRead(log);
+    }
+
+    return List.generate(24, (index) {
+      return BarValue(label: '$index', value: totals[index] ?? 0);
+    });
+  }
+
+  BestReadingPeriod? _calculateBestPeriod(List<BarValue> values) {
+    if (values.isEmpty) return null;
+    final best = values.reduce((a, b) => a.value >= b.value ? a : b);
+    if (best.value == 0) return null;
+    return BestReadingPeriod(label: best.label, pages: best.value);
+  }
+
+  List<GenreRatio> _buildGenreRatios(List<BookRow> books) {
+    final counts = <String, int>{};
+
+    for (final book in books) {
+      final tags = _bookTags[book.id] ?? const [];
+      for (final tag in tags) {
+        counts[tag.name] = (counts[tag.name] ?? 0) + 1;
+      }
+    }
+
+    final total = counts.values.fold<int>(0, (sum, value) => sum + value);
+    if (total == 0) {
+      return const [];
+    }
+
+    return counts.entries
+        .map(
+          (entry) => GenreRatio(
+            name: entry.key,
+            count: entry.value,
+            percentage: entry.value / total * 100,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => b.percentage.compareTo(a.percentage));
+  }
+
+  StreakStats _calculateStreak(
+    List<ReadingLogRow> logs,
+    DateTime now,
+  ) {
+    final readingDays = logs
+        .where((log) => _pagesRead(log) > 0)
+        .map((log) => DateTime(log.loggedAt.year, log.loggedAt.month, log.loggedAt.day))
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (readingDays.isEmpty) {
+      return const StreakStats(currentStreak: 0, longestStreak: 0, longestGap: 0);
+    }
+
+    var longestStreak = 1;
+    var currentStreak = 1;
+    var longestGap = 0;
+
+    for (var i = 1; i < readingDays.length; i++) {
+      final previous = readingDays[i - 1];
+      final current = readingDays[i];
+      final diff = current.difference(previous).inDays;
+
+      if (diff == 1) {
+        currentStreak += 1;
+      } else {
+        longestStreak = max(longestStreak, currentStreak);
+        currentStreak = 1;
+        longestGap = max(longestGap, diff - 1);
+      }
+    }
+
+    longestStreak = max(longestStreak, currentStreak);
+
+    final today = DateTime(now.year, now.month, now.day);
+    final lastReadingDay = readingDays.last;
+    if (today.difference(lastReadingDay).inDays != 0) {
+      currentStreak = 0;
+    }
+
+    return StreakStats(
+      currentStreak: currentStreak,
+      longestStreak: longestStreak,
+      longestGap: longestGap,
+    );
+  }
 }
 
 class _StatisticsSnapshot {
   const _StatisticsSnapshot({
-    required this.monthlyFinishedBooks,
-    required this.monthlyPages,
+    required this.finishedBooks,
+    required this.pages,
     required this.averageCompletionDays,
     required this.pacePoints,
+    required this.averageReadingSpeed,
+    required this.genreRatios,
+    required this.streak,
+    required this.weekdayBreakdown,
+    required this.hourlyBreakdown,
+    this.bestWeekday,
+    this.bestHour,
   });
 
-  final int monthlyFinishedBooks;
-  final int monthlyPages;
+  const _StatisticsSnapshot.empty()
+      : finishedBooks = 0,
+        pages = 0,
+        averageCompletionDays = null,
+        pacePoints = const [],
+        averageReadingSpeed = null,
+        bestWeekday = null,
+        bestHour = null,
+        genreRatios = const [],
+        weekdayBreakdown = const [],
+        hourlyBreakdown = const [],
+        streak = const StreakStats(
+          currentStreak: 0,
+          longestStreak: 0,
+          longestGap: 0,
+        );
+
+  final int finishedBooks;
+  final int pages;
   final double? averageCompletionDays;
   final List<DailyPacePoint> pacePoints;
+  final double? averageReadingSpeed;
+  final BestReadingPeriod? bestWeekday;
+  final BestReadingPeriod? bestHour;
+  final List<GenreRatio> genreRatios;
+  final List<BarValue> weekdayBreakdown;
+  final List<BarValue> hourlyBreakdown;
+  final StreakStats streak;
 }
 
 class StatisticsPage extends ConsumerWidget {
@@ -226,40 +455,110 @@ class StatisticsPage extends ConsumerWidget {
   }
 }
 
-class _StatisticsView extends StatelessWidget {
+class _StatisticsView extends ConsumerWidget {
   const _StatisticsView({required this.state});
 
   final StatisticsState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final snapshot = state.snapshot;
+    final notifier = ref.read(statisticsNotifierProvider.notifier);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SummaryRow(state: state),
+        _RangeSelector(
+          selectedRange: state.selectedRange,
+          onChanged: notifier.changeRange,
+        ),
         const SizedBox(height: AppSpacing.large),
-        _PaceSection(points: state.pacePoints),
+        _SummaryRow(range: state.selectedRange, snapshot: snapshot),
         const SizedBox(height: AppSpacing.large),
-        const _GenrePlaceholder(),
+        _PaceSection(points: snapshot.pacePoints),
+        const SizedBox(height: AppSpacing.large),
+        _BestTimeSection(
+          bestHour: snapshot.bestHour,
+          bestWeekday: snapshot.bestWeekday,
+          hourly: snapshot.hourlyBreakdown,
+          weekday: snapshot.weekdayBreakdown,
+        ),
+        const SizedBox(height: AppSpacing.large),
+        _GenreSection(ratios: snapshot.genreRatios),
+        const SizedBox(height: AppSpacing.large),
+        _StreakSection(streak: snapshot.streak),
+      ],
+    );
+  }
+}
+
+class _RangeSelector extends StatelessWidget {
+  const _RangeSelector({required this.selectedRange, required this.onChanged});
+
+  final StatisticsRange selectedRange;
+  final ValueChanged<StatisticsRange> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        SegmentedButton<StatisticsRange>(
+          segments: const [
+            ButtonSegment(
+              value: StatisticsRange.monthly,
+              label: Text('今月'),
+              icon: Icon(AppIcons.calendarMonth),
+            ),
+            ButtonSegment(
+              value: StatisticsRange.all,
+              label: Text('全期間'),
+              icon: Icon(AppIcons.infinity),
+            ),
+          ],
+          showSelectedIcon: false,
+          selected: {selectedRange},
+          onSelectionChanged: (value) {
+            if (value.isNotEmpty) {
+              onChanged(value.first);
+            }
+          },
+        ),
       ],
     );
   }
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.state});
+  const _SummaryRow({required this.range, required this.snapshot});
 
-  final StatisticsState state;
+  final StatisticsRange range;
+  final _StatisticsSnapshot snapshot;
 
   String _averageLabel() {
-    if (state.averageCompletionDays == null) {
+    if (snapshot.averageCompletionDays == null) {
       return '-';
     }
-    final days = state.averageCompletionDays!;
+    final days = snapshot.averageCompletionDays!;
     if (days == days.roundToDouble()) {
       return '${days.toInt()}日';
     }
     return '${days.toStringAsFixed(1)}日';
+  }
+
+  String _speedLabel() {
+    final speed = snapshot.averageReadingSpeed;
+    if (speed == null) {
+      return '-';
+    }
+    if (speed >= 100) {
+      return '${speed.round()} ページ/時';
+    }
+    return '${speed.toStringAsFixed(1)} ページ/時';
+  }
+
+  String _rangeLabel() {
+    return range == StatisticsRange.monthly ? '今月' : '全期間';
   }
 
   @override
@@ -276,8 +575,8 @@ class _SummaryRow extends StatelessWidget {
             SizedBox(
               width: isWide ? constraints.maxWidth / 2 - spacing / 2 : double.infinity,
               child: _MetricCard(
-                title: '今月の読了冊数',
-                value: '${state.monthlyFinishedBooks} 冊',
+                title: '${_rangeLabel()}の読了冊数',
+                value: '${snapshot.finishedBooks} 冊',
                 icon: AppIcons.menuBook,
                 iconColor: Colors.indigo,
               ),
@@ -285,8 +584,8 @@ class _SummaryRow extends StatelessWidget {
             SizedBox(
               width: isWide ? constraints.maxWidth / 2 - spacing / 2 : double.infinity,
               child: _MetricCard(
-                title: '今月の読書ページ',
-                value: '${state.monthlyPages} ページ',
+                title: '${_rangeLabel()}の読書ページ',
+                value: '${snapshot.pages} ページ',
                 icon: AppIcons.barChart,
                 iconColor: Colors.deepPurple,
               ),
@@ -298,6 +597,15 @@ class _SummaryRow extends StatelessWidget {
                 value: _averageLabel(),
                 icon: AppIcons.timelapse,
                 iconColor: Colors.teal,
+              ),
+            ),
+            SizedBox(
+              width: isWide ? constraints.maxWidth / 2 - spacing / 2 : double.infinity,
+              child: _MetricCard(
+                title: '平均読書スピード',
+                value: _speedLabel(),
+                icon: AppIcons.speed,
+                iconColor: Colors.orange,
               ),
             ),
           ],
@@ -421,6 +729,456 @@ class _PaceSection extends StatelessWidget {
             _PaceChart(points: points, maxY: maxY, interval: _interval(maxY)),
         ],
       ),
+    );
+  }
+}
+
+class _BestTimeSection extends StatelessWidget {
+  const _BestTimeSection({
+    required this.bestWeekday,
+    required this.bestHour,
+    required this.weekday,
+    required this.hourly,
+  });
+
+  final BestReadingPeriod? bestWeekday;
+  final BestReadingPeriod? bestHour;
+  final List<BarValue> weekday;
+  final List<BarValue> hourly;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final hasData = weekday.any((value) => value.value > 0) ||
+        hourly.any((value) => value.value > 0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '読書が進む曜日と時間帯',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.small),
+        Text(
+          '読書ログから、特に進みやすい曜日と時間帯を可視化しました。',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.medium),
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: AppSpacing.medium,
+                runSpacing: AppSpacing.small,
+                children: [
+                  _BestTimeBadge(
+                    icon: AppIcons.event,
+                    label: '最も進む曜日',
+                    value:
+                        bestWeekday != null ? bestWeekday!.label : 'データなし',
+                    pages: bestWeekday?.pages,
+                  ),
+                  _BestTimeBadge(
+                    icon: AppIcons.schedule,
+                    label: '最も進む時間帯',
+                    value: bestHour != null ? '${bestHour!.label}' : 'データなし',
+                    pages: bestHour?.pages,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.large),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 640;
+                  return Flex(
+                    direction: isWide ? Axis.horizontal : Axis.vertical,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _BarChartCard(
+                          title: '曜日別ページ数',
+                          values: weekday,
+                          highlight: bestWeekday?.label,
+                        ),
+                      ),
+                      SizedBox(
+                        width: isWide ? AppSpacing.large : 0,
+                        height: isWide ? 0 : AppSpacing.large,
+                      ),
+                      Expanded(
+                        child: _BarChartCard(
+                          title: '時間帯別ページ数',
+                          values: hourly,
+                          highlight: bestHour?.label,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BestTimeBadge extends StatelessWidget {
+  const _BestTimeBadge({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.pages,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final int? pages;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final hasValue = pages != null;
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.large,
+        vertical: AppSpacing.medium,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: colorScheme.primary),
+          const SizedBox(width: AppSpacing.small),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                hasValue ? '$value ・ ${pages}ページ' : value,
+                style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarChartCard extends StatelessWidget {
+  const _BarChartCard({
+    required this.title,
+    required this.values,
+    this.highlight,
+  });
+
+  final String title;
+  final List<BarValue> values;
+  final String? highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final hasData = values.any((value) => value.value > 0);
+
+    final maxY = values.isEmpty
+        ? 10.0
+        : values
+            .map((e) => e.value)
+            .fold<int>(0, max)
+            .toDouble()
+            .clamp(10, double.infinity)
+            .toDouble();
+    final interval = max(1, (maxY / 4).round());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.small),
+        if (!hasData)
+          const _EmptyChartMessage(
+            icon: AppIcons.trendingFlat,
+            message: '可視化できるデータがありません',
+          )
+        else
+          SizedBox(
+            height: 220,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceBetween,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.1),
+                    strokeWidth: 1,
+                  ),
+                  horizontalInterval: interval.toDouble(),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) => SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        child: Text(
+                          value.toInt().toString(),
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= values.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            values[index].label,
+                            style: textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                barGroups: values.asMap().entries.map((entry) {
+                  final isHighlight = highlight != null &&
+                      highlight == entry.value.label;
+                  final barColor = isHighlight
+                      ? colorScheme.primary
+                      : colorScheme.primary.withValues(alpha: 0.4);
+
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entry.value.value.toDouble(),
+                        color: barColor,
+                        width: 14,
+                        borderRadius: const BorderRadius.all(Radius.circular(6)),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _GenreSection extends StatelessWidget {
+  const _GenreSection({required this.ratios});
+
+  final List<GenreRatio> ratios;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    final colors = [
+      colorScheme.primary,
+      colorScheme.secondary,
+      colorScheme.tertiary,
+      Colors.indigo,
+      Colors.teal,
+      Colors.deepOrange,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ジャンル別の比率',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.small),
+        Text(
+          'タグをジャンルとして集計しています。',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.medium),
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: ratios.isEmpty
+              ? const _EmptyChartMessage(
+                  icon: AppIcons.donutSmall,
+                  message: 'タグ付きの読書データがまだありません',
+                )
+              : Column(
+                  children: [
+                    SizedBox(
+                      height: 240,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40,
+                          sections: ratios.asMap().entries.map((entry) {
+                            final color = colors[entry.key % colors.length];
+                            return PieChartSectionData(
+                              color: color.withValues(alpha: 0.9),
+                              value: entry.value.percentage,
+                              title:
+                                  '${entry.value.percentage.toStringAsFixed(1)}%',
+                              radius: 70,
+                              titleStyle: textTheme.labelMedium?.copyWith(
+                                color: colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.medium),
+                    Wrap(
+                      spacing: AppSpacing.medium,
+                      runSpacing: AppSpacing.small,
+                      children: ratios.asMap().entries.map((entry) {
+                        final color = colors[entry.key % colors.length];
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.small),
+                            Text(
+                              '${entry.value.name} (${entry.value.count}冊)',
+                              style: textTheme.bodyMedium,
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StreakSection extends StatelessWidget {
+  const _StreakSection({required this.streak});
+
+  final StreakStats streak;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    Widget buildStat(String label, int value, IconData icon) {
+      return Expanded(
+        child: Column(
+          children: [
+            Icon(icon, color: colorScheme.primary),
+            const SizedBox(height: AppSpacing.small),
+            Text(
+              '$value 日',
+              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppSpacing.small),
+            Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '読書の偏り',
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.small),
+        Text(
+          '連続日数やブランク期間から読書のリズムを確認できます。',
+          style: textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.medium),
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  buildStat('現在の連続日数', streak.currentStreak, AppIcons.repeat),
+                  buildStat('最長連続日数', streak.longestStreak, AppIcons.leaderboard),
+                  buildStat('最長ブランク', streak.longestGap, AppIcons.beachAccess),
+                ],
+              ),
+              if (streak.currentStreak == 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.medium),
+                  child: Text(
+                    '今日はまだ読書記録がありません。少しだけでも読み進めてみませんか？',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
