@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../features/action_plans/action_plans_feature.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/signup_page.dart';
+import '../../features/books/books_feature.dart';
 import '../../features/home/home_feature.dart';
 import '../../features/goals/goals_feature.dart';
 import '../../features/memos/memos_feature.dart';
@@ -107,6 +108,13 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         path: '/',
         pageBuilder: (context, state) => _buildNoTransitionPage(
           child: const HomePage(),
+          state: state,
+        ),
+      ),
+      GoRoute(
+        path: '/bookshelf',
+        pageBuilder: (context, state) => _buildNoTransitionPage(
+          child: const BookshelfPage(),
           state: state,
         ),
       ),
