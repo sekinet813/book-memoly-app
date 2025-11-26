@@ -80,6 +80,34 @@ class BookshelfNotifier extends StateNotifier<BookshelfState> {
       );
     }
   }
+
+  Future<void> moveBookToStatus(BookRow book, BookStatus status) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    DateTime? startedAt = book.startedAt;
+    DateTime? finishedAt = book.finishedAt;
+
+    if (status == BookStatus.unread) {
+      startedAt = null;
+      finishedAt = null;
+    } else if (status == BookStatus.reading && startedAt == null) {
+      startedAt = today;
+      finishedAt = null;
+    } else if (status == BookStatus.finished) {
+      startedAt = startedAt ?? today;
+      finishedAt = finishedAt ?? today;
+    }
+
+    await _repository.updateBookReadingInfo(
+      book.googleBooksId,
+      status: status,
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+    );
+
+    await loadShelf();
+  }
 }
 
 class HomePage extends ConsumerStatefulWidget {
@@ -588,10 +616,15 @@ class _MagazineGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
+        _SectionTitle(
           icon: AppIcons.books,
           title: 'My Magazine Shelf',
           subtitle: '表紙で並べる、美しい本棚',
+          trailing: TextButton.icon(
+            onPressed: () => context.push('/bookshelf'),
+            icon: const Icon(AppIcons.arrowForward),
+            label: const Text('本棚を開く'),
+          ),
         ),
         const SizedBox(height: 12),
         state.books.when(
@@ -996,11 +1029,13 @@ class _SectionTitle extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1037,6 +1072,10 @@ class _SectionTitle extends StatelessWidget {
             ],
           ),
         ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          trailing!,
+        ],
       ],
     );
   }
