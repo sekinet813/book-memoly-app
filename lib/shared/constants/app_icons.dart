@@ -67,6 +67,10 @@ class AppIcons {
   static const IconData leaderboard = Symbols.leaderboard_rounded;
   static const IconData beachAccess = Symbols.beach_access_rounded;
   static const IconData infinity = Symbols.all_inclusive_rounded;
+  static const IconData touchApp = Symbols.touch_app_rounded;
+  static const IconData circle = Symbols.circle_rounded;
+  static const IconData swapVert = Symbols.swap_vert_rounded;
+  static const IconData arrowForward = Symbols.arrow_forward_rounded;
 }
 
 class AppIconSizes {
