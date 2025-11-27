@@ -7,17 +7,21 @@ final coverImageServiceProvider = Provider<CoverImageService>((ref) {
   return CoverImageService();
 });
 
-final coverImageProvider = FutureProvider.family<String?, String>((ref, bookId) async {
-  final service = ref.read(coverImageServiceProvider);
-  final url = await service.fetchCoverImage(bookId);
+final coverImageProvider = FutureProvider.family<String?, String?>(
+  (ref, isbn) async {
+    final service = ref.read(coverImageServiceProvider);
+    final url = await service.fetchCoverImage(isbn);
 
-  return url;
-});
+    return url;
+  },
+);
 
-final cachedCoverImageProvider = FutureProvider.family<String?, (String id, bool cache)>(
+final cachedCoverImageProvider =
+    FutureProvider.family<String?, (String id, String? isbn, bool cache)>(
   (ref, params) async {
     final bookId = params.$1;
-    final shouldCache = params.$2;
+    final isbn = params.$2;
+    final shouldCache = params.$3;
 
     final currentThumbnail = ref
         .read(localDatabaseRepositoryProvider)
@@ -29,7 +33,7 @@ final cachedCoverImageProvider = FutureProvider.family<String?, (String id, bool
       return existing;
     }
 
-    final url = await ref.watch(coverImageProvider(bookId).future);
+    final url = await ref.watch(coverImageProvider(isbn ?? bookId).future);
 
     if (url != null && shouldCache) {
       await ref.read(localDatabaseRepositoryProvider).updateBookThumbnail(bookId, url);

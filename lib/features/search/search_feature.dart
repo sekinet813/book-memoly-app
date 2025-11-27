@@ -1471,7 +1471,11 @@ class _BookListTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BookThumbnail(bookId: book.id, url: book.thumbnailUrl),
+          _BookThumbnail(
+            bookId: book.id,
+            isbn: book.isbn,
+            url: book.thumbnailUrl,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -1555,15 +1559,20 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _BookThumbnail extends ConsumerWidget {
-  const _BookThumbnail({required this.bookId, this.url});
+  const _BookThumbnail({
+    required this.bookId,
+    this.isbn,
+    this.url,
+  });
 
   final String bookId;
+  final String? isbn;
   final String? url;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coverAsync = (url == null || url!.isEmpty)
-        ? ref.watch(cachedCoverImageProvider((bookId, false)))
+        ? ref.watch(cachedCoverImageProvider((bookId, isbn, false)))
         : const AsyncValue<String?>.data(null);
 
     final resolvedUrl =
@@ -1750,6 +1759,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                 children: [
                   _BookThumbnail(
                     bookId: widget.book.id,
+                    isbn: widget.book.isbn,
                     url: widget.book.thumbnailUrl,
                   ),
                   const SizedBox(width: 16),
