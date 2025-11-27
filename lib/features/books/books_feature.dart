@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
+import '../../core/providers/cover_image_providers.dart';
 import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/loading_indicator.dart';
@@ -323,7 +324,10 @@ class _BookCardBody extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _ShelfBookCover(thumbnailUrl: book.thumbnailUrl),
+            _ShelfBookCover(
+              bookId: book.googleBooksId,
+              thumbnailUrl: book.thumbnailUrl,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -375,14 +379,24 @@ class _BookCardBody extends StatelessWidget {
   }
 }
 
-class _ShelfBookCover extends StatelessWidget {
-  const _ShelfBookCover({required this.thumbnailUrl});
+class _ShelfBookCover extends ConsumerWidget {
+  const _ShelfBookCover({required this.bookId, required this.thumbnailUrl});
 
+  final String bookId;
   final String? thumbnailUrl;
 
   @override
-  Widget build(BuildContext context) {
-    if (thumbnailUrl == null || thumbnailUrl!.isEmpty) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coverAsync = (thumbnailUrl == null || thumbnailUrl!.isEmpty)
+        ? ref.watch(cachedCoverImageProvider((bookId, true)))
+        : const AsyncValue<String?>.data(null);
+
+    final resolvedUrl =
+        (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
+            ? thumbnailUrl
+            : coverAsync.valueOrNull;
+
+    if (resolvedUrl == null) {
       return Container(
         width: 70,
         height: 96,
@@ -408,7 +422,7 @@ class _ShelfBookCover extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Image.network(
-        thumbnailUrl!,
+        resolvedUrl,
         width: 70,
         height: 96,
         fit: BoxFit.cover,
