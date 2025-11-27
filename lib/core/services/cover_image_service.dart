@@ -66,7 +66,7 @@ class CoverImageService {
   }
 
   bool _isValidIsbn10(String isbn) {
-    if (!RegExp(r'^\d{${_isbn10BodyLength}}[\dXx]$').hasMatch(isbn)) {
+    if (!RegExp('^\\d{$_isbn10BodyLength}[\\dXx]$').hasMatch(isbn)) {
       return false;
     }
 
@@ -84,7 +84,7 @@ class CoverImageService {
   }
 
   bool _isValidIsbn13(String isbn) {
-    if (!RegExp(r'^\d{$_isbn13Length}$').hasMatch(isbn)) {
+    if (!RegExp('^\\d{$_isbn13Length}$').hasMatch(isbn)) {
       return false;
     }
 
