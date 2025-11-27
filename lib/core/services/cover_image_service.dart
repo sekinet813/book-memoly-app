@@ -5,8 +5,12 @@ class CoverImageService {
 
   final Dio _client;
 
-  Future<String?> fetchCoverImage(String bookId) async {
-    final isbn = bookId.replaceAll('-', '');
+  Future<String?> fetchCoverImage(String? isbn) async {
+    if (isbn == null || isbn.isEmpty) {
+      return null;
+    }
+
+    isbn = isbn.replaceAll('-', '');
 
     if (!_isValidIsbn(isbn)) {
       return null;

@@ -886,15 +886,20 @@ class _BookTile extends StatelessWidget {
 }
 
 class _BookCover extends ConsumerWidget {
-  const _BookCover({required this.bookId, required this.thumbnailUrl});
+  const _BookCover({
+    required this.bookId,
+    this.isbn,
+    required this.thumbnailUrl,
+  });
 
   final String bookId;
+  final String? isbn;
   final String? thumbnailUrl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coverAsync = (thumbnailUrl == null || thumbnailUrl!.isEmpty)
-        ? ref.watch(cachedCoverImageProvider((bookId, true)))
+        ? ref.watch(cachedCoverImageProvider((bookId, isbn, true)))
         : const AsyncValue<String?>.data(null);
 
     final resolvedUrl =
