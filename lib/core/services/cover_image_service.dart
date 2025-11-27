@@ -54,6 +54,59 @@ class CoverImageService {
   }
 
   bool _isValidIsbn(String isbn) {
-    return RegExp(r'^\\d{9,13}\\$').hasMatch(isbn);
+    if (isbn.length == _isbn10Length) {
+      return _isValidIsbn10(isbn);
+    }
+
+    if (isbn.length == _isbn13Length) {
+      return _isValidIsbn13(isbn);
+    }
+
+    return false;
   }
+
+  bool _isValidIsbn10(String isbn) {
+    if (!RegExp(r'^\d{${_isbn10BodyLength}}[\dXx]$').hasMatch(isbn)) {
+      return false;
+    }
+
+    var sum = 0;
+
+    for (var i = 0; i < _isbn10BodyLength; i++) {
+      final weight = _isbn10Length - i;
+      sum += weight * int.parse(isbn[i]);
+    }
+
+    final checkDigit =
+        isbn[_isbn10BodyLength].toUpperCase() == 'X' ? 10 : int.parse(isbn[_isbn10BodyLength]);
+
+    return (sum + checkDigit) % _isbn10Modulus == 0;
+  }
+
+  bool _isValidIsbn13(String isbn) {
+    if (!RegExp(r'^\d{$_isbn13Length}$').hasMatch(isbn)) {
+      return false;
+    }
+
+    var sum = 0;
+
+    for (var i = 0; i < _isbn13BodyLength; i++) {
+      final digit = int.parse(isbn[i]);
+      final weight = i.isEven ? _isbn13EvenWeight : _isbn13OddWeight;
+      sum += digit * weight;
+    }
+
+    final checkDigit = (_isbn13Modulus - (sum % _isbn13Modulus)) % _isbn13Modulus;
+
+    return checkDigit == int.parse(isbn[_isbn13BodyLength]);
+  }
+
+  static const int _isbn10Length = 10;
+  static const int _isbn10BodyLength = 9;
+  static const int _isbn10Modulus = 11;
+  static const int _isbn13Length = 13;
+  static const int _isbn13BodyLength = 12;
+  static const int _isbn13Modulus = 10;
+  static const int _isbn13EvenWeight = 1;
+  static const int _isbn13OddWeight = 3;
 }
