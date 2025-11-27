@@ -433,6 +433,13 @@ class LocalDatabaseRepository {
     );
   }
 
+  Future<void> updateBookThumbnail(
+    String googleBooksId,
+    String thumbnailUrl,
+  ) {
+    return books.updateBookThumbnail(userId, googleBooksId, thumbnailUrl);
+  }
+
   /// Seeds the database with sample data and returns what was inserted to
   /// verify SELECT/INSERT flow works end-to-end.
   Future<SampleDataResult> insertAndReadSampleData() async {

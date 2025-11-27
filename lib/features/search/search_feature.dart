@@ -17,6 +17,7 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/tag_selector.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/auth_providers.dart';
+import '../../core/providers/cover_image_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/models/rakuten/rakuten_book.dart';
 import '../../core/services/rakuten_book_api_client.dart';
@@ -1470,7 +1471,7 @@ class _BookListTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BookThumbnail(url: book.thumbnailUrl),
+          _BookThumbnail(bookId: book.id, url: book.thumbnailUrl),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -1553,13 +1554,21 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-class _BookThumbnail extends StatelessWidget {
-  const _BookThumbnail({this.url});
+class _BookThumbnail extends ConsumerWidget {
+  const _BookThumbnail({required this.bookId, this.url});
 
+  final String bookId;
   final String? url;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coverAsync = (url == null || url!.isEmpty)
+        ? ref.watch(cachedCoverImageProvider((bookId, false)))
+        : const AsyncValue<String?>.data(null);
+
+    final resolvedUrl =
+        (url != null && url!.isNotEmpty) ? url : coverAsync.valueOrNull;
+
     const placeholder = SizedBox(
       width: 60,
       height: 90,
@@ -1569,14 +1578,14 @@ class _BookThumbnail extends StatelessWidget {
       ),
     );
 
-    if (url == null) {
+    if (resolvedUrl == null) {
       return placeholder;
     }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
-        url!,
+        resolvedUrl,
         width: 60,
         height: 90,
         fit: BoxFit.cover,
@@ -1739,7 +1748,10 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _BookThumbnail(url: widget.book.thumbnailUrl),
+                  _BookThumbnail(
+                    bookId: widget.book.id,
+                    url: widget.book.thumbnailUrl,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

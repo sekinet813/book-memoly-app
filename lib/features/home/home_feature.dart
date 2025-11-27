@@ -8,6 +8,7 @@ import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/models/goal.dart';
 import '../../core/providers/auth_providers.dart';
+import '../../core/providers/cover_image_providers.dart';
 import '../../core/providers/database_providers.dart';
 import '../../core/providers/notification_providers.dart';
 import '../../core/providers/reading_activity_providers.dart';
@@ -760,7 +761,12 @@ class _BookTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            Positioned.fill(child: _BookCover(thumbnailUrl: book.thumbnailUrl)),
+            Positioned.fill(
+              child: _BookCover(
+                bookId: book.googleBooksId,
+                thumbnailUrl: book.thumbnailUrl,
+              ),
+            ),
             Positioned.fill(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
@@ -879,14 +885,24 @@ class _BookTile extends StatelessWidget {
   }
 }
 
-class _BookCover extends StatelessWidget {
-  const _BookCover({required this.thumbnailUrl});
+class _BookCover extends ConsumerWidget {
+  const _BookCover({required this.bookId, required this.thumbnailUrl});
 
+  final String bookId;
   final String? thumbnailUrl;
 
   @override
-  Widget build(BuildContext context) {
-    if (thumbnailUrl == null || thumbnailUrl!.isEmpty) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coverAsync = (thumbnailUrl == null || thumbnailUrl!.isEmpty)
+        ? ref.watch(cachedCoverImageProvider((bookId, true)))
+        : const AsyncValue<String?>.data(null);
+
+    final resolvedUrl =
+        (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
+            ? thumbnailUrl
+            : coverAsync.valueOrNull;
+
+    if (resolvedUrl == null) {
       return Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -911,7 +927,7 @@ class _BookCover extends StatelessWidget {
     }
 
     return Ink.image(
-      image: NetworkImage(thumbnailUrl!),
+      image: NetworkImage(resolvedUrl),
       fit: BoxFit.cover,
     );
   }

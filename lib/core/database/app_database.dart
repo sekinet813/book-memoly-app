@@ -504,6 +504,26 @@ class BookDao {
     return 1;
   }
 
+  Future<int> updateBookThumbnail(
+    String userId,
+    String googleBooksId,
+    String thumbnailUrl,
+  ) async {
+    final book = await getBookByGoogleId(userId, googleBooksId);
+    if (book == null) {
+      return 0;
+    }
+
+    if (book.thumbnailUrl == thumbnailUrl) {
+      return 0;
+    }
+
+    book.thumbnailUrl = thumbnailUrl;
+    book.updatedAt = DateTime.now();
+    db._notifyBooksChanged();
+    return 1;
+  }
+
   Future<void> upsertFromRemote(BookRow row) async {
     final index = db._bookRows
         .indexWhere((book) => book.id == row.id && book.userId == row.userId);
