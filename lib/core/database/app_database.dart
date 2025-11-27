@@ -87,7 +87,7 @@ class BookRow {
   final String title;
   final String? authors;
   final String? description;
-  final String? thumbnailUrl;
+  String? thumbnailUrl;
   final String? publishedDate;
   final int? pageCount;
   int status;

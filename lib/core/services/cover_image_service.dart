@@ -66,7 +66,7 @@ class CoverImageService {
   }
 
   bool _isValidIsbn10(String isbn) {
-    if (!RegExp('^\\d{$_isbn10BodyLength}[\\dXx]$').hasMatch(isbn)) {
+    if (!RegExp('^\\d{$_isbn10BodyLength}[\\dXx]\$').hasMatch(isbn)) {
       return false;
     }
 
@@ -77,14 +77,15 @@ class CoverImageService {
       sum += weight * int.parse(isbn[i]);
     }
 
-    final checkDigit =
-        isbn[_isbn10BodyLength].toUpperCase() == 'X' ? 10 : int.parse(isbn[_isbn10BodyLength]);
+    final checkDigit = isbn[_isbn10BodyLength].toUpperCase() == 'X'
+        ? 10
+        : int.parse(isbn[_isbn10BodyLength]);
 
     return (sum + checkDigit) % _isbn10Modulus == 0;
   }
 
   bool _isValidIsbn13(String isbn) {
-    if (!RegExp('^\\d{$_isbn13Length}$').hasMatch(isbn)) {
+    if (!RegExp('^\\d{$_isbn13Length}\$').hasMatch(isbn)) {
       return false;
     }
 
@@ -96,7 +97,8 @@ class CoverImageService {
       sum += digit * weight;
     }
 
-    final checkDigit = (_isbn13Modulus - (sum % _isbn13Modulus)) % _isbn13Modulus;
+    final checkDigit =
+        (_isbn13Modulus - (sum % _isbn13Modulus)) % _isbn13Modulus;
 
     return checkDigit == int.parse(isbn[_isbn13BodyLength]);
   }
