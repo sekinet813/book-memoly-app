@@ -12,11 +12,13 @@ Future<void> main() async {
 
   SupabaseService? supabaseService;
   try {
-    supabaseService = SupabaseService();
-    await supabaseService.initialize();
+    final service = SupabaseService();
+    await service.initialize();
+    supabaseService = service;
   } catch (e) {
     debugPrint('Supabase initialization failed: $e');
     debugPrint('App will continue without Supabase support.');
+    supabaseService = null;
   }
 
   runApp(
