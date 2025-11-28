@@ -19,6 +19,7 @@ import '../../core/providers/database_providers.dart';
 import '../../core/providers/auth_providers.dart';
 import '../../core/providers/cover_image_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/services/cover_image_service.dart';
 import '../../core/models/rakuten/rakuten_book.dart';
 import '../../core/services/rakuten_book_api_client.dart';
 import '../../core/services/supabase_service.dart';
@@ -1563,31 +1564,70 @@ class _BookThumbnail extends ConsumerWidget {
     required this.bookId,
     this.isbn,
     this.url,
+    this.width = 60,
+    this.height = 90,
   });
 
   final String bookId;
   final String? isbn;
   final String? url;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final coverAsync = (url == null || url!.isEmpty)
-        ? ref.watch(cachedCoverImageProvider((bookId, isbn, false)))
-        : const AsyncValue<String?>.data(null);
+    debugPrint('[_BookThumbnail] build called - bookId: $bookId, isbn: $isbn, url: $url, width: $width, height: $height');
+    
+    // 常にcachedCoverImageProviderを呼び出して、openBD APIからカバー画像を取得
+    // urlが設定されている場合でも、フォールバックとして使用
+    final isbnToUse = isbn ?? CoverImageService.extractIsbn(bookId);
+    debugPrint('[_BookThumbnail] Using ISBN: $isbnToUse for bookId: $bookId');
+    
+    final coverAsync = ref.watch(cachedCoverImageProvider((bookId, isbnToUse, true)));
 
-    final resolvedUrl =
-        (url != null && url!.isNotEmpty) ? url : coverAsync.valueOrNull;
+    debugPrint('[_BookThumbnail] coverAsync state: isLoading=${coverAsync.isLoading}, hasValue=${coverAsync.hasValue}, hasError=${coverAsync.hasError}');
+    if (coverAsync.hasValue) {
+      debugPrint('[_BookThumbnail] coverAsync value: ${coverAsync.value}');
+    }
+    if (coverAsync.hasError) {
+      debugPrint('[_BookThumbnail] coverAsync error: ${coverAsync.error}');
+    }
 
-    const placeholder = SizedBox(
-      width: 60,
-      height: 90,
+    // openBD APIから取得したカバー画像を優先し、なければRakutenの画像URLを使用
+    var resolvedUrl = coverAsync.valueOrNull;
+    
+    // openBD APIから取得できなかった場合のみ、Rakutenの画像URLを使用
+    if (resolvedUrl == null || resolvedUrl.isEmpty) {
+      resolvedUrl = url;
+      debugPrint('[_BookThumbnail] Using Rakuten URL as fallback: $resolvedUrl');
+      // Rakutenの画像URLは`?_ex=200x200`パラメータをそのまま使用（Webブラウザでは必要）
+    } else {
+      debugPrint('[_BookThumbnail] Using openBD API URL: $resolvedUrl');
+    }
+    
+    debugPrint('[_BookThumbnail] resolvedUrl: $resolvedUrl');
+
+    final placeholder = SizedBox(
+      width: width,
+      height: height,
       child: ColoredBox(
-        color: Color(0xFFE0E0E0),
-        child: Icon(AppIcons.menuBook),
+        color: const Color(0xFFE0E0E0),
+        child: coverAsync.isLoading
+            ? Center(
+                child: SizedBox(
+                  width: width * 0.3,
+                  height: height * 0.3,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : Icon(
+                AppIcons.menuBook,
+                size: width * 0.5,
+              ),
       ),
     );
 
-    if (resolvedUrl == null) {
+    if (resolvedUrl == null || resolvedUrl.isEmpty) {
       return placeholder;
     }
 
@@ -1595,18 +1635,51 @@ class _BookThumbnail extends ConsumerWidget {
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
         resolvedUrl,
-        width: 60,
-        height: 90,
+        width: width,
+        height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => placeholder,
+        headers: const {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Referer': 'https://books.rakuten.co.jp/',
+        },
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint('[_BookThumbnail] Image.network error for URL: $resolvedUrl');
+          debugPrint('[_BookThumbnail] Error: $error');
+          debugPrint('[_BookThumbnail] StackTrace: $stackTrace');
+          
+          // Rakutenの画像URLが失敗した場合、openBD APIから取得した画像を試す
+          final openBdUrl = coverAsync.valueOrNull;
+          if (openBdUrl != null && openBdUrl != resolvedUrl) {
+            debugPrint('[_BookThumbnail] Trying openBD URL as fallback: $openBdUrl');
+            return Image.network(
+              openBdUrl,
+              width: width,
+              height: height,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => placeholder,
+            );
+          }
+          
+          return placeholder;
+        },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) {
+            debugPrint('[_BookThumbnail] Image loaded successfully: $resolvedUrl');
             return child;
           }
-          return const SizedBox(
-            width: 60,
-            height: 90,
-            child: Center(child: CircularProgressIndicator()),
+          debugPrint('[_BookThumbnail] Loading image: $resolvedUrl - ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+          return SizedBox(
+            width: width,
+            height: height,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
           );
         },
       ),
@@ -1720,6 +1793,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[BookDetailPage] build called - book.id: ${widget.book.id}, book.isbn: ${widget.book.isbn}, book.thumbnailUrl: ${widget.book.thumbnailUrl}');
+    
     final bookRowAsync = ref.watch(bookByGoogleIdProvider(widget.book.id));
     final existingBook = bookRowAsync.valueOrNull;
 
@@ -1759,8 +1834,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                 children: [
                   _BookThumbnail(
                     bookId: widget.book.id,
-                    isbn: widget.book.isbn,
+                    isbn: widget.book.isbn ??
+                        CoverImageService.extractIsbn(widget.book.id),
                     url: widget.book.thumbnailUrl,
+                    width: 120,
+                    height: 180,
                   ),
                   const SizedBox(width: 16),
                   Expanded(

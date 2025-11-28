@@ -57,5 +57,155 @@ echo "🚀 Running Flutter app with Supabase configuration..."
 echo "   SUPABASE_URL: ${SUPABASE_URL:0:30}..."
 echo ""
 
-# Run Flutter with dart-define arguments
-flutter run "${DART_DEFINE_ARGS[@]}" "$@"
+# Check for Android devices using adb
+echo "📱 Checking for Android devices..."
+
+# Find adb command (check common Android SDK locations)
+ADB_CMD=""
+if command -v adb &> /dev/null; then
+  ADB_CMD="adb"
+elif [ -f "$HOME/Library/Android/sdk/platform-tools/adb" ]; then
+  ADB_CMD="$HOME/Library/Android/sdk/platform-tools/adb"
+elif [ -f "$HOME/Android/Sdk/platform-tools/adb" ]; then
+  ADB_CMD="$HOME/Android/Sdk/platform-tools/adb"
+fi
+
+ANDROID_DEVICE=""
+OFFLINE_DEVICES=""
+if [ -n "$ADB_CMD" ]; then
+  echo "Using adb: $ADB_CMD"
+  
+  # Check adb devices status
+  ADB_OUTPUT=$($ADB_CMD devices 2>/dev/null || echo "")
+  
+  # Check for offline devices
+  OFFLINE_DEVICES=$(echo "$ADB_OUTPUT" | grep "offline" | awk '{print $1}' || echo "")
+  if [ -n "$OFFLINE_DEVICES" ]; then
+    echo ""
+    echo "⚠️  Android device(s) detected but offline:"
+    echo "$OFFLINE_DEVICES" | while read -r device_id; do
+      echo "   - $device_id (offline)"
+    done
+    echo ""
+    echo "💡 Attempting to fix connection..."
+    # Try to restart adb server
+    $ADB_CMD kill-server 2>/dev/null || true
+    sleep 1
+    $ADB_CMD start-server 2>/dev/null || true
+    sleep 2
+    
+    # Check again
+    ADB_OUTPUT=$($ADB_CMD devices 2>/dev/null || echo "")
+    OFFLINE_DEVICES=$(echo "$ADB_OUTPUT" | grep "offline" | awk '{print $1}' || echo "")
+    
+    if [ -n "$OFFLINE_DEVICES" ]; then
+      echo "❌ Device still offline. Troubleshooting tips:"
+      echo "   1. Check if USB debugging is enabled on your Android device"
+      echo "   2. Check if you've authorized this computer (look for a popup on your device)"
+      echo "   3. Try unplugging and replugging the USB cable"
+      echo "   4. On your Android device, revoke USB debugging authorizations and reconnect"
+      echo ""
+    else
+      echo "✅ Connection restored!"
+      echo ""
+    fi
+  fi
+  
+  # Check for authorized devices (status: device)
+  ANDROID_CONNECTED=$(echo "$ADB_OUTPUT" | grep -v "List of devices" | grep -c "device$" || echo "0")
+  if [ "$ANDROID_CONNECTED" -gt 0 ]; then
+    echo "✅ Android device(s) connected and authorized via USB"
+    echo ""
+    # Show available Flutter devices
+    echo "Available Flutter devices:"
+    flutter devices || true
+    echo ""
+    
+    # Use flutter devices --machine (JSON) to reliably grab the first Android mobile/tablet device ID
+    ANDROID_DEVICE=$(
+      cat <<'PY' | python3 || true
+import json, subprocess
+
+try:
+    result = subprocess.run(
+        ["flutter", "devices", "--machine"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    raw = result.stdout.strip()
+except Exception:
+    raw = ""
+
+if raw:
+    try:
+        devices = json.loads(raw)
+    except json.JSONDecodeError:
+        devices = []
+else:
+    devices = []
+
+def is_android(dev):
+    platform = (dev.get("targetPlatform") or "").lower()
+    return "android" in platform
+
+def is_mobile(dev):
+    category = (dev.get("deviceCategory") or "").lower()
+    return category in {"mobile", "phone", "tablet"}
+
+android_devices = [d for d in devices if is_android(d) and is_mobile(d)]
+if not android_devices:
+    android_devices = [d for d in devices if is_android(d)]
+
+if android_devices:
+    device_id = android_devices[0].get("deviceId") or ""
+    if device_id:
+        print(device_id.strip(), end="")
+PY
+    )
+    
+    # If not found in flutter devices, try to get from adb directly
+    if [ -z "$ANDROID_DEVICE" ]; then
+      ANDROID_DEVICE=$(echo "$ADB_OUTPUT" | grep "device$" | head -n 1 | awk '{print $1}' || echo "")
+    fi
+  else
+    # Check if any device is listed (even if offline or unauthorized)
+    ANY_DEVICE=$(echo "$ADB_OUTPUT" | grep -v "List of devices" | grep -v "^$" | wc -l | tr -d ' ' || echo "0")
+    if [ "$ANY_DEVICE" -gt 0 ] && [ -z "$OFFLINE_DEVICES" ]; then
+      echo "⚠️  Android device detected but not authorized"
+      echo "   Please authorize this computer on your Android device"
+      echo ""
+    fi
+  fi
+else
+  echo "⚠️  adb command not found"
+  echo "   Please install Android SDK or add platform-tools to your PATH"
+  echo ""
+fi
+
+# If Android device found, use it; otherwise use default
+if [ -n "$ANDROID_DEVICE" ]; then
+  echo "🚀 Running on Android device: $ANDROID_DEVICE"
+  echo ""
+  flutter run -d "$ANDROID_DEVICE" "${DART_DEFINE_ARGS[@]}" "$@"
+else
+  if [ -n "$OFFLINE_DEVICES" ]; then
+    echo "❌ Cannot run on offline Android device."
+    echo ""
+    echo "Please fix the connection and try again, or run on another device."
+    echo ""
+    echo "Available Flutter devices:"
+    flutter devices || true
+    echo ""
+    echo "To run on a different device, use:"
+    echo "  flutter run -d <device-id> ${DART_DEFINE_ARGS[*]}"
+    exit 1
+  fi
+  echo "⚠️  No authorized Android device found. Checking Flutter devices..."
+  echo ""
+  flutter devices || true
+  echo ""
+  echo "Running on default device..."
+  echo ""
+  flutter run "${DART_DEFINE_ARGS[@]}" "$@"
+fi

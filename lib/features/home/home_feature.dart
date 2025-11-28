@@ -15,6 +15,7 @@ import '../../core/providers/reading_activity_providers.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/providers/sync_providers.dart';
 import '../../core/repositories/local_database_repository.dart';
+import '../../core/services/cover_image_service.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
@@ -252,8 +253,7 @@ class _TodayReadingDashboard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:
-                      colorScheme.primaryContainer.withValues(alpha: 0.45),
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
@@ -362,13 +362,9 @@ class _GoalProgressOverview extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       '設定した読書目標に対する現在の達成度を確認できます。',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -419,7 +415,8 @@ class _GoalProgressRow extends StatelessWidget {
     final target = goal?.targetValue ?? 0;
     final metric = goal?.targetType ?? defaultMetric;
     final unit = metric.unitSuffix;
-    final ratio = target == 0 ? 0.0 : (progress / target).clamp(0, 1).toDouble();
+    final ratio =
+        target == 0 ? 0.0 : (progress / target).clamp(0, 1).toDouble();
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -431,12 +428,11 @@ class _GoalProgressRow extends StatelessWidget {
           children: [
             Text(
               '$label (${metric.label})',
-              style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              style:
+                  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             Text(
-              target == 0
-                  ? '$progress $unit'
-                  : '$progress / $target $unit',
+              target == 0 ? '$progress $unit' : '$progress / $target $unit',
               style: textTheme.bodyMedium,
             ),
           ],
@@ -448,8 +444,7 @@ class _GoalProgressRow extends StatelessWidget {
             value: ratio,
             minHeight: 10,
             backgroundColor: colorScheme.surfaceVariant.withValues(alpha: 0.6),
-            valueColor:
-                AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
           ),
         ),
         if (goal == null)
@@ -764,6 +759,7 @@ class _BookTile extends StatelessWidget {
             Positioned.fill(
               child: _BookCover(
                 bookId: book.googleBooksId,
+                isbn: CoverImageService.extractIsbn(book.googleBooksId),
                 thumbnailUrl: book.thumbnailUrl,
               ),
             ),
@@ -902,38 +898,71 @@ class _BookCover extends ConsumerWidget {
         ? ref.watch(cachedCoverImageProvider((bookId, isbn, true)))
         : const AsyncValue<String?>.data(null);
 
-    final resolvedUrl =
-        (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
-            ? thumbnailUrl
-            : coverAsync.valueOrNull;
+    var resolvedUrl = (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
+        ? thumbnailUrl
+        : coverAsync.valueOrNull;
 
-    if (resolvedUrl == null) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer,
-              Theme.of(context).colorScheme.secondaryContainer,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            AppIcons.menuBook,
-            size: 44,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-        ),
-      );
+    // Rakutenの画像URLから`?_ex=200x200`パラメータを削除
+    if (resolvedUrl != null && resolvedUrl.contains('?_ex=')) {
+      resolvedUrl = resolvedUrl.split('?').first;
     }
 
-    return Ink.image(
-      image: NetworkImage(resolvedUrl),
+    final placeholder = Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.secondaryContainer,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: coverAsync.isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                AppIcons.menuBook,
+                size: 44,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.5),
+              ),
+      ),
+    );
+
+    if (resolvedUrl == null || resolvedUrl.isEmpty) {
+      return placeholder;
+    }
+
+    return Image.network(
+      resolvedUrl,
       fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => placeholder,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) {
+          return child;
+        }
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
     );
   }
 }

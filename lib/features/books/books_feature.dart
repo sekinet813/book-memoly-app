@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/models/book.dart';
 import '../../core/providers/cover_image_providers.dart';
+import '../../core/services/cover_image_service.dart';
 import '../../core/widgets/app_navigation_bar.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/loading_indicator.dart';
@@ -93,7 +94,8 @@ class _BookshelfBoard extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 900;
-        final columnWidth = isNarrow ? double.infinity : constraints.maxWidth / 3;
+        final columnWidth =
+            isNarrow ? double.infinity : constraints.maxWidth / 3;
 
         return Wrap(
           spacing: 14,
@@ -105,7 +107,8 @@ class _BookshelfBoard extends ConsumerWidget {
                 child: _ShelfColumn(
                   status: status,
                   books: books
-                      .where((book) => bookStatusFromDbValue(book.status) == status)
+                      .where((book) =>
+                          bookStatusFromDbValue(book.status) == status)
                       .toList(),
                   color: _statusColor(status, colorScheme),
                   onMove: (book) async {
@@ -140,7 +143,8 @@ class _ShelfColumn extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return DragTarget<BookRow>(
-      onWillAccept: (data) => data != null && bookStatusFromDbValue(data.status) != status,
+      onWillAccept: (data) =>
+          data != null && bookStatusFromDbValue(data.status) != status,
       onAccept: (book) => onMove(book),
       builder: (context, candidateData, rejectedData) {
         final isActive = candidateData.isNotEmpty;
@@ -293,6 +297,7 @@ class _BookCardBody extends StatelessWidget {
           thumbnailUrl: book.thumbnailUrl,
           publishedDate: book.publishedDate,
           pageCount: book.pageCount,
+          isbn: CoverImageService.extractIsbn(book.googleBooksId),
           status: status,
           createdAt: book.createdAt,
           updatedAt: book.updatedAt,
@@ -326,6 +331,7 @@ class _BookCardBody extends StatelessWidget {
           children: [
             _ShelfBookCover(
               bookId: book.googleBooksId,
+              isbn: CoverImageService.extractIsbn(book.googleBooksId),
               thumbnailUrl: book.thumbnailUrl,
             ),
             const SizedBox(width: 12),
@@ -396,32 +402,49 @@ class _ShelfBookCover extends ConsumerWidget {
         ? ref.watch(cachedCoverImageProvider((bookId, isbn, true)))
         : const AsyncValue<String?>.data(null);
 
-    final resolvedUrl =
-        (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
-            ? thumbnailUrl
-            : coverAsync.valueOrNull;
+    var resolvedUrl = (thumbnailUrl != null && thumbnailUrl!.isNotEmpty)
+        ? thumbnailUrl
+        : coverAsync.valueOrNull;
 
-    if (resolvedUrl == null) {
-      return Container(
-        width: 70,
-        height: 96,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer,
-              Theme.of(context).colorScheme.secondaryContainer,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
+    // Rakutenの画像URLから`?_ex=200x200`パラメータを削除
+    if (resolvedUrl != null && resolvedUrl.contains('?_ex=')) {
+      resolvedUrl = resolvedUrl.split('?').first;
+    }
+
+    final placeholder = Container(
+      width: 70,
+      height: 96,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.secondaryContainer,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Icon(
-          AppIcons.menuBook,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-        ),
-      );
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: coverAsync.isLoading
+          ? const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : Icon(
+              AppIcons.menuBook,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.7),
+            ),
+    );
+
+    if (resolvedUrl == null || resolvedUrl.isEmpty) {
+      return placeholder;
     }
 
     return ClipRRect(
@@ -431,6 +454,29 @@ class _ShelfBookCover extends ConsumerWidget {
         width: 70,
         height: 96,
         fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) {
+            return child;
+          }
+          return Container(
+            width: 70,
+            height: 96,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

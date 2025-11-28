@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class CoverImageService {
   CoverImageService([Dio? client]) : _client = client ?? Dio();
@@ -6,44 +7,74 @@ class CoverImageService {
   final Dio _client;
 
   Future<String?> fetchCoverImage(String? isbn) async {
+    debugPrint('[CoverImageService] fetchCoverImage called with ISBN: $isbn');
+
     if (isbn == null || isbn.isEmpty) {
+      debugPrint('[CoverImageService] ISBN is null or empty');
       return null;
     }
 
     isbn = isbn.replaceAll('-', '');
+    debugPrint('[CoverImageService] Cleaned ISBN: $isbn');
 
     if (!_isValidIsbn(isbn)) {
+      debugPrint('[CoverImageService] ISBN is not valid: $isbn');
       return null;
     }
 
     try {
+      debugPrint(
+          '[CoverImageService] Fetching cover image from openBD API for ISBN: $isbn');
       final response = await _client.get(
         'https://api.openbd.jp/v1/get',
         queryParameters: {'isbn': isbn},
         options: Options(responseType: ResponseType.json),
       );
 
+      debugPrint(
+          '[CoverImageService] API response status: ${response.statusCode}');
       final data = response.data;
 
       if (data is! List || data.isEmpty) {
+        debugPrint('[CoverImageService] API response is empty or not a list');
         return null;
       }
 
       final first = data.first;
       if (first is! Map<String, dynamic>) {
+        debugPrint('[CoverImageService] First item is not a map');
         return null;
       }
+
+      // レスポンスの構造を詳しく確認
+      debugPrint('[CoverImageService] Response keys: ${first.keys.toList()}');
 
       final summary = first['summary'];
       if (summary is! Map<String, dynamic>) {
+        debugPrint(
+            '[CoverImageService] Summary is not a map, summary type: ${summary.runtimeType}');
+        debugPrint('[CoverImageService] First item content: $first');
         return null;
       }
 
+      debugPrint('[CoverImageService] Summary keys: ${summary.keys.toList()}');
       final cover = summary['cover'];
+      debugPrint(
+          '[CoverImageService] Cover value: $cover (type: ${cover.runtimeType})');
+
       if (cover is String && cover.isNotEmpty) {
+        debugPrint('[CoverImageService] Cover image URL found: $cover');
         return cover;
+      } else {
+        debugPrint(
+            '[CoverImageService] Cover image URL is empty or not a string');
+        // 他のフィールドも確認
+        if (summary.containsKey('isbn')) {
+          debugPrint('[CoverImageService] ISBN in summary: ${summary['isbn']}');
+        }
       }
     } on DioException catch (e) {
+      debugPrint('[CoverImageService] DioException: ${e.type}, ${e.message}');
       // サーバーからカバー画像が取得できない場合は何もしない
       if (e.type == DioExceptionType.cancel ||
           e.type == DioExceptionType.connectionError ||
@@ -52,8 +83,13 @@ class CoverImageService {
         return null;
       }
       rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('[CoverImageService] Unexpected error: $e');
+      debugPrint('[CoverImageService] Stack trace: $stackTrace');
+      rethrow;
     }
 
+    debugPrint('[CoverImageService] No cover image found for ISBN: $isbn');
     return null;
   }
 
@@ -115,4 +151,33 @@ class CoverImageService {
   static const int _isbn13Modulus = 10;
   static const int _isbn13EvenWeight = 1;
   static const int _isbn13OddWeight = 3;
+
+  /// 文字列からISBNを抽出します。
+  /// googleBooksIdがISBNの形式（10桁または13桁の数字）の場合、それを返します。
+  static String? extractIsbn(String? id) {
+    if (id == null || id.isEmpty) {
+      debugPrint('[CoverImageService] extractIsbn: id is null or empty');
+      return null;
+    }
+
+    // ハイフンを除去
+    final cleaned = id.replaceAll('-', '');
+    debugPrint(
+        '[CoverImageService] extractIsbn: cleaned id = $cleaned (length: ${cleaned.length})');
+
+    // ISBN-10: 10桁（最後の桁は数字またはX）
+    if (cleaned.length == 10 && RegExp(r'^\d{9}[\dXx]$').hasMatch(cleaned)) {
+      debugPrint('[CoverImageService] extractIsbn: Found ISBN-10: $cleaned');
+      return cleaned;
+    }
+
+    // ISBN-13: 13桁の数字
+    if (cleaned.length == 13 && RegExp(r'^\d{13}$').hasMatch(cleaned)) {
+      debugPrint('[CoverImageService] extractIsbn: Found ISBN-13: $cleaned');
+      return cleaned;
+    }
+
+    debugPrint('[CoverImageService] extractIsbn: No ISBN found in: $id');
+    return null;
+  }
 }
