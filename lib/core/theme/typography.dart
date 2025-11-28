@@ -51,6 +51,35 @@ TextTheme _baseTextTheme(Brightness brightness) {
       : material2021.black;
 }
 
+TextStyle? _ensureFontSize(TextStyle? target, TextStyle? fallback) {
+  if (target == null) return fallback;
+  if (target.fontSize != null || fallback?.fontSize == null) {
+    return target;
+  }
+
+  return target.copyWith(fontSize: fallback!.fontSize);
+}
+
+TextTheme _ensureTextThemeFontSizes(TextTheme theme, TextTheme fallback) {
+  return theme.copyWith(
+    displayLarge: _ensureFontSize(theme.displayLarge, fallback.displayLarge),
+    displayMedium: _ensureFontSize(theme.displayMedium, fallback.displayMedium),
+    displaySmall: _ensureFontSize(theme.displaySmall, fallback.displaySmall),
+    headlineLarge: _ensureFontSize(theme.headlineLarge, fallback.headlineLarge),
+    headlineMedium: _ensureFontSize(theme.headlineMedium, fallback.headlineMedium),
+    headlineSmall: _ensureFontSize(theme.headlineSmall, fallback.headlineSmall),
+    titleLarge: _ensureFontSize(theme.titleLarge, fallback.titleLarge),
+    titleMedium: _ensureFontSize(theme.titleMedium, fallback.titleMedium),
+    titleSmall: _ensureFontSize(theme.titleSmall, fallback.titleSmall),
+    bodyLarge: _ensureFontSize(theme.bodyLarge, fallback.bodyLarge),
+    bodyMedium: _ensureFontSize(theme.bodyMedium, fallback.bodyMedium),
+    bodySmall: _ensureFontSize(theme.bodySmall, fallback.bodySmall),
+    labelLarge: _ensureFontSize(theme.labelLarge, fallback.labelLarge),
+    labelMedium: _ensureFontSize(theme.labelMedium, fallback.labelMedium),
+    labelSmall: _ensureFontSize(theme.labelSmall, fallback.labelSmall),
+  );
+}
+
 TextTheme _applyMemoTypography(TextTheme base, AppFontScale scale) {
   final interTheme = GoogleFonts.interTextTheme(base);
   final notoSans = GoogleFonts.notoSansJpTextTheme(interTheme);
@@ -165,7 +194,9 @@ TextTheme _applyMemoTypography(TextTheme base, AppFontScale scale) {
     ),
   );
 
-  return tuned.apply(fontSizeFactor: scale.factor);
+  final withFontSizes = _ensureTextThemeFontSizes(tuned, base);
+
+  return withFontSizes.apply(fontSizeFactor: scale.factor);
 }
 
 TextTheme lightTextTheme(AppFontScale scale) =>
