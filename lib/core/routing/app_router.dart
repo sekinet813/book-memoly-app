@@ -49,8 +49,9 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
     initialLocation: '/login',
     refreshListenable: refreshListenable,
     redirect: (context, state) {
-      // Skip authentication in debug mode
-      if (kDebugMode) {
+      // Skip authentication in debug mode except on Android devices
+      final isAndroidDevice = defaultTargetPlatform == TargetPlatform.android;
+      if (kDebugMode && !isAndroidDevice) {
         // If on auth route in debug mode, redirect to home
         final isLoggingIn = state.matchedLocation == '/login';
         final isSigningUp = state.matchedLocation == '/signup';
