@@ -29,7 +29,12 @@ class ProfileService {
   Future<UserProfile> upsertProfile(UserProfile profile) async {
     final response = await _client
         .from(_profilesTable)
-        .upsert(profile.toMap())
+        .upsert(
+          profile.toMap(),
+          // Ensure existing profile rows are updated rather than causing
+          // duplicate key errors when the same user saves multiple times.
+          onConflict: 'user_id',
+        )
         .select()
         .single();
 
