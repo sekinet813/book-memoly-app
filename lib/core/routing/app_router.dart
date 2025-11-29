@@ -19,9 +19,6 @@ import '../../features/reading_history/reading_history_feature.dart';
 import '../providers/auth_providers.dart';
 import '../services/auth_service.dart';
 
-/// Dummy ChangeNotifier for when Supabase is not configured
-class _DummyChangeNotifier extends ChangeNotifier {}
-
 /// アニメーションなしのページを作成
 Page<dynamic> _buildNoTransitionPage({
   required Widget child,
@@ -40,9 +37,13 @@ Page<dynamic> _buildNoTransitionPage({
 final appRouterProvider = StateProvider<GoRouter>((ref) {
   // Read authService once, don't watch it to prevent router recreation
   final authService = ref.read(authServiceProvider);
+  final guestAuth = ref.read(guestAuthServiceProvider);
 
   // Create a dummy ChangeNotifier if authService is null
-  final refreshListenable = authService ?? _DummyChangeNotifier();
+  final refreshListenable = Listenable.merge([
+    if (authService != null) authService,
+    guestAuth,
+  ]);
 
   // Create router once and store it
   final router = GoRouter(
@@ -61,16 +62,9 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         return null;
       }
 
-      // Read current authService state in redirect
-      final currentAuthService = ref.read(authServiceProvider);
-
-      // If Supabase is not configured, allow access to all routes
-      if (currentAuthService == null) {
-        return null;
-      }
-
-      final status = currentAuthService.state.status;
+      final status = ref.read(authStatusProvider);
       final isLoggedIn = status == AuthStatus.authenticated;
+      final isGuest = status == AuthStatus.guest;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSigningUp = state.matchedLocation == '/signup';
       final isAuthRoute = isLoggingIn || isSigningUp;
@@ -80,7 +74,7 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         return null;
       }
 
-      if (!isLoggedIn) {
+      if (!isLoggedIn && !isGuest) {
         // Allow access to login and signup pages - don't redirect if already on auth route
         if (isAuthRoute) {
           return null;
@@ -90,7 +84,8 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       }
 
       // If logged in and on auth route, redirect to home
-      if (isAuthRoute) {
+      // Guest users should be allowed to access login/signup to upgrade their account
+      if (isLoggedIn && isAuthRoute) {
         return '/';
       }
 

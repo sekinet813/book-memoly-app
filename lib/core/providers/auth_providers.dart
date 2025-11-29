@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/auth_service.dart';
+import '../services/guest_auth_service.dart';
 import '../services/supabase_service.dart';
 
 final authServiceProvider = ChangeNotifierProvider<AuthService?>((ref) {
@@ -37,6 +38,21 @@ final authSessionProvider = Provider<Session?>((ref) {
   return authService?.state.session;
 });
 
+final guestAuthServiceProvider = ChangeNotifierProvider<GuestAuthService>((ref) {
+  final service = GuestAuthService();
+  ref.onDispose(service.dispose);
+  service.initialize();
+  return service;
+});
+
+final guestUserIdProvider = Provider<String?>((ref) {
+  final guestAuth = ref.watch(guestAuthServiceProvider);
+  if (guestAuth.isInitializing) {
+    return null;
+  }
+  return guestAuth.userId;
+});
+
 final currentUserIdProvider = Provider<String?>((ref) {
   // In debug mode, use DEBUG_UID from environment if available
   if (kDebugMode) {
@@ -44,6 +60,11 @@ final currentUserIdProvider = Provider<String?>((ref) {
     if (debugUid.isNotEmpty) {
       return debugUid;
     }
+  }
+
+  final guestUserId = ref.watch(guestUserIdProvider);
+  if (guestUserId != null) {
+    return guestUserId;
   }
 
   final session = ref.watch(authSessionProvider);
@@ -57,6 +78,15 @@ final authStatusProvider = Provider<AuthStatus>((ref) {
     if (debugUid.isNotEmpty) {
       return AuthStatus.authenticated;
     }
+  }
+
+  final guestAuth = ref.watch(guestAuthServiceProvider);
+  if (guestAuth.isInitializing) {
+    return AuthStatus.loading;
+  }
+
+  if (guestAuth.isGuest) {
+    return AuthStatus.guest;
   }
 
   final authService = ref.watch(authServiceProvider);
