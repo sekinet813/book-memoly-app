@@ -1,0 +1,94 @@
+<!-- Subject: Book Memoly | ログイン用のマジックリンク -->
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Memoly | ログイン用マジックリンク</title>
+    <style>
+      body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f7f7f7;
+        color: #1f2937;
+        line-height: 1.7;
+        padding: 0;
+        margin: 0;
+      }
+      .container {
+        max-width: 640px;
+        margin: 24px auto;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(31, 41, 55, 0.08);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+      }
+      .header {
+        background: linear-gradient(120deg, #5b7bfc, #243b7b);
+        color: #ffffff;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      p.subtext {
+        margin: 0;
+        opacity: 0.9;
+      }
+      .content {
+        padding: 24px;
+      }
+      .button {
+        display: inline-block;
+        background: #5b7bfc;
+        color: #ffffff;
+        text-decoration: none;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        margin: 16px 0;
+      }
+      .note {
+        margin-top: 16px;
+        padding: 12px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        color: #374151;
+      }
+      .footer {
+        padding: 16px 24px 24px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      a {
+        color: #3b82f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Book Memoly ログイン</h1>
+        <p class="subtext">以下のリンクからログインを完了してください。</p>
+      </div>
+      <div class="content">
+        <p>こんにちは、{{ .Email }} さん</p>
+        <p>
+          ログイン用のマジックリンクをリクエストしました。下のボタンを押すとアプリが起動し、ログインが完了します。
+        </p>
+        <p style="text-align: center">
+          <a class="button" href="{{ .ConfirmationURL }}" target="_blank" rel="noopener">ログインを完了する</a>
+        </p>
+        <p>ボタンが開かない場合は、以下のURLをブラウザにコピーしてアクセスしてください。</p>
+        <p class="note">{{ .ConfirmationURL }}</p>
+        <p class="note">※このリンクの有効期限は短時間です。お早めにアクセスしてください。</p>
+        <p>このメールに覚えがない場合は、リンクを開かず破棄してください。</p>
+      </div>
+      <div class="footer">
+        <p>Book Memoly をご利用いただきありがとうございます。</p>
+        <p>&copy; {{ .SiteURL }} | Book Memoly</p>
+      </div>
+    </div>
+  </body>
+</html>

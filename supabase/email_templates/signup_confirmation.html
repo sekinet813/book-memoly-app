@@ -1,0 +1,97 @@
+<!-- Subject: Book Memoly | 新規登録のご案内 -->
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Memoly | 新規登録のご案内</title>
+    <style>
+      body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f7f7f7;
+        color: #1f2937;
+        line-height: 1.7;
+        padding: 0;
+        margin: 0;
+      }
+      .container {
+        max-width: 640px;
+        margin: 24px auto;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(31, 41, 55, 0.08);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+      }
+      .header {
+        background: linear-gradient(120deg, #5b7bfc, #243b7b);
+        color: #ffffff;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      p.subtext {
+        margin: 0;
+        opacity: 0.9;
+      }
+      .content {
+        padding: 24px;
+      }
+      .button {
+        display: inline-block;
+        background: #5b7bfc;
+        color: #ffffff;
+        text-decoration: none;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        margin: 16px 0;
+      }
+      .note {
+        margin-top: 16px;
+        padding: 12px;
+        background: #f3f4f6;
+        border-radius: 10px;
+        color: #374151;
+      }
+      .footer {
+        padding: 16px 24px 24px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      a {
+        color: #3b82f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Book Memoly へようこそ！</h1>
+        <p class="subtext">アカウントを有効化するために、以下のリンクをクリックしてください。</p>
+      </div>
+      <div class="content">
+        <p>こんにちは、{{ .Email }} さん</p>
+        <p>
+          Book Memoly の新規登録申請を受け付けました。下のボタンを押してメールアドレスを確認すると、
+          アカウントが有効化されます。
+        </p>
+        <p style="text-align: center">
+          <a class="button" href="{{ .ConfirmationURL }}" target="_blank" rel="noopener">アカウントを有効化する</a>
+        </p>
+        <p>もしボタンが機能しない場合は、以下のURLをブラウザにコピーしてアクセスしてください。</p>
+        <p class="note">{{ .ConfirmationURL }}</p>
+        <p class="note">※このリンクの有効期限は短時間です。お早めにアクセスしてください。</p>
+        <p>お手数ですが、このメールに心当たりがない場合は破棄してください。</p>
+      </div>
+      <div class="footer">
+        <p>
+          このメールは送信専用です。ご不明点がある場合は、アプリ内の「お問い合わせ」からご連絡ください。
+        </p>
+        <p>&copy; {{ .SiteURL }} | Book Memoly</p>
+      </div>
+    </div>
+  </body>
+</html>
