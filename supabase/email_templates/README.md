@@ -5,7 +5,7 @@ Supabase ダッシュボードの **Authentication > Templates** で、以下の
 
 ## ファイル構成
 - `signup_confirmation.html`: 新規登録時の確認メール。メールアドレス確認リンク用。
-- `login_magic_link.html`: ログイン用マジックリンクメール。
+- `login_magic_link.html`: ログイン用リンクメール。
 
 ## 変数について
 Supabase で使用できる GoTrue のテンプレート変数を利用しています。
