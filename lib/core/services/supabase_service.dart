@@ -27,10 +27,13 @@ class SupabaseService {
       anonKey: _config.supabaseAnonKey,
     );
 
-    await _verifyConnection();
+    final healthy = await _verifyConnection();
+    if (!healthy) {
+      debugPrint('Supabase health check failed, but continuing app startup.');
+    }
   }
 
-  Future<void> _verifyConnection() async {
+  Future<bool> _verifyConnection() async {
     try {
       final response = await Supabase.instance.client
           .from(_config.healthCheckTable)
@@ -38,6 +41,7 @@ class SupabaseService {
           .limit(1);
 
       debugPrint('Supabase health check returned ${response.length} rows.');
+      return true;
     } on PostgrestException catch (error, stackTrace) {
       debugPrint('Supabase health check failed: ${Error.safeToString(error)}');
       FlutterError.reportError(
@@ -47,7 +51,7 @@ class SupabaseService {
           context: ErrorDescription('Supabase health check failed'),
         ),
       );
-      rethrow;
+      return false;
     } catch (error, stackTrace) {
       debugPrint(
         'Unexpected Supabase health check error: ${Error.safeToString(error)}',
@@ -59,7 +63,7 @@ class SupabaseService {
           context: ErrorDescription('Unexpected Supabase health check error'),
         ),
       );
-      rethrow;
+      return false;
     }
   }
 
