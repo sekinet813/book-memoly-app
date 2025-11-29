@@ -24,6 +24,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   static const _emailStorageKey = 'login_email';
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -59,32 +60,50 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    final authService = ref.read(authServiceProvider);
-    if (authService == null) {
-      // Show error message if Supabase is not configured
+    if (_isLoading) {
+      return; // 既に処理中の場合は何もしない
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      if (authService == null) {
+        // Show error message if Supabase is not configured
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+            ),
+          );
+        }
+        return;
+      }
+
+      final email = _emailController.text;
+      await _storeEmail(email);
+      await authService.sendMagicLink(email);
+
+      // 成功メッセージを表示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+            content: Text('メールを送信しました。メールボックスを確認してください。'),
+            duration: Duration(seconds: 3),
           ),
         );
       }
-      return;
-    }
-
-    final email = _emailController.text;
-    await _storeEmail(email);
-    await authService.sendMagicLink(email);
-  }
-
-  Future<void> _continueAsGuest() async {
-    final guestAuth = ref.read(guestAuthServiceProvider);
-    await guestAuth.signInAsGuest();
-
-    if (mounted) {
-      context.go('/');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -138,14 +157,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: AppSpacing.large),
                 PrimaryButton(
-                  onPressed: _sendMagicLink,
-                  label: 'リングを送信',
+                  onPressed: _isLoading ? null : _sendMagicLink,
+                  label: _isLoading ? '送信中...' : 'リングを送信',
                   expand: true,
                 ),
                 TextButton.icon(
-                  onPressed: _sendMagicLink,
-                  icon: const Icon(AppIcons.refresh),
-                  label: const Text('再送'),
+                  onPressed: _isLoading ? null : _sendMagicLink,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(AppIcons.refresh),
+                  label: Text(_isLoading ? '送信中...' : '再送'),
                 ),
               ],
             ),
@@ -216,29 +241,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
           ],
-          const SizedBox(height: AppSpacing.xLarge),
-          Divider(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-          const SizedBox(height: AppSpacing.large),
-          Text(
-            'ゲストとして使う',
-            style: AppTextStyles.pageTitle(context),
-          ),
-          const SizedBox(height: AppSpacing.small),
-          Text(
-            '登録なしですぐに利用を開始できます。入力したデータはこの端末のみに保存され、アカウント登録後に同期されます。',
-            style: AppTextStyles.bodyLarge(context).copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.large),
-          SecondaryButton(
-            icon: AppIcons.touchApp,
-            onPressed: _continueAsGuest,
-            label: 'ゲストとして始める',
-            expand: true,
-          ),
         ],
       ),
     );

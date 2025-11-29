@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (with Supabase)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env"
+      ],
+      "env": {}
+    },
+    {
+      "name": "Flutter (manual dart-define)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": []
+    }
+  ]
+}
+
