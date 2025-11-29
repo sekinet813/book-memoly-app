@@ -17,7 +17,7 @@ class AppDatabase {
     goals = GoalDao(this);
 
     _emitBookSnapshot();
-    _restoreFromStorage();
+    _restoreFuture = _restoreFromStorage();
   }
 
   AppDatabase.forTesting(QueryExecutor executor) : this(executor: executor);
@@ -49,6 +49,7 @@ class AppDatabase {
 
   static const _storageKey = 'app_database_state';
   final Future<SharedPreferences> _prefsFuture = SharedPreferences.getInstance();
+  late final Future<void> _restoreFuture;
 
   final _bookStreamController =
       StreamController<List<BookRow>>.broadcast(onListen: () {});
@@ -141,6 +142,8 @@ class AppDatabase {
   }
 
   Future<void> _persist() async {
+    await _restoreFuture;
+
     final prefs = await _prefsFuture;
 
     final data = {
