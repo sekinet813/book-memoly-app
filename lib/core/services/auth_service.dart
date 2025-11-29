@@ -53,6 +53,13 @@ class AuthService extends ChangeNotifier {
 
   final SupabaseClient _client;
   final SupabaseConfig _config;
+  String? get _redirectUrl {
+    final redirect = _config.authRedirectUrl?.trim();
+    if (redirect == null || redirect.isEmpty) {
+      return null;
+    }
+    return redirect;
+  }
 
   AppAuthState _state = AppAuthState.initial();
   StreamSubscription<AuthState>? _authSubscription;
@@ -137,7 +144,7 @@ class AuthService extends ChangeNotifier {
     try {
       await _client.auth.signInWithOtp(
         email: email,
-        emailRedirectTo: _config.authRedirectUrl,
+        emailRedirectTo: _redirectUrl,
         shouldCreateUser: false,
       );
       _state = _state.copyWith(magicLinkSent: true);
@@ -179,7 +186,7 @@ class AuthService extends ChangeNotifier {
     try {
       await _client.auth.signInWithOtp(
         email: email,
-        emailRedirectTo: _config.authRedirectUrl,
+        emailRedirectTo: _redirectUrl,
         shouldCreateUser: true,
       );
       _state = _state.copyWith(magicLinkSent: true);
