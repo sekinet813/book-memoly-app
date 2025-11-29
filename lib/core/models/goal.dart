@@ -1,10 +1,12 @@
-enum GoalPeriod { monthly, yearly }
+enum GoalPeriod { weekly, monthly, yearly }
 
 enum GoalMetric { pages, books }
 
 extension GoalPeriodLabel on GoalPeriod {
   String get label {
     switch (this) {
+      case GoalPeriod.weekly:
+        return '週間目標';
       case GoalPeriod.monthly:
         return '月間目標';
       case GoalPeriod.yearly:
@@ -49,4 +51,16 @@ extension GoalMetricLabel on GoalMetric {
       orElse: () => GoalMetric.pages,
     );
   }
+}
+
+DateTime startOfWeek(DateTime date) {
+  return DateTime(date.year, date.month, date.day)
+      .subtract(Duration(days: date.weekday - 1));
+}
+
+int weekOfYear(DateTime date) {
+  final start = startOfWeek(date);
+  final startOfFirstWeek = startOfWeek(DateTime(date.year, 1, 1));
+  final diffDays = start.difference(startOfFirstWeek).inDays;
+  return (diffDays ~/ 7) + 1;
 }

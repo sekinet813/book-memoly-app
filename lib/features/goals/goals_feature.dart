@@ -22,45 +22,67 @@ final goalsNotifierProvider =
 
 class GoalsState {
   const GoalsState({
+    this.weeklyGoal,
     this.monthlyGoal,
     this.yearlyGoal,
+    this.weeklyPagesRead = 0,
     this.monthlyPagesRead = 0,
     this.yearlyPagesRead = 0,
+    this.weeklyFinishedBooks = 0,
     this.monthlyFinishedBooks = 0,
     this.yearlyFinishedBooks = 0,
     this.isLoading = true,
     this.error,
   });
 
+  final GoalRow? weeklyGoal;
   final GoalRow? monthlyGoal;
   final GoalRow? yearlyGoal;
+  final int weeklyPagesRead;
   final int monthlyPagesRead;
   final int yearlyPagesRead;
+  final int weeklyFinishedBooks;
   final int monthlyFinishedBooks;
   final int yearlyFinishedBooks;
   final bool isLoading;
   final String? error;
 
   GoalsState copyWith({
+    GoalRow? weeklyGoal,
     GoalRow? monthlyGoal,
     GoalRow? yearlyGoal,
+    int? weeklyPagesRead,
     int? monthlyPagesRead,
     int? yearlyPagesRead,
+    int? weeklyFinishedBooks,
     int? monthlyFinishedBooks,
     int? yearlyFinishedBooks,
     bool? isLoading,
     String? error,
   }) {
     return GoalsState(
+      weeklyGoal: weeklyGoal ?? this.weeklyGoal,
       monthlyGoal: monthlyGoal ?? this.monthlyGoal,
       yearlyGoal: yearlyGoal ?? this.yearlyGoal,
+      weeklyPagesRead: weeklyPagesRead ?? this.weeklyPagesRead,
       monthlyPagesRead: monthlyPagesRead ?? this.monthlyPagesRead,
       yearlyPagesRead: yearlyPagesRead ?? this.yearlyPagesRead,
+      weeklyFinishedBooks: weeklyFinishedBooks ?? this.weeklyFinishedBooks,
       monthlyFinishedBooks: monthlyFinishedBooks ?? this.monthlyFinishedBooks,
       yearlyFinishedBooks: yearlyFinishedBooks ?? this.yearlyFinishedBooks,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
+  }
+
+  int get weeklyProgressValue {
+    final goal = weeklyGoal;
+    if (goal == null) {
+      return weeklyPagesRead;
+    }
+    return goal.targetType == GoalMetric.pages
+        ? weeklyPagesRead
+        : weeklyFinishedBooks;
   }
 
   int get monthlyProgressValue {
@@ -95,19 +117,25 @@ class GoalsNotifier extends StateNotifier<GoalsState> {
       final now = DateTime.now();
       final books = await _repository.getAllBooks();
       final logs = await _repository.getAllReadingLogs();
+      final weeklyGoal = await _repository.getWeeklyGoal(now);
       final monthlyGoal = await _repository.getMonthlyGoal(now);
       final yearlyGoal = await _repository.getYearlyGoal(now.year);
 
+      final weeklyPages = _pagesForWeek(logs, now);
       final monthlyPages = _pagesForMonth(logs, now);
       final yearlyPages = _pagesForYear(logs, now.year);
+      final weeklyFinished = _finishedBooksForWeek(books, now);
       final monthlyFinished = _finishedBooksForMonth(books, now);
       final yearlyFinished = _finishedBooksForYear(books, now.year);
 
       state = state.copyWith(
+        weeklyGoal: weeklyGoal,
         monthlyGoal: monthlyGoal,
         yearlyGoal: yearlyGoal,
+        weeklyPagesRead: weeklyPages,
         monthlyPagesRead: monthlyPages,
         yearlyPagesRead: yearlyPages,
+        weeklyFinishedBooks: weeklyFinished,
         monthlyFinishedBooks: monthlyFinished,
         yearlyFinishedBooks: yearlyFinished,
         isLoading: false,
@@ -133,6 +161,21 @@ class GoalsNotifier extends StateNotifier<GoalsState> {
     await load();
   }
 
+  Future<void> saveWeeklyGoal({
+    required GoalMetric metric,
+    required int targetValue,
+  }) async {
+    final now = DateTime.now();
+    await _repository.upsertGoal(
+      period: GoalPeriod.weekly,
+      targetType: metric,
+      targetValue: targetValue,
+      year: now.year,
+      week: weekOfYear(now),
+    );
+    await load();
+  }
+
   Future<void> saveYearlyGoal({
     required GoalMetric metric,
     required int targetValue,
@@ -154,10 +197,33 @@ class GoalsNotifier extends StateNotifier<GoalsState> {
         .fold(0, (sum, log) => sum + _pagesRead(log));
   }
 
+  int _pagesForWeek(List<ReadingLogRow> logs, DateTime date) {
+    final start = startOfWeek(date);
+    final end = start.add(const Duration(days: 7));
+
+    return logs
+        .where(
+          (log) => _isWithinRange(log.loggedAt, start, end),
+        )
+        .fold(0, (sum, log) => sum + _pagesRead(log));
+  }
+
   int _pagesForYear(List<ReadingLogRow> logs, int year) {
     return logs
         .where((log) => log.loggedAt.year == year)
         .fold(0, (sum, log) => sum + _pagesRead(log));
+  }
+
+  int _finishedBooksForWeek(List<BookRow> books, DateTime date) {
+    final start = startOfWeek(date);
+    final end = start.add(const Duration(days: 7));
+
+    return books.where((book) {
+      if (book.finishedAt == null) return false;
+      final status = bookStatusFromDbValue(book.status);
+      return status == BookStatus.finished &&
+          _isWithinRange(book.finishedAt!, start, end);
+    }).length;
   }
 
   int _finishedBooksForMonth(List<BookRow> books, DateTime date) {
@@ -183,6 +249,10 @@ class GoalsNotifier extends StateNotifier<GoalsState> {
     final end = log.endPage ?? 0;
     return max(0, end - start);
   }
+
+  bool _isWithinRange(DateTime date, DateTime start, DateTime end) {
+    return !date.isBefore(start) && date.isBefore(end);
+  }
 }
 
 class GoalsPage extends ConsumerStatefulWidget {
@@ -193,20 +263,24 @@ class GoalsPage extends ConsumerStatefulWidget {
 }
 
 class _GoalsPageState extends ConsumerState<GoalsPage> {
+  late final TextEditingController _weeklyController;
   late final TextEditingController _monthlyController;
   late final TextEditingController _yearlyController;
+  GoalMetric _weeklyMetric = GoalMetric.pages;
   GoalMetric _monthlyMetric = GoalMetric.pages;
   GoalMetric _yearlyMetric = GoalMetric.books;
 
   @override
   void initState() {
     super.initState();
+    _weeklyController = TextEditingController();
     _monthlyController = TextEditingController();
     _yearlyController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _weeklyController.dispose();
     _monthlyController.dispose();
     _yearlyController.dispose();
     super.dispose();
@@ -239,7 +313,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '年間・月間の目標を設定して、今の進捗をひと目で確認しましょう。',
+                        '週間・月間・年間の目標を設定して、今の進捗をひと目で確認しましょう。',
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium
@@ -248,6 +322,26 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                                   .colorScheme
                                   .onSurfaceVariant,
                             ),
+                      ),
+                      const SizedBox(height: AppSpacing.large),
+                      _GoalSection(
+                        title: '今週の目標',
+                        icon: AppIcons.calendarViewWeek,
+                        goal: state.weeklyGoal,
+                        progress: state.weeklyProgressValue,
+                        controller: _weeklyController,
+                        selectedMetric: _weeklyMetric,
+                        onMetricChanged: (metric) {
+                          setState(() => _weeklyMetric = metric);
+                        },
+                        onSave: (value) async {
+                          await ref
+                              .read(goalsNotifierProvider.notifier)
+                              .saveWeeklyGoal(
+                                metric: _weeklyMetric,
+                                targetValue: value,
+                              );
+                        },
                       ),
                       const SizedBox(height: AppSpacing.large),
                       _GoalSection(
@@ -296,6 +390,17 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   }
 
   void _syncControllers(GoalsState state) {
+    final weeklyGoal = state.weeklyGoal;
+    if (weeklyGoal != null) {
+      final value = weeklyGoal.targetValue.toString();
+      if (_weeklyController.text != value) {
+        _weeklyController.text = value;
+      }
+      if (_weeklyMetric != weeklyGoal.targetType) {
+        _weeklyMetric = weeklyGoal.targetType;
+      }
+    }
+
     final monthlyGoal = state.monthlyGoal;
     if (monthlyGoal != null) {
       final value = monthlyGoal.targetValue.toString();

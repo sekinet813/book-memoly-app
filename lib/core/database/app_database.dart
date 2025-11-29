@@ -353,6 +353,7 @@ class AppDatabase {
       'period': row.period.storageValue,
       'year': row.year,
       'month': row.month,
+      'week': row.week,
       'targetType': row.targetType.storageValue,
       'targetValue': row.targetValue,
       'createdAt': row.createdAt.toIso8601String(),
@@ -367,6 +368,7 @@ class AppDatabase {
       period: GoalPeriodLabel.fromStorage(json['period'] as String),
       year: json['year'] as int,
       month: json['month'] as int?,
+      week: json['week'] as int?,
       targetType: GoalMetricLabel.fromStorage(json['targetType'] as String),
       targetValue: json['targetValue'] as int,
       createdAt: _parseDate(json['createdAt'] as String?),
@@ -539,6 +541,7 @@ class GoalRow {
     required this.period,
     required this.year,
     this.month,
+    this.week,
     required this.targetType,
     required this.targetValue,
     DateTime? createdAt,
@@ -551,6 +554,7 @@ class GoalRow {
   final GoalPeriod period;
   final int year;
   final int? month;
+  final int? week;
   final GoalMetric targetType;
   final int targetValue;
   final DateTime createdAt;
@@ -698,6 +702,7 @@ class GoalsCompanion {
     required this.period,
     required this.year,
     this.month,
+    this.week,
     required this.targetType,
     required this.targetValue,
   });
@@ -707,6 +712,7 @@ class GoalsCompanion {
     required this.period,
     required this.year,
     this.month,
+    this.week,
     required this.targetType,
     required this.targetValue,
   });
@@ -715,6 +721,7 @@ class GoalsCompanion {
   final GoalPeriod period;
   final int year;
   final Value<int?>? month;
+  final Value<int?>? week;
   final GoalMetric targetType;
   final int targetValue;
 }
@@ -1273,6 +1280,7 @@ class GoalDao {
     GoalPeriod period, {
     required int year,
     int? month,
+    int? week,
   }) async {
     try {
       return db._goalRows.firstWhere(
@@ -1280,7 +1288,8 @@ class GoalDao {
             goal.userId == userId &&
             goal.period == period &&
             goal.year == year &&
-            goal.month == month,
+            goal.month == month &&
+            goal.week == week,
       );
     } catch (_) {
       return null;
@@ -1289,12 +1298,14 @@ class GoalDao {
 
   Future<int> upsertGoal(GoalsCompanion entry) async {
     final targetMonth = entry.month?.value;
+    final targetWeek = entry.week?.value;
     final index = db._goalRows.indexWhere(
       (goal) =>
           goal.userId == entry.userId &&
           goal.period == entry.period &&
           goal.year == entry.year &&
-          goal.month == targetMonth,
+          goal.month == targetMonth &&
+          goal.week == targetWeek,
     );
 
     if (index == -1) {
@@ -1306,6 +1317,7 @@ class GoalDao {
           period: entry.period,
           year: entry.year,
           month: targetMonth,
+          week: targetWeek,
           targetType: entry.targetType,
           targetValue: entry.targetValue,
         ),
@@ -1320,7 +1332,8 @@ class GoalDao {
       userId: existing.userId,
       period: existing.period,
       year: existing.year,
-      month: existing.month,
+      month: targetMonth,
+      week: targetWeek,
       targetType: entry.targetType,
       targetValue: entry.targetValue,
       createdAt: existing.createdAt,
