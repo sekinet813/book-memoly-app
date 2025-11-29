@@ -62,15 +62,20 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
         return null;
       }
 
-      final status = ref.read(authStatusProvider);
-      final isLoggedIn = status == AuthStatus.authenticated;
-      final isGuest = status == AuthStatus.guest;
+      // authServiceの状態を直接確認（authStatusProviderが古い状態を返す可能性があるため）
+      final authService = ref.read(authServiceProvider);
+      final guestAuth = ref.read(guestAuthServiceProvider);
+
+      final authServiceStatus =
+          authService?.state.status ?? AuthStatus.unauthenticated;
+      final isGuest = guestAuth.isGuest;
+      final isLoggedIn = authServiceStatus == AuthStatus.authenticated;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSigningUp = state.matchedLocation == '/signup';
       final isAuthRoute = isLoggingIn || isSigningUp;
 
       // Allow access to auth routes (login/signup) when not logged in
-      if (status == AuthStatus.loading) {
+      if (authServiceStatus == AuthStatus.loading) {
         return null;
       }
 

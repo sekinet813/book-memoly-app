@@ -21,6 +21,7 @@ class SignUpPage extends ConsumerStatefulWidget {
 class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -42,20 +43,46 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       return;
     }
 
-    final authService = ref.read(authServiceProvider);
-    if (authService == null) {
-      // Show error message if Supabase is not configured
+    if (_isLoading) {
+      return; // 既に処理中の場合は何もしない
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      if (authService == null) {
+        // Show error message if Supabase is not configured
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+            ),
+          );
+        }
+        return;
+      }
+
+      await authService.sendSignUpLink(_emailController.text);
+
+      // 成功メッセージを表示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('認証サービスが利用できません。Supabaseの設定を確認してください。'),
+            content: Text('メールを送信しました。メールボックスを確認してください。'),
+            duration: Duration(seconds: 3),
           ),
         );
       }
-      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    await authService.sendSignUpLink(_emailController.text);
   }
 
   @override
@@ -103,8 +130,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 ),
                 const SizedBox(height: AppSpacing.large),
                 PrimaryButton(
-                  onPressed: _sendSignUpLink,
-                  label: '登録用のリングを送信',
+                  onPressed: _isLoading ? null : _sendSignUpLink,
+                  label: _isLoading ? '送信中...' : '登録用のリングを送信',
                   expand: true,
                 ),
               ],

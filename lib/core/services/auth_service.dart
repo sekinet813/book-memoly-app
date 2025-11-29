@@ -57,8 +57,12 @@ class AuthService extends ChangeNotifier {
   String? get _redirectUrl {
     final redirect = _config.authRedirectUrl?.trim();
     if (redirect == null || redirect.isEmpty) {
-      return null;
+      // デフォルトのカスタムURLスキームを使用
+      const defaultRedirect = 'com.bookmemoly.app://';
+      debugPrint('[AuthService] No redirect URL configured, using default: $defaultRedirect');
+      return defaultRedirect;
     }
+    debugPrint('[AuthService] Using configured redirect URL: $redirect');
     return redirect;
   }
 
@@ -142,10 +146,13 @@ class AuthService extends ChangeNotifier {
     _state = _state.copyWith(magicLinkSent: false, errorMessage: null);
     notifyListeners();
 
+    final redirectUrl = _redirectUrl;
+    debugPrint('[AuthService] Sending magic link to $email with redirect: $redirectUrl');
+
     try {
       await _client.auth.signInWithOtp(
         email: email,
-        emailRedirectTo: _redirectUrl,
+        emailRedirectTo: redirectUrl,
         shouldCreateUser: false,
       );
       _state = _state.copyWith(magicLinkSent: true);
@@ -184,10 +191,13 @@ class AuthService extends ChangeNotifier {
     _state = _state.copyWith(magicLinkSent: false, errorMessage: null);
     notifyListeners();
 
+    final redirectUrl = _redirectUrl;
+    debugPrint('[AuthService] Sending sign-up link to $email with redirect: $redirectUrl');
+
     try {
       await _client.auth.signInWithOtp(
         email: email,
-        emailRedirectTo: _redirectUrl,
+        emailRedirectTo: redirectUrl,
         shouldCreateUser: true,
       );
       _state = _state.copyWith(magicLinkSent: true);
@@ -226,7 +236,17 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    debugPrint('[AuthService] signOut() called');
     await _client.auth.signOut();
+    debugPrint('[AuthService] signOut() completed, updating state');
+    // 明示的に状態を更新
+    _state = _state.copyWith(
+      session: null,
+      status: AuthStatus.unauthenticated,
+    );
+    debugPrint('[AuthService] State updated: status=${_state.status}, session=${_state.session}');
+    notifyListeners();
+    debugPrint('[AuthService] notifyListeners() called');
   }
 
   @override

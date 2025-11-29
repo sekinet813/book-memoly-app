@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -12,6 +13,7 @@ import '../../core/providers/notification_providers.dart';
 import '../../core/providers/reading_activity_providers.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/providers/sync_providers.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/repositories/local_database_repository.dart';
 import '../../core/services/cover_image_service.dart';
 import '../../core/widgets/app_card.dart';
@@ -118,16 +120,21 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  bool _isLoggingOut = false;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      _startSync();
-      ref.read(notificationSettingsNotifierProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _startSync();
+        ref.read(notificationSettingsNotifierProvider);
+      }
     });
   }
 
   Future<void> _startSync() async {
+    if (!mounted) return;
     final syncService = ref.read(supabaseSyncServiceProvider);
     await syncService?.syncIfConnected();
   }
@@ -135,6 +142,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final bookshelfState = ref.watch(bookshelfNotifierProvider);
+
+    // 認証状態の変更を監視して、ログアウト時に遷移
+    ref.listen<AuthStatus>(authStatusProvider, (previous, next) {
+      if (_isLoggingOut && next != AuthStatus.authenticated && mounted) {
+        _isLoggingOut = false;
+        context.go('/login');
+      }
+    });
 
     return AppPage(
       title: AppConstants.appName,
@@ -162,12 +177,84 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         IconButton(
           tooltip: 'ログアウト',
-          onPressed: () async {
-            final authService = ref.read(authServiceProvider);
-            if (authService != null) {
-              await authService.signOut();
-            }
-          },
+          onPressed: _isLoggingOut
+              ? null
+              : () async {
+                  if (_isLoggingOut) return;
+
+                  setState(() {
+                    _isLoggingOut = true;
+                  });
+
+                  try {
+                    final authService = ref.read(authServiceProvider);
+
+                    // 認証済みユーザーのログアウト
+                    if (authService != null) {
+                      debugPrint('[Logout] Calling authService.signOut()');
+                      await authService.signOut();
+                      debugPrint('[Logout] authService.signOut() completed');
+                      // 状態が更新されるまで少し待つ
+                      await Future.delayed(const Duration(milliseconds: 50));
+                    }
+
+                    // 認証状態の変更を待つ（最大3秒）
+                    int attempts = 0;
+                    while (attempts < 30 && mounted && _isLoggingOut) {
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      // authServiceの状態を直接確認
+                      final currentAuthService = ref.read(authServiceProvider);
+                      final status = currentAuthService?.state.status ??
+                          AuthStatus.unauthenticated;
+                      debugPrint(
+                          '[Logout] Attempt $attempts: status=$status, authService.state.status=${currentAuthService?.state.status}');
+                      if (status != AuthStatus.authenticated) {
+                        debugPrint('[Logout] Auth state changed to: $status');
+                        break;
+                      }
+                      attempts++;
+                    }
+
+                    // 認証状態が変更されたか、タイムアウトした場合に遷移
+                    if (mounted && _isLoggingOut) {
+                      _isLoggingOut = false;
+                      // authServiceの状態を直接確認
+                      final currentAuthService = ref.read(authServiceProvider);
+                      final finalStatus = currentAuthService?.state.status ??
+                          AuthStatus.unauthenticated;
+                      debugPrint(
+                          '[Logout] Final status: $finalStatus, authService.state.status=${currentAuthService?.state.status}, navigating to /login');
+
+                      // ルーターのリフレッシュを待ってから遷移
+                      if (mounted) {
+                        // ルーターのrefreshListenableが動作するのを待つ
+                        await Future.delayed(const Duration(milliseconds: 300));
+
+                        // 認証状態を再確認
+                        final refreshedAuthService =
+                            ref.read(authServiceProvider);
+                        final refreshedStatus =
+                            refreshedAuthService?.state.status ??
+                                AuthStatus.unauthenticated;
+                        debugPrint(
+                            '[Logout] Refreshed status: $refreshedStatus');
+
+                        // context.goを使用（ルーターのredirectが正しく動作するように）
+                        debugPrint('[Logout] Executing context.go(/login)');
+                        context.go('/login');
+                      }
+                    }
+                  } catch (error) {
+                    debugPrint('[Logout] Error: $error');
+                    // エラーが発生した場合もログインページに遷移
+                    if (mounted) {
+                      setState(() {
+                        _isLoggingOut = false;
+                      });
+                      context.go('/login');
+                    }
+                  }
+                },
           icon: const Icon(AppIcons.logout),
         ),
       ],
@@ -582,7 +669,7 @@ class _ContinueReadingSection extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                     ),
-                ),
+                  ),
                 SizedBox(
                   height: 180,
                   child: ListView.separated(
@@ -847,10 +934,11 @@ class _BookTile extends StatelessWidget {
                         book.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
                       ),
                       if (book.authors != null && book.authors!.isNotEmpty) ...[
                         const SizedBox(height: 4),
