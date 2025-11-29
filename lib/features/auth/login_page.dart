@@ -84,6 +84,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return AppPage(
       title: AppConstants.appName,
+      scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
