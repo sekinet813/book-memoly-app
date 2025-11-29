@@ -84,7 +84,8 @@ final appRouterProvider = StateProvider<GoRouter>((ref) {
       }
 
       // If logged in and on auth route, redirect to home
-      if ((isLoggedIn || isGuest) && isAuthRoute) {
+      // Guest users should be allowed to access login/signup to upgrade their account
+      if (isLoggedIn && isAuthRoute) {
         return '/';
       }
 
