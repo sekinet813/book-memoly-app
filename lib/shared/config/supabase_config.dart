@@ -11,40 +11,69 @@ class SupabaseConfig {
   });
 
   factory SupabaseConfig.fromEnvironment() {
-    // Try flutter_dotenv first, then fall back to String.fromEnvironment
-    final supabaseUrl = dotenv.env['SUPABASE_URL']?.trim() ?? 
-                       String.fromEnvironment('SUPABASE_URL');
-    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim() ?? 
-                           String.fromEnvironment('SUPABASE_ANON_KEY');
-    final redirectUrl = dotenv.env['SUPABASE_REDIRECT_URL']?.trim() ?? 
-                       String.fromEnvironment('SUPABASE_REDIRECT_URL');
-    final functionsUrl = dotenv.env['SUPABASE_FUNCTION_URL']?.trim() ?? 
-                        String.fromEnvironment('SUPABASE_FUNCTION_URL');
-    
+    final supabaseUrlValue = _resolveEnv('SUPABASE_URL');
+    final supabaseAnonKeyValue = _resolveEnv('SUPABASE_ANON_KEY');
+    final redirectUrlValue = _resolveEnv('SUPABASE_REDIRECT_URL');
+    final functionsUrlValue = _resolveEnv('SUPABASE_FUNCTION_URL');
+
+    final supabaseUrl = supabaseUrlValue.value;
+    final supabaseAnonKey = supabaseAnonKeyValue.value;
+    final redirectUrl = redirectUrlValue.value;
+    final functionsUrl = functionsUrlValue.value;
+
     // Debug: Print what we got from environment
     debugPrint('[SupabaseConfig] Reading environment variables:');
-    debugPrint('[SupabaseConfig]   SUPABASE_URL: ${supabaseUrl.isEmpty ? "EMPTY" : "${supabaseUrl.substring(0, supabaseUrl.length > 30 ? 30 : supabaseUrl.length)}..."}');
-    debugPrint('[SupabaseConfig]   SUPABASE_ANON_KEY: ${supabaseAnonKey.isEmpty ? "EMPTY" : "length=${supabaseAnonKey.length}"}');
-    debugPrint('[SupabaseConfig]   SUPABASE_REDIRECT_URL: ${redirectUrl.isEmpty ? "EMPTY" : redirectUrl}');
-    debugPrint('[SupabaseConfig]   Source: ${dotenv.env.containsKey('SUPABASE_URL') ? "flutter_dotenv" : "String.fromEnvironment"}');
-    
+    debugPrint('[SupabaseConfig]   SUPABASE_URL: '
+        '${supabaseUrl.isEmpty ? "EMPTY" : "${supabaseUrl.substring(0, supabaseUrl.length > 30 ? 30 : supabaseUrl.length)}..."}'
+        ' (${supabaseUrlValue.source})');
+    debugPrint('[SupabaseConfig]   SUPABASE_ANON_KEY: '
+        '${supabaseAnonKey.isEmpty ? "EMPTY" : "length=${supabaseAnonKey.length}"}'
+        ' (${supabaseAnonKeyValue.source})');
+    debugPrint('[SupabaseConfig]   SUPABASE_REDIRECT_URL: '
+        '${redirectUrl.isEmpty ? "EMPTY" : redirectUrl}'
+        ' (${redirectUrlValue.source})');
+
     if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
       debugPrint('[SupabaseConfig] ⚠️ Missing environment variables:');
-      if (supabaseUrl.isEmpty) debugPrint('[SupabaseConfig]   - SUPABASE_URL is empty');
-      if (supabaseAnonKey.isEmpty) debugPrint('[SupabaseConfig]   - SUPABASE_ANON_KEY is empty');
+      if (supabaseUrl.isEmpty) {
+        debugPrint('[SupabaseConfig]   - SUPABASE_URL is empty');
+      }
+      if (supabaseAnonKey.isEmpty) {
+        debugPrint('[SupabaseConfig]   - SUPABASE_ANON_KEY is empty');
+      }
       debugPrint('[SupabaseConfig] Make sure to:');
       debugPrint('[SupabaseConfig]   1. Create .env file in project root');
       debugPrint('[SupabaseConfig]   2. Add SUPABASE_URL and SUPABASE_ANON_KEY');
       debugPrint('[SupabaseConfig]   3. Add .env to pubspec.yaml assets section');
       debugPrint('[SupabaseConfig]   4. Run app using: ./run.sh');
     }
-    
+
     return SupabaseConfig(
       supabaseUrl: supabaseUrl,
       supabaseAnonKey: supabaseAnonKey,
       supabaseFunctionsUrl: functionsUrl.isEmpty ? null : functionsUrl,
       authRedirectUrl: redirectUrl.isEmpty ? null : redirectUrl,
     );
+  }
+
+  static _EnvValue _resolveEnv(String key) {
+    final dotenvRaw = dotenv.env[key];
+    final dotenvValue = dotenvRaw?.trim() ?? '';
+    if (dotenvValue.isNotEmpty) {
+      return _EnvValue(dotenvValue, 'flutter_dotenv');
+    }
+
+    final dartDefineValue = String.fromEnvironment(key).trim();
+    if (dartDefineValue.isNotEmpty) {
+      return _EnvValue(dartDefineValue, 'dart-define');
+    }
+
+    // If the key exists in dotenv but is empty, mark the source for debugging.
+    if (dotenvRaw != null) {
+      return _EnvValue('', 'flutter_dotenv (empty)');
+    }
+
+    return const _EnvValue('', 'unset');
   }
 
   final String supabaseUrl;
@@ -114,4 +143,11 @@ class SupabaseConfig {
     }
     return result;
   }
+}
+
+class _EnvValue {
+  const _EnvValue(this.value, this.source);
+
+  final String value;
+  final String source;
 }
