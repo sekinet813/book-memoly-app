@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/goal.dart';
 
@@ -15,6 +17,7 @@ class AppDatabase {
     goals = GoalDao(this);
 
     _emitBookSnapshot();
+    _restoreFromStorage();
   }
 
   AppDatabase.forTesting(QueryExecutor executor) : this(executor: executor);
@@ -44,6 +47,9 @@ class AppDatabase {
   int _noteTagId = 0;
   int _goalId = 0;
 
+  static const _storageKey = 'app_database_state';
+  final Future<SharedPreferences> _prefsFuture = SharedPreferences.getInstance();
+
   final _bookStreamController =
       StreamController<List<BookRow>>.broadcast(onListen: () {});
 
@@ -57,8 +63,317 @@ class AppDatabase {
     _emitBookSnapshot();
   }
 
+  Future<void> _restoreFromStorage() async {
+    final prefs = await _prefsFuture;
+    final raw = prefs.getString(_storageKey);
+    if (raw == null) return;
+
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+
+    _bookId = data['bookId'] as int? ?? 0;
+    _noteId = data['noteId'] as int? ?? 0;
+    _actionId = data['actionId'] as int? ?? 0;
+    _readingLogId = data['readingLogId'] as int? ?? 0;
+    _tagId = data['tagId'] as int? ?? 0;
+    _bookTagId = data['bookTagId'] as int? ?? 0;
+    _noteTagId = data['noteTagId'] as int? ?? 0;
+    _goalId = data['goalId'] as int? ?? 0;
+
+    _bookRows
+      ..clear()
+      ..addAll(
+        (data['books'] as List<dynamic>? ?? [])
+            .map((book) => _bookRowFromJson(book as Map<String, dynamic>)),
+      );
+
+    _noteRows
+      ..clear()
+      ..addAll(
+        (data['notes'] as List<dynamic>? ?? [])
+            .map((note) => _noteRowFromJson(note as Map<String, dynamic>)),
+      );
+
+    _actionRows
+      ..clear()
+      ..addAll(
+        (data['actions'] as List<dynamic>? ?? [])
+            .map((action) => _actionRowFromJson(action as Map<String, dynamic>)),
+      );
+
+    _readingLogRows
+      ..clear()
+      ..addAll(
+        (data['readingLogs'] as List<dynamic>? ?? [])
+            .map(
+              (log) => _readingLogRowFromJson(log as Map<String, dynamic>),
+            ),
+      );
+
+    _tagRows
+      ..clear()
+      ..addAll(
+        (data['tags'] as List<dynamic>? ?? [])
+            .map((tag) => _tagRowFromJson(tag as Map<String, dynamic>)),
+      );
+
+    _bookTagRows
+      ..clear()
+      ..addAll(
+        (data['bookTags'] as List<dynamic>? ?? [])
+            .map((entry) => _bookTagRowFromJson(entry as Map<String, dynamic>)),
+      );
+
+    _noteTagRows
+      ..clear()
+      ..addAll(
+        (data['noteTags'] as List<dynamic>? ?? [])
+            .map((entry) => _noteTagRowFromJson(entry as Map<String, dynamic>)),
+      );
+
+    _goalRows
+      ..clear()
+      ..addAll(
+        (data['goals'] as List<dynamic>? ?? [])
+            .map((goal) => _goalRowFromJson(goal as Map<String, dynamic>)),
+      );
+
+    _emitBookSnapshot();
+  }
+
+  Future<void> _persist() async {
+    final prefs = await _prefsFuture;
+
+    final data = {
+      'bookId': _bookId,
+      'noteId': _noteId,
+      'actionId': _actionId,
+      'readingLogId': _readingLogId,
+      'tagId': _tagId,
+      'bookTagId': _bookTagId,
+      'noteTagId': _noteTagId,
+      'goalId': _goalId,
+      'books': _bookRows.map(_bookRowToJson).toList(),
+      'notes': _noteRows.map(_noteRowToJson).toList(),
+      'actions': _actionRows.map(_actionRowToJson).toList(),
+      'readingLogs': _readingLogRows.map(_readingLogRowToJson).toList(),
+      'tags': _tagRows.map(_tagRowToJson).toList(),
+      'bookTags': _bookTagRows.map(_bookTagRowToJson).toList(),
+      'noteTags': _noteTagRows.map(_noteTagRowToJson).toList(),
+      'goals': _goalRows.map(_goalRowToJson).toList(),
+    };
+
+    await prefs.setString(_storageKey, jsonEncode(data));
+  }
+
   Future<void> close() async {
     await _bookStreamController.close();
+  }
+
+  Map<String, dynamic> _bookRowToJson(BookRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'googleBooksId': row.googleBooksId,
+      'title': row.title,
+      'authors': row.authors,
+      'description': row.description,
+      'thumbnailUrl': row.thumbnailUrl,
+      'publishedDate': row.publishedDate,
+      'pageCount': row.pageCount,
+      'status': row.status,
+      'startedAt': row.startedAt?.toIso8601String(),
+      'finishedAt': row.finishedAt?.toIso8601String(),
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  BookRow _bookRowFromJson(Map<String, dynamic> json) {
+    return BookRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      googleBooksId: json['googleBooksId'] as String,
+      title: json['title'] as String,
+      authors: json['authors'] as String?,
+      description: json['description'] as String?,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      publishedDate: json['publishedDate'] as String?,
+      pageCount: json['pageCount'] as int?,
+      status: json['status'] as int,
+      startedAt: _parseDate(json['startedAt'] as String?),
+      finishedAt: _parseDate(json['finishedAt'] as String?),
+      createdAt: _parseDate(json['createdAt'] as String?) ?? DateTime.now(),
+      updatedAt: _parseDate(json['updatedAt'] as String?) ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> _noteRowToJson(NoteRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'bookId': row.bookId,
+      'content': row.content,
+      'pageNumber': row.pageNumber,
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  NoteRow _noteRowFromJson(Map<String, dynamic> json) {
+    return NoteRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      bookId: json['bookId'] as int,
+      content: json['content'] as String,
+      pageNumber: json['pageNumber'] as int?,
+      createdAt: _parseDate(json['createdAt'] as String?),
+      updatedAt: _parseDate(json['updatedAt'] as String?),
+    );
+  }
+
+  Map<String, dynamic> _actionRowToJson(ActionRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'bookId': row.bookId,
+      'noteId': row.noteId,
+      'title': row.title,
+      'description': row.description,
+      'dueDate': row.dueDate?.toIso8601String(),
+      'remindAt': row.remindAt?.toIso8601String(),
+      'status': row.status,
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  ActionRow _actionRowFromJson(Map<String, dynamic> json) {
+    return ActionRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      bookId: json['bookId'] as int?,
+      noteId: json['noteId'] as int?,
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      dueDate: _parseDate(json['dueDate'] as String?),
+      remindAt: _parseDate(json['remindAt'] as String?),
+      status: json['status'] as String? ?? 'pending',
+      createdAt: _parseDate(json['createdAt'] as String?),
+      updatedAt: _parseDate(json['updatedAt'] as String?),
+    );
+  }
+
+  Map<String, dynamic> _readingLogRowToJson(ReadingLogRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'bookId': row.bookId,
+      'startPage': row.startPage,
+      'endPage': row.endPage,
+      'durationMinutes': row.durationMinutes,
+      'loggedAt': row.loggedAt.toIso8601String(),
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  ReadingLogRow _readingLogRowFromJson(Map<String, dynamic> json) {
+    return ReadingLogRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      bookId: json['bookId'] as int,
+      startPage: json['startPage'] as int?,
+      endPage: json['endPage'] as int?,
+      durationMinutes: json['durationMinutes'] as int?,
+      loggedAt: _parseDate(json['loggedAt'] as String?),
+      createdAt: _parseDate(json['createdAt'] as String?),
+      updatedAt: _parseDate(json['updatedAt'] as String?),
+    );
+  }
+
+  Map<String, dynamic> _tagRowToJson(TagRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'name': row.name,
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  TagRow _tagRowFromJson(Map<String, dynamic> json) {
+    return TagRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      createdAt: _parseDate(json['createdAt'] as String?),
+      updatedAt: _parseDate(json['updatedAt'] as String?),
+    );
+  }
+
+  Map<String, dynamic> _bookTagRowToJson(BookTagRow row) {
+    return {
+      'id': row.id,
+      'bookId': row.bookId,
+      'tagId': row.tagId,
+    };
+  }
+
+  BookTagRow _bookTagRowFromJson(Map<String, dynamic> json) {
+    return BookTagRow(
+      id: json['id'] as int,
+      bookId: json['bookId'] as int,
+      tagId: json['tagId'] as int,
+    );
+  }
+
+  Map<String, dynamic> _noteTagRowToJson(NoteTagRow row) {
+    return {
+      'id': row.id,
+      'noteId': row.noteId,
+      'tagId': row.tagId,
+    };
+  }
+
+  NoteTagRow _noteTagRowFromJson(Map<String, dynamic> json) {
+    return NoteTagRow(
+      id: json['id'] as int,
+      noteId: json['noteId'] as int,
+      tagId: json['tagId'] as int,
+    );
+  }
+
+  Map<String, dynamic> _goalRowToJson(GoalRow row) {
+    return {
+      'id': row.id,
+      'userId': row.userId,
+      'period': row.period.storageValue,
+      'year': row.year,
+      'month': row.month,
+      'targetType': row.targetType.storageValue,
+      'targetValue': row.targetValue,
+      'createdAt': row.createdAt.toIso8601String(),
+      'updatedAt': row.updatedAt.toIso8601String(),
+    };
+  }
+
+  GoalRow _goalRowFromJson(Map<String, dynamic> json) {
+    return GoalRow(
+      id: json['id'] as int,
+      userId: json['userId'] as String,
+      period: GoalPeriodLabel.fromStorage(json['period'] as String),
+      year: json['year'] as int,
+      month: json['month'] as int?,
+      targetType: GoalMetricLabel.fromStorage(json['targetType'] as String),
+      targetValue: json['targetValue'] as int,
+      createdAt: _parseDate(json['createdAt'] as String?),
+      updatedAt: _parseDate(json['updatedAt'] as String?),
+    );
+  }
+
+  DateTime? _parseDate(String? value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value);
   }
 }
 
@@ -425,6 +740,7 @@ class BookDao {
 
     db._bookRows.add(row);
     db._notifyBooksChanged();
+    await db._persist();
     return newId;
   }
 
@@ -481,6 +797,7 @@ class BookDao {
     book.status = status;
     book.updatedAt = DateTime.now();
     db._notifyBooksChanged();
+    await db._persist();
     return 1;
   }
 
@@ -501,6 +818,7 @@ class BookDao {
     book.finishedAt = finishedAt;
     book.updatedAt = DateTime.now();
     db._notifyBooksChanged();
+    await db._persist();
     return 1;
   }
 
@@ -521,6 +839,7 @@ class BookDao {
     book.thumbnailUrl = thumbnailUrl;
     book.updatedAt = DateTime.now();
     db._notifyBooksChanged();
+    await db._persist();
     return 1;
   }
 
@@ -538,6 +857,7 @@ class BookDao {
     }
 
     db._notifyBooksChanged();
+    await db._persist();
   }
 }
 
@@ -564,6 +884,7 @@ class NoteDao {
       ),
     );
 
+    await db._persist();
     return newId;
   }
 
@@ -596,6 +917,7 @@ class NoteDao {
       updatedAt: DateTime.now(),
     );
 
+    await db._persist();
     return 1;
   }
 
@@ -604,6 +926,7 @@ class NoteDao {
     db._noteRows
         .removeWhere((note) => note.id == noteId && note.userId == userId);
     db._noteTagRows.removeWhere((row) => row.noteId == noteId);
+    await db._persist();
     return beforeLength == db._noteRows.length ? 0 : 1;
   }
 
@@ -619,6 +942,8 @@ class NoteDao {
     if (db._noteId < row.id) {
       db._noteId = row.id;
     }
+
+    await db._persist();
   }
 }
 
@@ -640,9 +965,12 @@ class ActionDao {
         dueDate: entry.dueDate?.value,
         remindAt: entry.remindAt?.value,
         status: entry.status.value,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     );
 
+    await db._persist();
     return newId;
   }
 
@@ -698,6 +1026,7 @@ class ActionDao {
       updatedAt: DateTime.now(),
     );
 
+    await db._persist();
     return 1;
   }
 
@@ -705,6 +1034,7 @@ class ActionDao {
     final beforeLength = db._actionRows.length;
     db._actionRows.removeWhere(
         (action) => action.id == actionId && action.userId == userId);
+    await db._persist();
     return beforeLength == db._actionRows.length ? 0 : 1;
   }
 
@@ -722,6 +1052,8 @@ class ActionDao {
     if (db._actionId < row.id) {
       db._actionId = row.id;
     }
+
+    await db._persist();
   }
 }
 
@@ -743,6 +1075,7 @@ class ReadingLogDao {
       ),
     );
 
+    await db._persist();
     return newId;
   }
 
@@ -773,6 +1106,8 @@ class ReadingLogDao {
     if (db._readingLogId < row.id) {
       db._readingLogId = row.id;
     }
+
+    await db._persist();
   }
 }
 
@@ -797,6 +1132,7 @@ class TagDao {
       ),
     );
 
+    await db._persist();
     return newId;
   }
 
@@ -816,6 +1152,7 @@ class TagDao {
       ..name = name
       ..updatedAt = DateTime.now();
 
+    await db._persist();
     return 1;
   }
 
@@ -830,6 +1167,7 @@ class TagDao {
     db._bookTagRows.removeWhere((row) => row.tagId == tagId);
     db._noteTagRows.removeWhere((row) => row.tagId == tagId);
 
+    await db._persist();
     return 1;
   }
 
@@ -851,6 +1189,8 @@ class TagDao {
         BookTagRow(id: ++db._bookTagId, bookId: bookId, tagId: tagId),
       );
     }
+
+    await db._persist();
   }
 
   Future<void> setTagsForNote(
@@ -871,6 +1211,8 @@ class TagDao {
         NoteTagRow(id: ++db._noteTagId, noteId: noteId, tagId: tagId),
       );
     }
+
+    await db._persist();
   }
 
   Future<List<TagRow>> getTagsForBook(String userId, int bookId) async {
@@ -965,6 +1307,7 @@ class GoalDao {
           targetValue: entry.targetValue,
         ),
       );
+      await db._persist();
       return newId;
     }
 
@@ -981,6 +1324,7 @@ class GoalDao {
       updatedAt: DateTime.now(),
     );
 
+    await db._persist();
     return existing.id;
   }
 
@@ -998,5 +1342,7 @@ class GoalDao {
     if (db._goalId < row.id) {
       db._goalId = row.id;
     }
+
+    await db._persist();
   }
 }
