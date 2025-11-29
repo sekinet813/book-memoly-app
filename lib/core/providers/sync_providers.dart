@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../providers/auth_providers.dart';
 import '../providers/database_providers.dart';
+import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import '../services/sync_service.dart';
 
@@ -13,8 +14,9 @@ final connectivityProvider = Provider<Connectivity>((ref) {
 final supabaseSyncServiceProvider = Provider<SupabaseSyncService?>((ref) {
   final supabase = ref.watch(supabaseServiceProvider);
   final userId = ref.watch(currentUserIdProvider);
+  final authStatus = ref.watch(authStatusProvider);
 
-  if (supabase == null || userId == null) {
+  if (supabase == null || userId == null || authStatus == AuthStatus.guest) {
     return null;
   }
 

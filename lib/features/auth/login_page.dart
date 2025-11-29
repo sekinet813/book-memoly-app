@@ -77,6 +77,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     await authService.sendMagicLink(email);
   }
 
+  Future<void> _continueAsGuest() async {
+    final guestAuth = ref.read(guestAuthServiceProvider);
+    await guestAuth.signInAsGuest();
+
+    if (mounted) {
+      context.go('/');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final magicLinkSent = ref.watch(magicLinkSentProvider);
@@ -207,6 +216,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
           ],
+          const SizedBox(height: AppSpacing.xLarge),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+          const SizedBox(height: AppSpacing.large),
+          Text(
+            'ゲストとして使う',
+            style: AppTextStyles.pageTitle(context),
+          ),
+          const SizedBox(height: AppSpacing.small),
+          Text(
+            '登録なしですぐに利用を開始できます。入力したデータはこの端末のみに保存され、アカウント登録後に同期されます。',
+            style: AppTextStyles.bodyLarge(context).copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.large),
+          SecondaryButton(
+            icon: AppIcons.touchApp,
+            onPressed: _continueAsGuest,
+            label: 'ゲストとして始める',
+            expand: true,
+          ),
         ],
       ),
     );

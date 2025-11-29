@@ -8,6 +8,7 @@ import '../../shared/config/supabase_config.dart';
 enum AuthStatus {
   loading,
   authenticated,
+  guest,
   unauthenticated,
 }
 
