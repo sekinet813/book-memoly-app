@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -577,15 +575,15 @@ class _ContinueReadingSection extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                     ),
-                  ),
+                ),
                 SizedBox(
-                  height: 200,
+                  height: 180,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (context, index) {
                       final book = displayBooks[index];
                       return SizedBox(
-                        width: 160,
+                        width: 140,
                         child: _BookTile(book: book),
                       );
                     },
@@ -764,21 +762,18 @@ class _BookTile extends StatelessWidget {
               ),
             ),
             Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.08),
-                        Theme.of(context)
-                            .colorScheme
-                            .surfaceTint
-                            .withValues(alpha: 0.06),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.08),
+                      Theme.of(context)
+                          .colorScheme
+                          .surfaceTint
+                          .withValues(alpha: 0.06),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
               ),
@@ -816,60 +811,54 @@ class _BookTile extends StatelessWidget {
               child: ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(18)),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withValues(alpha: 0.16),
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withValues(alpha: 0.24),
-                          Colors.black.withValues(alpha: 0.08),
-                        ],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.14),
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          book.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                        if (book.authors != null &&
-                            book.authors!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            book.authors!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.86)),
-                          ),
-                        ],
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surface
+                        .withValues(alpha: 0.16),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.24),
+                        Colors.black.withValues(alpha: 0.08),
                       ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
                     ),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.14),
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        book.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                      if (book.authors != null && book.authors!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          book.authors!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.86)),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
