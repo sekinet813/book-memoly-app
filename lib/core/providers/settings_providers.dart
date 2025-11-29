@@ -57,17 +57,29 @@ class FontScaleNotifier extends StateNotifier<AppFontScale> {
   static const _fontScaleKey = 'app_font_scale';
 
   Future<void> _loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedIndex = prefs.getInt(_fontScaleKey);
-    if (savedIndex != null && savedIndex >= 0 && savedIndex < AppFontScale.values.length) {
-      state = AppFontScale.values[savedIndex];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedIndex = prefs.getInt(_fontScaleKey);
+      if (savedIndex != null &&
+          savedIndex >= 0 &&
+          savedIndex < AppFontScale.values.length) {
+        state = AppFontScale.values[savedIndex];
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Failed to load font scale preference: $e');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
   Future<void> update(AppFontScale scale) async {
     state = scale;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_fontScaleKey, scale.index);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_fontScaleKey, scale.index);
+    } catch (e, stackTrace) {
+      debugPrint('Failed to save font scale preference: $e');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 }
 
