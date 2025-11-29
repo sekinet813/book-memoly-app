@@ -99,7 +99,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           const SizedBox(height: AppSpacing.small),
           Text(
-            'メールアドレスを入力すると、ログイン用のMagic Linkを送信します。',
+            'メールアドレスを入力すると、ログイン用のリングを送信します。',
             style: AppTextStyles.bodyLarge(context).copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -129,7 +129,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: AppSpacing.large),
                 PrimaryButton(
                   onPressed: _sendMagicLink,
-                  label: 'Magic Linkを送信',
+                  label: 'リングを送信',
                   expand: true,
                 ),
                 TextButton.icon(
@@ -170,7 +170,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
-                      'Magic Linkを送信しました。メールボックスを確認してください。',
+                      'リングを送信しました。メールボックスを確認してください。',
                       style: AppTextStyles.bodyLarge(context),
                     ),
                   ),
