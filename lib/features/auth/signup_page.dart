@@ -74,7 +74,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
           ),
           const SizedBox(height: AppSpacing.small),
           Text(
-            'メールアドレスを入力すると、登録用のMagic Linkを送信します。',
+            'メールアドレスを入力すると、登録用のリングを送信します。',
             style: AppTextStyles.bodyLarge(context).copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -104,7 +104,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                 const SizedBox(height: AppSpacing.large),
                 PrimaryButton(
                   onPressed: _sendSignUpLink,
-                  label: '登録リンクを送信',
+                  label: '登録用のリングを送信',
                   expand: true,
                 ),
               ],
@@ -138,7 +138,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   const SizedBox(width: AppSpacing.medium),
                   Expanded(
                     child: Text(
-                      '登録用のMagic Linkを送信しました。メールを確認してください。',
+                      '登録用のリングを送信しました。メールを確認してください。',
                       style: AppTextStyles.bodyLarge(context),
                     ),
                   ),
