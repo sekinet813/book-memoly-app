@@ -68,10 +68,30 @@ Supabase の URL と anon key はリポジトリに含めず、`.env`ファイ�
 ```bash
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_REDIRECT_URL=  # オプション
+SUPABASE_REDIRECT_URL=com.bookmemoly.app://  # メール認証用のリダイレクトURL
 ```
 
+**重要**: `SUPABASE_REDIRECT_URL`はメール認証リンクがアプリにリダイレクトされるために必要です。モバイルアプリではカスタムURLスキーム（`com.bookmemoly.app://`）を設定してください。
+
+#### Supabaseダッシュボードの設定
+
+メール認証を正しく動作させるため、Supabaseダッシュボードで以下を設定してください：
+
+1. **認証 > URL設定**に移動
+2. **リダイレクトURL**に以下を追加：
+   ```
+   com.bookmemoly.app://
+   com.bookmemoly.app://login-callback
+   com.bookmemoly.app://auth/callback
+   ```
+3. **サイトURL**を確認：
+   - モバイルアプリのみを使用する場合: `com.bookmemoly.app://` または空欄
+   - Webアプリも使用する場合: WebアプリのURL（例: `https://yourdomain.com`）
+   - ⚠️ `localhost:3000`が設定されている場合、メール認証リンクが`localhost:3000`にリダイレクトされます
+
 **注意**: `.env`ファイルは`.gitignore`に含まれているため、リポジトリにはコミットされません。
+
+**トラブルシューティング**: メール認証リンクが`localhost:3000`にリダイレクトする場合は、`TROUBLESHOOTING.md`を参照してください。
 
 #### アプリの実行
 

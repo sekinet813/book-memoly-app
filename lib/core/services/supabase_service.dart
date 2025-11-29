@@ -17,19 +17,40 @@ class SupabaseService {
 
   Future<void> initialize() async {
     if (!_config.isValid) {
+      final missing = <String>[];
+      if (_config.supabaseUrl.trim().isEmpty) {
+        missing.add('SUPABASE_URL');
+      }
+      if (_config.supabaseAnonKey.trim().isEmpty) {
+        missing.add('SUPABASE_ANON_KEY');
+      }
       throw StateError(
-        'Supabase configuration missing. Provide SUPABASE_URL and SUPABASE_ANON_KEY using --dart-define.',
+        'Supabase configuration missing: ${missing.join(', ')}. '
+        'Please set these values in .env file and run the app using ./run.sh',
       );
     }
 
-    await Supabase.initialize(
-      url: _config.supabaseUrl,
-      anonKey: _config.supabaseAnonKey,
-    );
+    debugPrint('[SupabaseService] Initializing Supabase...');
+    debugPrint('[SupabaseService] URL: ${_config.supabaseUrl.substring(0, _config.supabaseUrl.length > 30 ? 30 : _config.supabaseUrl.length)}...');
+    debugPrint('[SupabaseService] Redirect URL: ${_config.authRedirectUrl ?? 'not set (using default)'}');
+
+    try {
+      await Supabase.initialize(
+        url: _config.supabaseUrl,
+        anonKey: _config.supabaseAnonKey,
+      );
+      debugPrint('[SupabaseService] Supabase initialized successfully');
+    } catch (e, stackTrace) {
+      debugPrint('[SupabaseService] Failed to initialize Supabase: $e');
+      debugPrint('[SupabaseService] Stack trace: $stackTrace');
+      rethrow;
+    }
 
     final healthy = await _verifyConnection();
     if (!healthy) {
-      debugPrint('Supabase health check failed, but continuing app startup.');
+      debugPrint('[SupabaseService] Health check failed, but continuing app startup.');
+    } else {
+      debugPrint('[SupabaseService] Health check passed');
     }
   }
 

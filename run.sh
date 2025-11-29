@@ -29,22 +29,21 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
 fi
 
 # Build dart-define arguments
+# Use individual --dart-define arguments for better Android compatibility
 DART_DEFINE_ARGS=(
   "--dart-define=SUPABASE_URL=$SUPABASE_URL"
   "--dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
 )
 
-# Add SUPABASE_FUNCTION_URL if it's set
+# Add optional variables if they're set
 if [ -n "$SUPABASE_FUNCTION_URL" ]; then
   DART_DEFINE_ARGS+=("--dart-define=SUPABASE_FUNCTION_URL=$SUPABASE_FUNCTION_URL")
 fi
 
-# Add SUPABASE_REDIRECT_URL if it's set
 if [ -n "$SUPABASE_REDIRECT_URL" ]; then
   DART_DEFINE_ARGS+=("--dart-define=SUPABASE_REDIRECT_URL=$SUPABASE_REDIRECT_URL")
 fi
 
-# Add DEBUG_EMAIL and DEBUG_UID if they're set (for debug mode)
 if [ -n "$DEBUG_EMAIL" ]; then
   DART_DEFINE_ARGS+=("--dart-define=DEBUG_EMAIL=$DEBUG_EMAIL")
 fi
@@ -55,6 +54,18 @@ fi
 
 echo "🚀 Running Flutter app with Supabase configuration..."
 echo "   SUPABASE_URL: ${SUPABASE_URL:0:30}..."
+echo "   SUPABASE_ANON_KEY length: ${#SUPABASE_ANON_KEY}"
+echo "   SUPABASE_REDIRECT_URL: $SUPABASE_REDIRECT_URL"
+echo ""
+echo "📋 Dart define arguments:"
+for arg in "${DART_DEFINE_ARGS[@]}"; do
+  # Mask sensitive values
+  if [[ "$arg" == *"SUPABASE_ANON_KEY"* ]]; then
+    echo "   ${arg%%=*}=***"
+  else
+    echo "   $arg"
+  fi
+done
 echo ""
 
 # Check for Android devices using adb
@@ -187,6 +198,8 @@ fi
 if [ -n "$ANDROID_DEVICE" ]; then
   echo "🚀 Running on Android device: $ANDROID_DEVICE"
   echo ""
+  echo "🔧 Executing: flutter run -d \"$ANDROID_DEVICE\" ${DART_DEFINE_ARGS[*]}"
+  echo ""
   flutter run -d "$ANDROID_DEVICE" "${DART_DEFINE_ARGS[@]}" "$@"
 else
   if [ -n "$OFFLINE_DEVICES" ]; then
@@ -206,6 +219,8 @@ else
   flutter devices || true
   echo ""
   echo "Running on default device..."
+  echo ""
+  echo "🔧 Executing: flutter run ${DART_DEFINE_ARGS[*]}"
   echo ""
   flutter run "${DART_DEFINE_ARGS[@]}" "$@"
 fi
