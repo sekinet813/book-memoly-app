@@ -471,6 +471,7 @@ class SupabaseSyncService {
         'period': goal.period.storageValue,
         'year': goal.year,
         'month': goal.month,
+        'week': goal.week,
         'target_type': goal.targetType.storageValue,
         'target_value': goal.targetValue,
         'created_at': goal.createdAt.toUtc().toIso8601String(),
@@ -513,6 +514,7 @@ class SupabaseSyncService {
 
       final createdAt = _parseDateTime(row['created_at']) ?? updatedAt;
       final month = _parseInt(row['month']);
+      final week = _parseInt(row['week']);
       final targetValue = _parseInt(row['target_value']);
 
       if (targetValue == null) {
@@ -525,6 +527,7 @@ class SupabaseSyncService {
         period: GoalPeriodLabel.fromStorage(period),
         year: year,
         month: month,
+        week: week,
         targetType: GoalMetricLabel.fromStorage(targetType),
         targetValue: targetValue,
         createdAt: createdAt,

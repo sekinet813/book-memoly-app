@@ -351,7 +351,7 @@ class _GoalProgressOverview extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '今月の進捗',
+                      '読書目標の進捗',
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
@@ -376,6 +376,13 @@ class _GoalProgressOverview extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
+          _GoalProgressRow(
+            label: '今週',
+            goal: state.weeklyGoal,
+            progress: state.weeklyProgressValue,
+            defaultMetric: GoalMetric.pages,
+          ),
+          const Divider(height: 28),
           _GoalProgressRow(
             label: '今月',
             goal: state.monthlyGoal,

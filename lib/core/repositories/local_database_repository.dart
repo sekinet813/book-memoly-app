@@ -79,6 +79,15 @@ class LocalDatabaseRepository {
     );
   }
 
+  Future<GoalRow?> getWeeklyGoal(DateTime date) {
+    return goals.getGoalForPeriod(
+      userId,
+      GoalPeriod.weekly,
+      year: date.year,
+      week: weekOfYear(date),
+    );
+  }
+
   Future<GoalRow?> getYearlyGoal(int year) {
     return goals.getGoalForPeriod(
       userId,
@@ -97,6 +106,7 @@ class LocalDatabaseRepository {
     required int targetValue,
     required int year,
     int? month,
+    int? week,
   }) {
     return goals.upsertGoal(
       GoalsCompanion.insert(
@@ -104,6 +114,7 @@ class LocalDatabaseRepository {
         period: period,
         year: year,
         month: Value(month),
+        week: Value(week),
         targetType: targetType,
         targetValue: targetValue,
       ),
