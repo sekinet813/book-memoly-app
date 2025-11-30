@@ -111,7 +111,7 @@ class ReadingTimelineNotifier extends StateNotifier<ReadingTimelineState> {
         items.add(
           ReadingTimelineItem(
             type: ReadingTimelineItemType.reading,
-            timestamp: log.loggedAt,
+            timestamp: log.updatedAt,
             book: bookMap[log.bookId],
             readingLog: log,
           ),
@@ -122,7 +122,7 @@ class ReadingTimelineNotifier extends StateNotifier<ReadingTimelineState> {
         items.add(
           ReadingTimelineItem(
             type: ReadingTimelineItemType.memo,
-            timestamp: note.createdAt,
+            timestamp: note.updatedAt,
             book: bookMap[note.bookId],
             note: note,
           ),
@@ -133,7 +133,7 @@ class ReadingTimelineNotifier extends StateNotifier<ReadingTimelineState> {
         items.add(
           ReadingTimelineItem(
             type: ReadingTimelineItemType.action,
-            timestamp: action.createdAt,
+            timestamp: action.updatedAt,
             book: action.bookId != null ? bookMap[action.bookId] : null,
             action: action,
           ),
