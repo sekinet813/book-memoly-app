@@ -910,7 +910,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(AppIcons.toggleOn),
+                    const Icon(AppIcons.filter),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Wrap(
@@ -923,7 +923,7 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
                             onSelected: (_) {
                               ref
                                   .read(localSearchNotifierProvider.notifier)
-                                  .clearStatusFilter();
+                                  .setStatusFilter(null);
                             },
                           ),
                           ...BookStatus.values.map(
