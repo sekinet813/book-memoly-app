@@ -16,6 +16,8 @@ class AppPage extends StatelessWidget {
     this.scrollable = false,
     this.bottom,
     this.backgroundColor,
+    this.onRefresh,
+    this.scrollPhysics,
   });
 
   final String title;
@@ -28,6 +30,8 @@ class AppPage extends StatelessWidget {
   final bool scrollable;
   final PreferredSizeWidget? bottom;
   final Color? backgroundColor;
+  final Future<void> Function()? onRefresh;
+  final ScrollPhysics? scrollPhysics;
 
   @override
   Widget build(BuildContext context) {
@@ -41,14 +45,26 @@ class AppPage extends StatelessWidget {
             ? const Color(0xFF0C1E16)
             : Colors.white);
 
-    final pageBody = Padding(
+    final physics = onRefresh != null
+        ? const AlwaysScrollableScrollPhysics()
+        : scrollPhysics;
+
+    Widget content = Padding(
       padding: padding,
       child: scrollable
           ? SingleChildScrollView(
+              physics: physics,
               child: child,
             )
           : child,
     );
+
+    if (onRefresh != null) {
+      content = RefreshIndicator(
+        onRefresh: onRefresh!,
+        child: content,
+      );
+    }
 
     final navigationBar = currentDestination != null
         ? AppNavigationBar(current: currentDestination!)
@@ -84,7 +100,7 @@ class AppPage extends StatelessWidget {
               0,
               AppSpacing.large,
             ),
-            child: pageBody,
+            child: content,
           ),
         ),
       ),

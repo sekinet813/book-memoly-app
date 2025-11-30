@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -17,7 +18,7 @@ import '../../shared/constants/app_icons.dart';
 final goalsNotifierProvider =
     StateNotifierProvider<GoalsNotifier, GoalsState>((ref) {
   final repository = ref.read(localDatabaseRepositoryProvider);
-  return GoalsNotifier(repository)..load();
+  return GoalsNotifier(repository);
 });
 
 class GoalsState {
@@ -107,9 +108,13 @@ class GoalsState {
 }
 
 class GoalsNotifier extends StateNotifier<GoalsState> {
-  GoalsNotifier(this._repository) : super(const GoalsState());
+  GoalsNotifier(this._repository) : super(const GoalsState()) {
+    _bookSubscription = _repository.watchAllBooks().listen((_) => load());
+    load();
+  }
 
   final LocalDatabaseRepository _repository;
+  StreamSubscription<List<BookRow>>? _bookSubscription;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -252,6 +257,12 @@ class GoalsNotifier extends StateNotifier<GoalsState> {
 
   bool _isWithinRange(DateTime date, DateTime start, DateTime end) {
     return !date.isBefore(start) && date.isBefore(end);
+  }
+
+  @override
+  void dispose() {
+    _bookSubscription?.cancel();
+    super.dispose();
   }
 }
 

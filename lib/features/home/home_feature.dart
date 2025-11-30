@@ -150,6 +150,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     await syncService?.syncIfConnected();
   }
 
+  Future<void> _refreshHome() async {
+    await Future.wait([
+      _startSync(),
+      ref.read(bookshelfNotifierProvider.notifier).loadShelf(),
+      ref.read(goalsNotifierProvider.notifier).load(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookshelfState = ref.watch(bookshelfNotifierProvider);
@@ -181,6 +189,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ],
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       scrollable: true,
+      onRefresh: _refreshHome,
       currentDestination: AppDestination.home,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
