@@ -1956,6 +1956,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
               ),
             ),
             const SizedBox(height: 12),
+            if (existingBook != null)
+              _BookMemoCard(bookId: existingBook.id)
+            else
+              const _MemoUnavailableCard(),
+            const SizedBox(height: 12),
             _ReadingPeriodCard(
               startedAt: _startedAt,
               finishedAt: _finishedAt,
@@ -2259,6 +2264,189 @@ class _BookRegistrationCard extends StatelessWidget {
             icon: isRegistered ? AppIcons.check : AppIcons.addLibrary,
             label: isRegistered ? '登録済み' : '本を登録',
             expand: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookMemoCard extends ConsumerWidget {
+  const _BookMemoCard({required this.bookId});
+
+  final int bookId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notesAsync = ref.watch(notesByBookIdProvider(bookId));
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(AppIcons.note, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                '読書メモ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          notesAsync.when(
+            data: (notes) {
+              if (notes.isEmpty) {
+                return Text(
+                  'この本のメモはまだありません。読書中の気づきを残してみましょう。',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+                );
+              }
+
+              final noteIds =
+                  notes.map((note) => note.id).toList(growable: false);
+              final noteTagsAsync = ref.watch(
+                noteTagsByNoteIdsProvider(noteIds),
+              );
+
+              return noteTagsAsync.when(
+                data: (noteTags) {
+                  final displayedNotes = notes.take(3).toList();
+
+                  return Column(
+                    children: [
+                      for (final note in displayedNotes) ...[
+                        _BookMemoItem(
+                          note: note,
+                          tags: noteTags[note.id] ?? const [],
+                        ),
+                        if (note != displayedNotes.last)
+                          const Divider(height: 18),
+                      ],
+                      if (notes.length > displayedNotes.length)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '他${notes.length - displayedNotes.length}件のメモがあります',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+                loading: () => const LoadingIndicator(),
+                error: (error, _) => Text('タグの取得に失敗しました: $error'),
+              );
+            },
+            loading: () => const LoadingIndicator(),
+            error: (error, _) => Text('メモの取得に失敗しました: $error'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookMemoItem extends StatelessWidget {
+  const _BookMemoItem({
+    required this.note,
+    required this.tags,
+  });
+
+  final NoteRow note;
+  final List<TagRow> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final localizations = MaterialLocalizations.of(context);
+    final createdDate = localizations.formatShortDate(note.createdAt.toLocal());
+    final createdTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(note.createdAt.toLocal()),
+      alwaysUse24HourFormat: true,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (note.pageNumber != null)
+              Chip(
+                label: Text('p.${note.pageNumber}'),
+                avatar: const Icon(AppIcons.bookmarkBorder,
+                    size: AppIconSizes.small),
+              ),
+            if (note.pageNumber != null) const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                note.content,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(height: 1.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (tags.isNotEmpty) ...[
+          TagChipList(tags: tags),
+          const SizedBox(height: 8),
+        ],
+        Row(
+          children: [
+            Icon(
+              AppIcons.schedule,
+              size: AppIconSizes.small,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '作成: $createdDate $createdTime',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MemoUnavailableCard extends StatelessWidget {
+  const _MemoUnavailableCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AppCard(
+      child: Row(
+        children: [
+          Icon(AppIcons.memo, color: colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '本を登録すると読書メモを表示できます。まずは本を登録してください。',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
           ),
         ],
       ),

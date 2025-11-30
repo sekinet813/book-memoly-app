@@ -25,3 +25,27 @@ final bookByGoogleIdProvider =
   final repository = ref.watch(localDatabaseRepositoryProvider);
   return repository.watchBookByGoogleId(googleBooksId);
 });
+
+final notesByBookIdProvider =
+    StreamProvider.family<List<NoteRow>, int>((ref, bookId) {
+  final repository = ref.watch(localDatabaseRepositoryProvider);
+  return repository.watchAllNotes().map((notes) {
+    final filtered =
+        notes.where((note) => note.bookId == bookId).toList(growable: false);
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
+  });
+});
+
+final noteTagsByNoteIdsProvider =
+    FutureProvider.family<Map<int, List<TagRow>>, List<int>>(
+  (ref, noteIds) {
+    final repository = ref.watch(localDatabaseRepositoryProvider);
+    if (noteIds.isEmpty) {
+      return Future.value({});
+    }
+
+    final uniqueNoteIds = noteIds.toSet().toList();
+    return repository.getTagsForNotes(uniqueNoteIds);
+  },
+);
