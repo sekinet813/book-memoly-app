@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -24,7 +26,7 @@ import '../goals/goals_feature.dart';
 final bookshelfNotifierProvider =
     StateNotifierProvider<BookshelfNotifier, BookshelfState>((ref) {
   final repository = ref.read(localDatabaseRepositoryProvider);
-  return BookshelfNotifier(repository)..loadShelf();
+  return BookshelfNotifier(repository);
 });
 
 class BookshelfState {
@@ -54,9 +56,15 @@ class BookshelfNotifier extends StateNotifier<BookshelfState> {
             books: AsyncValue.loading(),
             notes: AsyncValue.loading(),
           ),
-        );
+        ) {
+    _bookSubscription = _repository.watchAllBooks().listen((_) => loadShelf());
+    _noteSubscription = _repository.watchAllNotes().listen((_) => loadShelf());
+    loadShelf();
+  }
 
   final LocalDatabaseRepository _repository;
+  late final StreamSubscription<List<BookRow>> _bookSubscription;
+  late final StreamSubscription<List<NoteRow>> _noteSubscription;
 
   Future<void> loadShelf() async {
     try {
@@ -106,6 +114,13 @@ class BookshelfNotifier extends StateNotifier<BookshelfState> {
     );
 
     await loadShelf();
+  }
+
+  @override
+  void dispose() {
+    _bookSubscription.cancel();
+    _noteSubscription.cancel();
+    super.dispose();
   }
 }
 
