@@ -724,7 +724,7 @@ class SearchPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DefaultTabController(
-      length: 3,
+      length: 2,
       child: AppPage(
         title: '検索',
         padding: EdgeInsets.zero,
@@ -732,15 +732,13 @@ class SearchPage extends StatelessWidget {
         bottom: TabBar(
           tabs: [
             Tab(text: 'オンライン検索'),
-            Tab(text: 'ローカル検索'),
-            Tab(text: '全文メモ検索'),
+            Tab(text: 'ローカル/全文検索'),
           ],
         ),
         child: TabBarView(
           children: [
             _OnlineSearchTab(),
             _LocalSearchTab(),
-            _MemoSearchTab(),
           ],
         ),
       ),
@@ -858,8 +856,14 @@ class _LocalSearchTab extends ConsumerStatefulWidget {
   ConsumerState<_LocalSearchTab> createState() => _LocalSearchTabState();
 }
 
+enum _LocalSearchMode {
+  local,
+  memo,
+}
+
 class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
   late final TextEditingController _keywordController;
+  _LocalSearchMode _mode = _LocalSearchMode.local;
 
   @override
   void initState() {
@@ -876,136 +880,6 @@ class _LocalSearchTabState extends ConsumerState<_LocalSearchTab> {
   @override
   Widget build(BuildContext context) {
     final localSearchState = ref.watch(localSearchNotifierProvider);
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _keywordController,
-                decoration: const InputDecoration(
-                  labelText: 'キーワード',
-                  hintText: 'タイトル / 著者 / メモ内容 で検索',
-                  prefixIcon: Icon(AppIcons.search),
-                ),
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _triggerSearch(),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(AppIcons.filter),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButton<BookStatus?>(
-                      value: localSearchState.statusFilter,
-                      isExpanded: true,
-                      hint: const Text('すべてのステータス'),
-                      items: [
-                        const DropdownMenuItem<BookStatus?>(
-                          value: null,
-                          child: Text('すべて'),
-                        ),
-                        ...BookStatus.values.map(
-                          (status) => DropdownMenuItem<BookStatus>(
-                            value: status,
-                            child: Text(status.label),
-                          ),
-                        ),
-                      ],
-                      onChanged: (status) {
-                        ref
-                            .read(localSearchNotifierProvider.notifier)
-                            .setStatusFilter(status);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(AppIcons.label),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('タグで絞り込む'),
-                        const SizedBox(height: 8),
-                        TagSelector(
-                          selectedTagIds: localSearchState.selectedTagIds,
-                          onSelectionChanged: (ids) {
-                            ref
-                                .read(localSearchNotifierProvider.notifier)
-                                .setTagFilters(ids);
-                          },
-                          showAddButton: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              PrimaryButton(
-                onPressed: _triggerSearch,
-                icon: AppIcons.manageSearch,
-                label: 'ローカルを検索',
-                expand: true,
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: localSearchState.results.when(
-            loading: () => const LoadingIndicator(),
-            error: (error, _) => _ErrorView(error: error),
-            data: (results) => _LocalSearchResults(
-              results: results,
-              hasSearched: localSearchState.hasSearched,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _triggerSearch() {
-    ref
-        .read(localSearchNotifierProvider.notifier)
-        .search(_keywordController.text);
-  }
-}
-
-class _MemoSearchTab extends ConsumerStatefulWidget {
-  const _MemoSearchTab();
-
-  @override
-  ConsumerState<_MemoSearchTab> createState() => _MemoSearchTabState();
-}
-
-class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
-  late final TextEditingController _keywordController;
-
-  @override
-  void initState() {
-    super.initState();
-    _keywordController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _keywordController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final memoState = ref.watch(memoSearchNotifierProvider);
     final booksAsync = ref.watch(allBooksProvider);
 
@@ -1016,137 +890,231 @@ class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _ModeToggle(
+                mode: _mode,
+                onModeChanged: _onModeChanged,
+              ),
+              const SizedBox(height: 16),
               TextField(
                 controller: _keywordController,
                 decoration: const InputDecoration(
-                  labelText: '全文検索キーワード',
-                  hintText: 'メモ本文 / 書籍タイトル / 日付',
+                  labelText: 'キーワード',
+                  hintText: 'タイトル / 著者 / メモ',
                   prefixIcon: Icon(AppIcons.search),
                 ),
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _triggerSearch(),
               ),
               const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(AppIcons.book),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: booksAsync.when(
-                      loading: () => const LinearProgressIndicator(),
-                      error: (error, _) => Text('本の読み込みに失敗しました: $error'),
-                      data: (books) {
-                        return DropdownButton<int?>(
-                          value: memoState.selectedBookId,
-                          isExpanded: true,
-                          hint: const Text('すべての本'),
-                          items: [
-                            const DropdownMenuItem<int?>(
-                              value: null,
-                              child: Text('すべての本'),
+              if (_mode == _LocalSearchMode.local) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(AppIcons.toggleOn),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('すべて'),
+                            selected: localSearchState.statusFilter == null,
+                            onSelected: (_) {
+                              ref
+                                  .read(localSearchNotifierProvider.notifier)
+                                  .clearStatusFilter();
+                            },
+                          ),
+                          ...BookStatus.values.map(
+                            (status) => ChoiceChip(
+                              label: Text(status.label),
+                              selected: localSearchState.statusFilter == status,
+                              onSelected: (selected) {
+                                ref
+                                    .read(localSearchNotifierProvider.notifier)
+                                    .setStatusFilter(selected ? status : null);
+                              },
                             ),
-                            ...books.map(
-                              (book) => DropdownMenuItem<int>(
-                                value: book.id,
-                                child: Text(book.title),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(AppIcons.label),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('タグで絞り込む'),
+                          const SizedBox(height: 8),
+                          TagSelector(
+                            selectedTagIds: localSearchState.selectedTagIds,
+                            onSelectionChanged: (ids) {
+                              ref
+                                  .read(localSearchNotifierProvider.notifier)
+                                  .setTagFilters(ids);
+                            },
+                            showAddButton: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(AppIcons.book),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: booksAsync.when(
+                        loading: () => const LinearProgressIndicator(),
+                        error: (error, _) =>
+                            Text('本の読み込みに失敗しました: $error'),
+                        data: (books) {
+                          return DropdownButton<int?>(
+                            value: memoState.selectedBookId,
+                            isExpanded: true,
+                            hint: const Text('すべての本'),
+                            items: [
+                              const DropdownMenuItem<int?>(
+                                value: null,
+                                child: Text('すべての本'),
                               ),
-                            ),
-                          ],
-                          onChanged: (bookId) {
-                            ref
-                                .read(memoSearchNotifierProvider.notifier)
-                                .setBook(bookId);
-                          },
-                        );
+                              ...books.map(
+                                (book) => DropdownMenuItem<int>(
+                                  value: book.id,
+                                  child: Text(book.title),
+                                ),
+                              ),
+                            ],
+                            onChanged: (bookId) {
+                              ref
+                                  .read(memoSearchNotifierProvider.notifier)
+                                  .setBook(bookId);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(AppIcons.label),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('タグで絞り込む'),
+                          const SizedBox(height: 8),
+                          TagSelector(
+                            selectedTagIds: memoState.selectedTagIds,
+                            onSelectionChanged: (ids) {
+                              ref
+                                  .read(memoSearchNotifierProvider.notifier)
+                                  .setTags(ids);
+                            },
+                            showAddButton: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickDate(context, isStart: true),
+                        icon: const Icon(AppIcons.calendar),
+                        label: Text(
+                            '開始日: ${_formatDate(context, memoState.startDate)}'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickDate(context, isStart: false),
+                        icon: const Icon(AppIcons.calendar),
+                        label: Text(
+                            '終了日: ${_formatDate(context, memoState.endDate)}'),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        ref
+                            .read(memoSearchNotifierProvider.notifier)
+                            .setStartDate(null);
+                        ref
+                            .read(memoSearchNotifierProvider.notifier)
+                            .setEndDate(null);
                       },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(AppIcons.label),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('タグで絞り込む'),
-                        const SizedBox(height: 8),
-                        TagSelector(
-                          selectedTagIds: memoState.selectedTagIds,
-                          onSelectionChanged: (ids) {
-                            ref
-                                .read(memoSearchNotifierProvider.notifier)
-                                .setTags(ids);
-                          },
-                          showAddButton: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickDate(context, isStart: true),
-                      icon: const Icon(AppIcons.calendar),
-                      label: Text(
-                          '開始日: ${_formatDate(context, memoState.startDate)}'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _pickDate(context, isStart: false),
-                      icon: const Icon(AppIcons.calendar),
-                      label: Text(
-                          '終了日: ${_formatDate(context, memoState.endDate)}'),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      ref
-                          .read(memoSearchNotifierProvider.notifier)
-                          .setStartDate(null);
-                      ref
-                          .read(memoSearchNotifierProvider.notifier)
-                          .setEndDate(null);
-                    },
-                    icon: const Icon(AppIcons.close),
-                    tooltip: '日付フィルターをクリア',
-                  )
-                ],
-              ),
+                      icon: const Icon(AppIcons.close),
+                      tooltip: '日付フィルターをクリア',
+                    )
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               PrimaryButton(
                 onPressed: _triggerSearch,
                 icon: AppIcons.manageSearch,
-                label: '全文検索を実行',
+                label:
+                    _mode == _LocalSearchMode.local ? 'ローカルを検索' : '全文検索を実行',
                 expand: true,
               ),
             ],
           ),
         ),
         Expanded(
-          child: memoState.results.when(
-            loading: () => const LoadingIndicator(),
-            error: (error, _) => _ErrorView(error: error),
-            data: (results) => _LocalSearchResults(
-              results: results,
-              hasSearched: memoState.hasSearched,
-              headerLabel: '全文検索結果 (${results.length})',
-            ),
-          ),
+          child: _mode == _LocalSearchMode.local
+              ? localSearchState.results.when(
+                  loading: () => const LoadingIndicator(),
+                  error: (error, _) => _ErrorView(error: error),
+                  data: (results) => _LocalSearchResults(
+                    results: results,
+                    hasSearched: localSearchState.hasSearched,
+                  ),
+                )
+              : memoState.results.when(
+                  loading: () => const LoadingIndicator(),
+                  error: (error, _) => _ErrorView(error: error),
+                  data: (results) => _LocalSearchResults(
+                    results: results,
+                    hasSearched: memoState.hasSearched,
+                    headerLabel: '全文検索結果 (${results.length})',
+                  ),
+                ),
         ),
       ],
     );
+  }
+
+  void _onModeChanged(_LocalSearchMode mode) {
+    if (_mode == mode) {
+      return;
+    }
+
+    setState(() {
+      _mode = mode;
+      final keyword = mode == _LocalSearchMode.local
+          ? ref.read(localSearchNotifierProvider).keyword
+          : ref.read(memoSearchNotifierProvider).keyword;
+      _keywordController.text = keyword;
+    });
   }
 
   Future<void> _pickDate(BuildContext context, {required bool isStart}) async {
@@ -1181,9 +1149,49 @@ class _MemoSearchTabState extends ConsumerState<_MemoSearchTab> {
   }
 
   void _triggerSearch() {
-    ref
-        .read(memoSearchNotifierProvider.notifier)
-        .search(_keywordController.text);
+    if (_mode == _LocalSearchMode.local) {
+      ref
+          .read(localSearchNotifierProvider.notifier)
+          .search(_keywordController.text);
+    } else {
+      ref
+          .read(memoSearchNotifierProvider.notifier)
+          .search(_keywordController.text);
+    }
+  }
+}
+
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.mode, required this.onModeChanged});
+
+  final _LocalSearchMode mode;
+  final ValueChanged<_LocalSearchMode> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ToggleButtons(
+      isSelected: [
+        mode == _LocalSearchMode.local,
+        mode == _LocalSearchMode.memo,
+      ],
+      onPressed: (index) {
+        onModeChanged(
+          index == 0 ? _LocalSearchMode.local : _LocalSearchMode.memo,
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      constraints: const BoxConstraints(minHeight: 40, minWidth: 120),
+      children: const [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('ローカル検索'),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('全文メモ検索'),
+        ),
+      ],
+    );
   }
 }
 
