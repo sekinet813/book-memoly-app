@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../core/providers/auth_providers.dart';
 import '../../core/providers/profile_providers.dart';
 import '../../core/providers/notification_providers.dart';
 import '../../core/providers/settings_providers.dart';
@@ -22,6 +23,8 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  bool _isLoggingOut = false;
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(profileNotifierProvider);
@@ -87,6 +90,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             subtitle: 'セキュリティとデータ管理',
             icon: AppIcons.shield,
             children: [
+              _SettingsTile(
+                icon: AppIcons.logout,
+                title: 'ログアウト',
+                subtitle: '現在のアカウントからサインアウトします',
+                isDestructive: true,
+                trailing: _isLoggingOut
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: _isLoggingOut ? null : () => _confirmLogout(context),
+              ),
               _SettingsTile(
                 icon: AppIcons.warning,
                 title: 'アカウント削除',
@@ -205,6 +222,68 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           content: Text('アカウント削除リクエストを受け付けました。サポートよりご案内します。'),
         ),
       );
+    }
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('ログアウトしますか？'),
+          content: const Text('現在のセッションからサインアウトします。続行してもよろしいですか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(AppIcons.logout),
+              label: const Text('ログアウト'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || result != true) {
+      return;
+    }
+
+    await _performLogout(context);
+  }
+
+  Future<void> _performLogout(BuildContext context) async {
+    if (_isLoggingOut) return;
+
+    setState(() {
+      _isLoggingOut = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+
+      await authService?.signOut();
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      if (!mounted) return;
+
+      context.go('/login');
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ログアウトに失敗しました: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoggingOut = false;
+        });
+      }
     }
   }
 }
