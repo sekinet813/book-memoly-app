@@ -53,15 +53,26 @@ class AppDatabase {
 
   final _bookStreamController =
       StreamController<List<BookRow>>.broadcast(onListen: () {});
+  final _noteStreamController =
+      StreamController<List<NoteRow>>.broadcast(onListen: () {});
 
   Stream<List<BookRow>> get _bookStream => _bookStreamController.stream;
+  Stream<List<NoteRow>> get _noteStream => _noteStreamController.stream;
 
   void _emitBookSnapshot() {
     _bookStreamController.add(List.unmodifiable(_bookRows));
   }
 
+  void _emitNoteSnapshot() {
+    _noteStreamController.add(List.unmodifiable(_noteRows));
+  }
+
   void _notifyBooksChanged() {
     _emitBookSnapshot();
+  }
+
+  void _notifyNotesChanged() {
+    _emitNoteSnapshot();
   }
 
   Future<void> _restoreFromStorage() async {
@@ -139,6 +150,7 @@ class AppDatabase {
       );
 
     _emitBookSnapshot();
+    _emitNoteSnapshot();
   }
 
   Future<void> _persist() async {
@@ -170,6 +182,7 @@ class AppDatabase {
 
   Future<void> close() async {
     await _bookStreamController.close();
+    await _noteStreamController.close();
   }
 
   Map<String, dynamic> _bookRowToJson(BookRow row) {
@@ -882,6 +895,14 @@ class NoteDao {
         .toList(growable: false);
   }
 
+  Stream<List<NoteRow>> watchAllNotes(String userId) async* {
+    yield await getAllNotes(userId);
+    yield* db._noteStream.map(
+      (notes) =>
+          notes.where((note) => note.userId == userId).toList(growable: false),
+    );
+  }
+
   Future<int> insertNote(NotesCompanion entry) async {
     final newId = ++db._noteId;
     db._noteRows.add(
@@ -894,6 +915,7 @@ class NoteDao {
       ),
     );
 
+    db._notifyNotesChanged();
     await db._persist();
     return newId;
   }
@@ -927,6 +949,7 @@ class NoteDao {
       updatedAt: DateTime.now(),
     );
 
+    db._notifyNotesChanged();
     await db._persist();
     return 1;
   }
@@ -936,6 +959,7 @@ class NoteDao {
     db._noteRows
         .removeWhere((note) => note.id == noteId && note.userId == userId);
     db._noteTagRows.removeWhere((row) => row.noteId == noteId);
+    db._notifyNotesChanged();
     await db._persist();
     return beforeLength == db._noteRows.length ? 0 : 1;
   }
@@ -953,6 +977,7 @@ class NoteDao {
       db._noteId = row.id;
     }
 
+    db._notifyNotesChanged();
     await db._persist();
   }
 }

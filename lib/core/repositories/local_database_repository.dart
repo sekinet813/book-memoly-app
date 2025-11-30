@@ -26,12 +26,20 @@ class LocalDatabaseRepository {
     return books.getAllBooks(userId);
   }
 
+  Stream<List<BookRow>> watchAllBooks() {
+    return books.watchAllBooks(userId);
+  }
+
   Future<List<NoteRow>> getNotesForBook(int bookId) {
     return notes.getNotesForBook(userId, bookId);
   }
 
   Future<List<NoteRow>> getAllNotes() {
     return notes.getAllNotes(userId);
+  }
+
+  Stream<List<NoteRow>> watchAllNotes() {
+    return notes.watchAllNotes(userId);
   }
 
   Future<List<TagRow>> getTagsForBook(int bookId) {
