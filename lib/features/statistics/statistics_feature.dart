@@ -797,27 +797,45 @@ class _BestTimeSection extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isWide = constraints.maxWidth > 640;
-                  return Flex(
-                    direction: isWide ? Axis.horizontal : Axis.vertical,
+                  final spacing =
+                      isWide ? AppSpacing.large : AppSpacing.medium;
+
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _BarChartCard(
+                            title: '曜日別ページ数',
+                            values: weekday,
+                            highlight: bestWeekday?.label,
+                          ),
+                        ),
+                        SizedBox(width: spacing),
+                        Expanded(
+                          child: _BarChartCard(
+                            title: '時間帯別ページ数',
+                            values: hourly,
+                            highlight: bestHour?.label,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _BarChartCard(
-                          title: '曜日別ページ数',
-                          values: weekday,
-                          highlight: bestWeekday?.label,
-                        ),
+                      _BarChartCard(
+                        title: '曜日別ページ数',
+                        values: weekday,
+                        highlight: bestWeekday?.label,
                       ),
-                      SizedBox(
-                        width: isWide ? AppSpacing.large : 0,
-                        height: isWide ? 0 : AppSpacing.large,
-                      ),
-                      Expanded(
-                        child: _BarChartCard(
-                          title: '時間帯別ページ数',
-                          values: hourly,
-                          highlight: bestHour?.label,
-                        ),
+                      SizedBox(height: spacing),
+                      _BarChartCard(
+                        title: '時間帯別ページ数',
+                        values: hourly,
+                        highlight: bestHour?.label,
                       ),
                     ],
                   );
