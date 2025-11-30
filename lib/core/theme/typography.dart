@@ -52,12 +52,19 @@ TextTheme _baseTextTheme(Brightness brightness) {
 }
 
 TextStyle? _ensureFontSize(TextStyle? target, TextStyle? fallback) {
-  if (target == null) return fallback;
-  if (target.fontSize != null || fallback?.fontSize == null) {
+  if (target == null && fallback == null) return null;
+
+  final fallbackFontSize = fallback?.fontSize ?? 14.0;
+
+  if (target == null) {
+    return fallback?.copyWith(fontSize: fallbackFontSize);
+  }
+
+  if (target.fontSize != null) {
     return target;
   }
 
-  return target.copyWith(fontSize: fallback!.fontSize);
+  return target.copyWith(fontSize: fallbackFontSize);
 }
 
 TextTheme _ensureTextThemeFontSizes(TextTheme theme, TextTheme fallback) {
