@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../core/database/app_database.dart';
@@ -81,7 +82,7 @@ class BookshelfPage extends ConsumerWidget {
   }
 }
 
-class _BookshelfBoard extends ConsumerWidget {
+class _BookshelfBoard extends HookConsumerWidget {
   const _BookshelfBoard({required this.books});
 
   final List<BookRow> books;
@@ -90,6 +91,9 @@ class _BookshelfBoard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final columns = BookStatus.values;
     final colorScheme = Theme.of(context).colorScheme;
+    final expansionState = useState<Map<BookStatus, bool>>({
+      for (final status in columns) status: true,
+    });
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -111,6 +115,14 @@ class _BookshelfBoard extends ConsumerWidget {
                           bookStatusFromDbValue(book.status) == status)
                       .toList(),
                   color: _statusColor(status, colorScheme),
+                  isExpanded: expansionState.value[status] ?? true,
+                  onToggle: () {
+                    final current = expansionState.value[status] ?? true;
+                    expansionState.value = {
+                      ...expansionState.value,
+                      status: !current,
+                    };
+                  },
                   onMove: (book) async {
                     await ref
                         .read(bookshelfNotifierProvider.notifier)
@@ -130,12 +142,16 @@ class _ShelfColumn extends StatelessWidget {
     required this.status,
     required this.books,
     required this.color,
+    required this.isExpanded,
+    required this.onToggle,
     required this.onMove,
   });
 
   final BookStatus status;
   final List<BookRow> books;
   final Color color;
+  final bool isExpanded;
+  final VoidCallback onToggle;
   final Future<void> Function(BookRow book) onMove;
 
   @override
@@ -193,26 +209,47 @@ class _ShelfColumn extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    onPressed: onToggle,
+                    icon: Icon(
+                      isExpanded ? AppIcons.chevronUp : AppIcons.chevronDown,
+                    ),
+                    color: colorScheme.onSurfaceVariant,
+                    tooltip: isExpanded ? '折りたたむ' : '展開する',
+                  ),
                   Icon(AppIcons.swapVert, color: colorScheme.onSurfaceVariant),
                 ],
               ),
-              const SizedBox(height: 12),
-              if (books.isEmpty)
-                Text(
-                  'ここに本をドラッグ',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 180),
+                crossFadeState: isExpanded
+                    ? CrossFadeState.showFirst
+                    : CrossFadeState.showSecond,
+                firstChild: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    if (books.isEmpty)
+                      Text(
+                        'ここに本をドラッグ',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                                color: colorScheme.onSurfaceVariant),
+                      ),
+                    ...books.map(
+                      (book) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ShelfBookCard(
+                          book: book,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ...books.map(
-                (book) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ShelfBookCard(
-                    book: book,
-                    color: color,
-                  ),
-                ),
+                secondChild: const SizedBox.shrink(),
               ),
             ],
           ),
