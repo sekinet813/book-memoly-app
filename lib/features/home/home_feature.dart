@@ -22,6 +22,7 @@ import '../../core/widgets/loading_indicator.dart';
 import '../../shared/constants/app_constants.dart';
 import '../../shared/constants/app_icons.dart';
 import '../goals/goals_feature.dart';
+import '../search/search_feature.dart';
 
 final bookshelfNotifierProvider =
     StateNotifierProvider<BookshelfNotifier, BookshelfState>((ref) {
@@ -753,132 +754,163 @@ class _BookTile extends StatelessWidget {
     final status = bookStatusFromDbValue(book.status);
     final statusColor = _statusColor(status, Theme.of(context).colorScheme);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 6),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          final bookModel = Book(
+            id: book.googleBooksId,
+            title: book.title,
+            authors: book.authors,
+            description: book.description,
+            thumbnailUrl: book.thumbnailUrl,
+            publishedDate: book.publishedDate,
+            pageCount: book.pageCount,
+            isbn: CoverImageService.extractIsbn(book.googleBooksId),
+            status: status,
+            createdAt: book.createdAt,
+            updatedAt: book.updatedAt,
+          );
+
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BookDetailPage(book: bookModel),
+            ),
+          );
+        },
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 6),
+              ),
+            ],
+            borderRadius: BorderRadius.circular(18),
           ),
-        ],
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: _BookCover(
-                bookId: book.googleBooksId,
-                isbn: CoverImageService.extractIsbn(book.googleBooksId),
-                thumbnailUrl: book.thumbnailUrl,
-              ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.08),
-                      Theme.of(context)
-                          .colorScheme
-                          .surfaceTint
-                          .withValues(alpha: 0.06),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _BookCover(
+                    bookId: book.googleBooksId,
+                    isbn: CoverImageService.extractIsbn(book.googleBooksId),
+                    thumbnailUrl: book.thumbnailUrl,
                   ),
                 ),
-              ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outlineVariant
-                        .withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              left: 0,
-              bottom: 0,
-              child: Container(
-                width: 10,
-                color: statusColor,
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: _StatusBadge(status: status, color: statusColor),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(18)),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surface
-                        .withValues(alpha: 0.16),
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.24),
-                        Colors.black.withValues(alpha: 0.08),
-                      ],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                    ),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.14),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.08),
+                          Theme.of(context)
+                              .colorScheme
+                              .surfaceTint
+                              .withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        book.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 10,
+                    color: statusColor,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _StatusBadge(status: status, color: statusColor),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(bottom: Radius.circular(18)),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withValues(alpha: 0.16),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withValues(alpha: 0.24),
+                            Colors.black.withValues(alpha: 0.08),
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.14),
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            book.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                 ),
+                          ),
+                          if (book.authors != null &&
+                              book.authors!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              book.authors!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.86)),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (book.authors != null && book.authors!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          book.authors!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.86)),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
