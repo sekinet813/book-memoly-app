@@ -82,6 +82,10 @@ class NotificationService {
   bool _initialized = false;
   void Function(NotificationResponse)? _onSelectNotification;
 
+  void _handleNotificationResponse(NotificationResponse response) {
+    _onSelectNotification?.call(response);
+  }
+
   static const _dailyReminderId = 1;
   static const _reflectionPromptId = 2;
   static const _continueReadingId = 3;
@@ -94,8 +98,8 @@ class NotificationService {
 
     await _plugin.initialize(
       _buildInitializationSettings(),
-      onDidReceiveNotificationResponse: _onSelectNotification,
-      onDidReceiveBackgroundNotificationResponse: _onSelectNotification,
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: _handleNotificationResponse,
     );
     tz.initializeTimeZones();
     _setLocalTimezone();
@@ -140,8 +144,8 @@ class NotificationService {
     if (_initialized) {
       _plugin.initialize(
         _buildInitializationSettings(),
-        onDidReceiveNotificationResponse: _onSelectNotification,
-        onDidReceiveBackgroundNotificationResponse: _onSelectNotification,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+        onDidReceiveBackgroundNotificationResponse: _handleNotificationResponse,
       );
     }
   }
