@@ -56,5 +56,8 @@ app.*.map.json
 
 # Supabase
 .supabase/
+supabase/.temp/
+supabase/.branches/
+supabase/.temp/
 
 
