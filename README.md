@@ -63,17 +63,116 @@ Supabase の URL と anon key はリポジトリに含めず、`.env`ファイ�
 
 #### `.env`ファイルの作成
 
-プロジェクトルートに`.env`ファイルを作成し、以下の形式でSupabaseの認証情報を設定してください：
+プロジェクトルートに`.env.example`をコピーして`.env`ファイルを作成し、実際の値を設定してください：
+
+```bash
+cp .env.example .env
+# .envファイルを編集して実際の値を設定
+```
+
+`.env`ファイルには以下の設定が必要です：
 
 ```bash
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_REDIRECT_URL=com.bookmemoly.app://  # メール認証用のリダイレクトURL
+RAKUTEN_APPLICATION_ID=your_rakuten_application_id  # Edge Functions用
 ```
 
 **重要**: `SUPABASE_REDIRECT_URL`はメール認証リンクがアプリにリダイレクトされるために必要です。モバイルアプリではカスタムURLスキーム（`com.bookmemoly.app://`）を設定してください。
 
-#### Supabaseダッシュボードの設定
+**注意**: `.env`ファイルは`.gitignore`に含まれているため、リポジトリにはコミットされません。
+
+#### Supabase CLI のセットアップ
+
+このプロジェクトはSupabase CLIを使用してInfrastructure as Code (IaC)で管理されています。
+
+##### Supabase CLI のインストール
+
+```bash
+# macOS
+brew install supabase/tap/supabase
+
+# その他のプラットフォーム
+# https://supabase.com/docs/guides/cli/getting-started を参照
+```
+
+##### 既存プロジェクトとのリンク
+
+既存のSupabaseプロジェクトがある場合、リンクします：
+
+```bash
+cd supabase
+supabase link --project-ref your-project-ref
+```
+
+プロジェクト参照IDは、Supabaseダッシュボードのプロジェクト設定から取得できます。
+
+##### ローカル開発環境の起動
+
+ローカルでSupabaseを起動して開発できます：
+
+```bash
+cd supabase
+supabase start
+```
+
+これにより、ローカルのSupabaseインスタンスが起動し、以下のサービスが利用可能になります：
+- API: http://localhost:54321
+- Studio: http://localhost:54323
+- Inbucket (Email): http://localhost:54324
+
+##### データベースマイグレーションの適用
+
+既存のSupabaseプロジェクトにマイグレーションを適用する場合：
+
+```bash
+cd supabase
+supabase db push
+```
+
+ローカル環境にマイグレーションを適用する場合（`supabase start`後）：
+
+```bash
+cd supabase
+supabase migration up
+```
+
+##### 既存データベースからマイグレーションを抽出
+
+既存のSupabaseプロジェクトからスキーマを抽出してマイグレーションを作成する場合：
+
+```bash
+cd supabase
+supabase db pull
+```
+
+##### Edge Functions のデプロイ
+
+Edge Functionsをデプロイする場合：
+
+```bash
+cd supabase
+supabase functions deploy rakuten-books
+```
+
+環境変数を設定する場合：
+
+```bash
+supabase secrets set RAKUTEN_APPLICATION_ID=your_rakuten_application_id
+```
+
+##### メールテンプレートの設定
+
+メールテンプレートは`supabase/email_templates/`に保存されています。Supabaseダッシュボードで設定する場合：
+
+1. **Authentication > Templates**に移動
+2. 対象テンプレート（Sign up / Magic link）の本文を、それぞれのHTMLファイルの内容で置き換え
+3. 件名欄にファイル先頭の`Subject:`コメントの文言を設定
+
+詳細は`supabase/email_templates/README.md`を参照してください。
+
+#### Supabaseダッシュボードの設定（IaC未使用の場合）
 
 メール認証を正しく動作させるため、Supabaseダッシュボードで以下を設定してください：
 
@@ -89,9 +188,9 @@ SUPABASE_REDIRECT_URL=com.bookmemoly.app://  # メール認証用のリダイレ
    - Webアプリも使用する場合: WebアプリのURL（例: `https://yourdomain.com`）
    - ⚠️ `localhost:3000`が設定されている場合、メール認証リンクが`localhost:3000`にリダイレクトされます
 
-**注意**: `.env`ファイルは`.gitignore`に含まれているため、リポジトリにはコミットされません。
+**注意**: `supabase/config.toml`で認証設定を管理している場合、`supabase db push`で設定を適用できます。
 
-**トラブルシューティング**: メール認証リンクが`localhost:3000`にリダイレクトする場合は、`TROUBLESHOOTING.md`を参照してください。
+**トラブルシューティング**: メール認証リンクが`localhost:3000`にリダイレクトする場合は、`supabase/config.toml`の`site_url`と`additional_redirect_urls`を確認してください。
 
 #### アプリの実行
 
@@ -159,9 +258,29 @@ flutter run
 
 ## 📝 開発メモ
 
+### Flutter開発
+
 - コード生成が必要なファイルを変更した場合は、`flutter pub run build_runner build --delete-conflicting-outputs` を実行してください
 - ウォッチモードで自動生成する場合: `flutter pub run build_runner watch`
 - 生成されるファイル（`*.g.dart`, `*.freezed.dart`, `*.drift.dart`）は`.gitignore`に含まれています
+
+### Supabase開発
+
+- データベーススキーマの変更は`supabase/migrations/`ディレクトリにマイグレーションファイルとして追加してください
+- 新しいマイグレーションを作成する場合: `cd supabase && supabase migration new migration_name`
+- ローカル環境でマイグレーションをテストする場合: `cd supabase && supabase start && supabase migration up`
+- Edge Functionsは`supabase/functions/`ディレクトリに配置されています
+- ローカルでEdge Functionsをテストする場合: `cd supabase && supabase functions serve rakuten-books`
+- 詳細なセットアップ手順は`supabase/SETUP.md`を参照してください
+
+### CI/CD (GitHub Actions)
+
+- `main`ブランチにマージされると、SupabaseマイグレーションとEdge Functionsが自動デプロイされます
+- **初回セットアップ**: 必要なGitHub Secretsの設定方法は`.github/SECRETS_SETUP.md`を参照してください
+- ワークフローファイル:
+  - `.github/workflows/supabase-migration.yml`: データベースマイグレーション
+  - `.github/workflows/supabase-functions.yml`: Edge Functionsデプロイ
+- 詳細は`.github/README.md`を参照してください
 
 ## ✅ 受け入れ条件
 
