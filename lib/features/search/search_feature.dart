@@ -777,47 +777,53 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
   Widget build(BuildContext context) {
     final searchState = ref.watch(searchNotifierProvider);
 
-    return Column(
-      children: [
-        Padding(
+    return CustomScrollView(
+      controller: _resultsScrollController,
+      slivers: [
+        SliverPadding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _keywordController,
-                decoration: const InputDecoration(
-                  labelText: 'キーワード',
-                  hintText: 'タイトルや著者名を入力（例: Effective Dart、村上春樹）',
-                  prefixIcon: Icon(AppIcons.search),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _keywordController,
+                  decoration: const InputDecoration(
+                    labelText: 'キーワード',
+                    hintText: 'タイトルや著者名を入力（例: Effective Dart、村上春樹）',
+                    prefixIcon: Icon(AppIcons.search),
+                  ),
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _triggerSearch(),
                 ),
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _triggerSearch(),
-              ),
-              const SizedBox(height: 16),
-              PrimaryButton(
-                onPressed: _triggerSearch,
-                icon: AppIcons.search,
-                label: '検索する',
-                expand: true,
-              ),
-            ],
+                const SizedBox(height: 16),
+                PrimaryButton(
+                  onPressed: _triggerSearch,
+                  icon: AppIcons.search,
+                  label: '検索する',
+                  expand: true,
+                ),
+              ],
+            ),
           ),
         ),
-        Expanded(
-          child: searchState.results.when(
-            loading: () => const LoadingIndicator(),
-            error: (error, _) => _ErrorView(error: error),
-            data: (books) => _SearchResults(
-              books: books,
-              hasSearched: searchState.hasSearched,
-              controller: _resultsScrollController,
-              isLoadingMore: searchState.isLoadingMore,
-              loadMoreErrorMessage: searchState.loadMoreErrorMessage,
-              onRetryLoadMore: () {
-                ref.read(searchNotifierProvider.notifier).loadMore();
-              },
-            ),
+        searchState.results.when(
+          loading: () => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: LoadingIndicator(),
+          ),
+          error: (error, _) => SliverFillRemaining(
+            hasScrollBody: false,
+            child: _ErrorView(error: error),
+          ),
+          data: (books) => _SearchResultsSliver(
+            books: books,
+            hasSearched: searchState.hasSearched,
+            isLoadingMore: searchState.isLoadingMore,
+            loadMoreErrorMessage: searchState.loadMoreErrorMessage,
+            onRetryLoadMore: () {
+              ref.read(searchNotifierProvider.notifier).loadMore();
+            },
           ),
         ),
       ],
@@ -1195,14 +1201,13 @@ class _ModeToggle extends StatelessWidget {
   }
 }
 
-class _SearchResults extends StatelessWidget {
-  const _SearchResults({
+class _SearchResultsSliver extends StatelessWidget {
+  const _SearchResultsSliver({
     required this.books,
     required this.hasSearched,
     required this.isLoadingMore,
     this.loadMoreErrorMessage,
     this.onRetryLoadMore,
-    this.controller,
   });
 
   final List<Book> books;
@@ -1210,58 +1215,72 @@ class _SearchResults extends StatelessWidget {
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
   final VoidCallback? onRetryLoadMore;
-  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
     if (!hasSearched) {
-      return const EmptyState(
-        title: '検索キーワードを入力してください',
-        message: 'タイトルや著者名で検索できます。',
-        icon: AppIcons.search,
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: EmptyState(
+          title: '検索キーワードを入力してください',
+          message: 'タイトルや著者名で検索できます。',
+          icon: AppIcons.search,
+        ),
       );
     }
 
     if (books.isEmpty) {
-      return const EmptyState(
-        title: '検索結果が見つかりませんでした',
-        message: 'キーワードを少し変えて、もう一度お試しください。',
-        icon: AppIcons.manageSearch,
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: EmptyState(
+          title: '検索結果が見つかりませんでした',
+          message: 'キーワードを少し変えて、もう一度お試しください。',
+          icon: AppIcons.manageSearch,
+        ),
       );
     }
 
     final footerVisible = isLoadingMore || loadMoreErrorMessage != null;
     final itemCount = books.length + 1 + (footerVisible ? 1 : 0);
 
-    return ListView.separated(
-      controller: controller,
+    final sliverItemCount = itemCount * 2 - 1;
+
+    return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: itemCount,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const SectionHeader(title: '検索結果');
-        }
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, sliverIndex) {
+            if (sliverIndex.isOdd) {
+              return const SizedBox(height: 8);
+            }
 
-        final bookIndex = index - 1;
-        if (bookIndex < books.length) {
-          final book = books[bookIndex];
-          return _BookListTile(book: book);
-        }
+            final index = sliverIndex ~/ 2;
+            if (index == 0) {
+              return const SectionHeader(title: '検索結果');
+            }
 
-        if (isLoadingMore) {
-          return const _LoadingMoreTile();
-        }
+            final bookIndex = index - 1;
+            if (bookIndex < books.length) {
+              final book = books[bookIndex];
+              return _BookListTile(book: book);
+            }
 
-        if (loadMoreErrorMessage != null) {
-          return _LoadMoreErrorTile(
-            message: loadMoreErrorMessage!,
-            onRetry: onRetryLoadMore,
-          );
-        }
+            if (isLoadingMore) {
+              return const _LoadingMoreTile();
+            }
 
-        return const SizedBox.shrink();
-      },
+            if (loadMoreErrorMessage != null) {
+              return _LoadMoreErrorTile(
+                message: loadMoreErrorMessage!,
+                onRetry: onRetryLoadMore,
+              );
+            }
+
+            return const SizedBox.shrink();
+          },
+          childCount: sliverItemCount,
+        ),
+      ),
     );
   }
 }
