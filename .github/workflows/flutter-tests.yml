@@ -1,0 +1,45 @@
+name: Flutter Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.2'
+          channel: stable
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ${{ github.workspace }}/.dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.lock') }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: |
+          mkdir -p build
+          flutter test --machine > build/flutter_test_results.json
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-results
+          path: build/flutter_test_results.json
+          retention-days: 7
