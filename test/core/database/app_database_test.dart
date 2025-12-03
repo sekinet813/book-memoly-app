@@ -2,12 +2,16 @@ import 'package:book_memoly_app/core/database/app_database.dart';
 import 'package:book_memoly_app/core/repositories/local_database_repository.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   late AppDatabase db;
   late LocalDatabaseRepository repository;
 
-  setUp(() {
+  setUp(() async {
+    // Prevent MissingPluginException when SharedPreferences is used in tests.
+    SharedPreferences.setMockInitialValues({});
+
     db = AppDatabase(executor: NativeDatabase.memory());
     repository = LocalDatabaseRepository(db, userId: 'test-user-id');
   });
