@@ -2312,6 +2312,12 @@ class _BookMemoCard extends ConsumerWidget {
                 '読書メモ',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _showAddMemoDialog(context, ref, bookId),
+                icon: const Icon(AppIcons.add),
+                label: const Text('メモを追加'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -2470,6 +2476,127 @@ class _MemoUnavailableCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _showAddMemoDialog(
+  BuildContext context,
+  WidgetRef ref,
+  int bookId,
+) async {
+  final contentController = TextEditingController();
+  final pageController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  var selectedTagIds = <int>{};
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('メモを追加'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: contentController,
+                      decoration: const InputDecoration(
+                        labelText: 'メモ',
+                        hintText: '読書メモを入力してください',
+                      ),
+                      maxLines: null,
+                      minLines: 4,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'メモを入力してください';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: pageController,
+                      decoration: const InputDecoration(
+                        labelText: 'ページ番号 (任意)',
+                        hintText: '例: 25',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'タグ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    TagSelector(
+                      selectedTagIds: selectedTagIds,
+                      onSelectionChanged: (ids) {
+                        setState(() {
+                          selectedTagIds = ids;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('キャンセル'),
+              ),
+              PrimaryButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.of(context).pop(true);
+                  }
+                },
+                label: '保存',
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  if (confirmed != true) {
+    return;
+  }
+
+  final content = contentController.text.trim();
+  final pageNumberText = pageController.text.trim();
+  final pageNumber = int.tryParse(pageNumberText.isEmpty ? '' : pageNumberText);
+
+  try {
+    final repository = ref.read(localDatabaseRepositoryProvider);
+    final noteId = await repository.addNote(
+      bookId: bookId,
+      content: content,
+      pageNumber: pageNumber,
+    );
+    await repository.setTagsForNote(
+      noteId: noteId,
+      tagIds: selectedTagIds.toList(),
+    );
+    ref.invalidate(notesByBookIdProvider(bookId));
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('メモを追加しました')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('メモの追加に失敗しました: $e')),
+      );
+    }
   }
 }
 
