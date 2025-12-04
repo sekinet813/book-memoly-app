@@ -46,6 +46,10 @@ class LocalDatabaseRepository {
     return tags.getTagsForBook(userId, bookId);
   }
 
+  Future<List<BookTagRow>> getAllBookTagLinks() {
+    return tags.getAllBookTagRows(userId);
+  }
+
   Future<Map<int, List<TagRow>>> getTagsForBooks(List<int> bookIds) async {
     final result = <int, List<TagRow>>{};
     for (final bookId in bookIds) {
@@ -56,6 +60,10 @@ class LocalDatabaseRepository {
 
   Future<List<TagRow>> getTagsForNote(int noteId) {
     return tags.getTagsForNote(userId, noteId);
+  }
+
+  Future<List<NoteTagRow>> getAllNoteTagLinks() {
+    return tags.getAllNoteTagRows(userId);
   }
 
   Future<Map<int, List<TagRow>>> getTagsForNotes(List<int> noteIds) async {
@@ -147,6 +155,10 @@ class LocalDatabaseRepository {
 
   Future<void> upsertReadingLogFromRemote(ReadingLogRow log) async {
     await readingLogs.upsertFromRemote(log);
+  }
+
+  Future<void> upsertTagFromRemote(TagRow tag) async {
+    await tags.upsertFromRemote(tag);
   }
 
   Future<void> setTagsForBook({

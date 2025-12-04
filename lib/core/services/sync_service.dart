@@ -30,6 +30,9 @@ class SupabaseSyncService {
   static const _actionTable = 'actions';
   static const _readingLogTable = 'reading_logs';
   static const _goalTable = 'goals';
+  static const _tagTable = 'tags';
+  static const _bookTagTable = 'book_tags';
+  static const _noteTagTable = 'note_tags';
 
   final SupabaseClient _client;
   final LocalDatabaseRepository _repository;
@@ -55,13 +58,14 @@ class SupabaseSyncService {
 
     _syncInProgress = true;
     try {
-      await Future.wait([
-        _syncBooks(),
-        _syncNotes(),
-        _syncActions(),
-        _syncReadingLogs(),
-        _syncGoals(),
-      ]);
+      await _syncBooks();
+      await _syncNotes();
+      await _syncTags();
+      await _syncActions();
+      await _syncReadingLogs();
+      await _syncGoals();
+      await _syncBookTags();
+      await _syncNoteTags();
     } catch (error, stackTrace) {
       debugPrint('Supabase sync failed: $error');
       FlutterError.reportError(
@@ -208,6 +212,75 @@ class SupabaseSyncService {
       );
 
       await _repository.upsertBookFromRemote(book);
+    }
+  }
+
+  Future<void> _syncTags() async {
+    final remoteRows = (await _client
+        .from(_tagTable)
+        .select('*')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
+
+    final localTags = await _repository.getAllTags();
+    final localById = {for (final tag in localTags) tag.id: tag};
+
+    await _applyRemoteTags(remoteRows, localById);
+
+    final mergedTags = await _repository.getAllTags();
+    final remoteUpdatedAt = _buildRemoteUpdatedAtMap(remoteRows);
+
+    final payload = mergedTags.where((tag) {
+      final remoteUpdated = remoteUpdatedAt[tag.id];
+      return remoteUpdated == null ||
+          tag.updatedAt.toUtc().isAfter(remoteUpdated);
+    }).map((tag) {
+      return {
+        'local_id': tag.id,
+        'user_id': _userId,
+        'name': tag.name,
+        'created_at': tag.createdAt.toUtc().toIso8601String(),
+        'updated_at': tag.updatedAt.toUtc().toIso8601String(),
+      };
+    }).toList();
+
+    if (payload.isEmpty) {
+      return;
+    }
+
+    await _client
+        .from(_tagTable)
+        .upsert(payload, onConflict: 'user_id,local_id');
+  }
+
+  Future<void> _applyRemoteTags(
+    List<dynamic> remoteRows,
+    Map<int, TagRow> localById,
+  ) async {
+    for (final row in remoteRows) {
+      final localId = row['local_id'];
+      final name = row['name'];
+      final updatedAt = _parseDateTime(row['updated_at']);
+
+      if (localId is! int || name is! String || updatedAt == null) {
+        continue;
+      }
+
+      final localUpdated = localById[localId]?.updatedAt.toUtc();
+      if (localUpdated != null && !updatedAt.isAfter(localUpdated)) {
+        continue;
+      }
+
+      final createdAt = _parseDateTime(row['created_at']) ?? updatedAt;
+
+      final tag = TagRow(
+        id: localId,
+        userId: _userId,
+        name: name,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
+      await _repository.upsertTagFromRemote(tag);
     }
   }
 
@@ -537,4 +610,115 @@ class SupabaseSyncService {
       await _repository.upsertGoalFromRemote(goal);
     }
   }
+
+  Future<void> _syncBookTags() async {
+    final remoteRows = (await _client.from(_bookTagTable).select('*'))
+        as List<Map<String, dynamic>>;
+
+    final remoteLinks = _buildTagLinks(remoteRows, 'book_id');
+    final localLinks = (await _repository.getAllBookTagLinks())
+        .map((row) => _TagLink(bookId: row.bookId, tagId: row.tagId))
+        .toSet();
+
+    final mergedLinks = {...remoteLinks, ...localLinks};
+
+    await _applyTagLinksToLocal(
+      mergedLinks,
+      (bookId, tagIds) =>
+          _repository.setTagsForBook(bookId: bookId, tagIds: tagIds),
+    );
+
+    final missingOnRemote = mergedLinks.difference(remoteLinks).toList();
+
+    if (missingOnRemote.isEmpty) {
+      return;
+    }
+
+    final payload = missingOnRemote
+        .map((link) => {'book_id': link.parentId, 'tag_id': link.tagId})
+        .toList();
+
+    await _client
+        .from(_bookTagTable)
+        .upsert(payload, onConflict: 'book_id,tag_id');
+  }
+
+  Future<void> _syncNoteTags() async {
+    final remoteRows = (await _client.from(_noteTagTable).select('*'))
+        as List<Map<String, dynamic>>;
+
+    final remoteLinks = _buildTagLinks(remoteRows, 'note_id');
+    final localLinks = (await _repository.getAllNoteTagLinks())
+        .map((row) => _TagLink(parentId: row.noteId, tagId: row.tagId))
+        .toSet();
+
+    final mergedLinks = {...remoteLinks, ...localLinks};
+
+    await _applyTagLinksToLocal(
+      mergedLinks,
+      (noteId, tagIds) =>
+          _repository.setTagsForNote(noteId: noteId, tagIds: tagIds),
+    );
+
+    final missingOnRemote = mergedLinks.difference(remoteLinks).toList();
+
+    if (missingOnRemote.isEmpty) {
+      return;
+    }
+
+    final payload = missingOnRemote
+        .map((link) => {'note_id': link.parentId, 'tag_id': link.tagId})
+        .toList();
+
+    await _client
+        .from(_noteTagTable)
+        .upsert(payload, onConflict: 'note_id,tag_id');
+  }
+
+  Set<_TagLink> _buildTagLinks(List<Map<String, dynamic>> rows, String key) {
+    final links = <_TagLink>{};
+
+    for (final row in rows) {
+      final parentId = _parseInt(row[key]);
+      final tagId = _parseInt(row['tag_id']);
+
+      if (parentId != null && tagId != null) {
+        links.add(_TagLink(parentId: parentId, tagId: tagId));
+      }
+    }
+
+    return links;
+  }
+
+  Future<void> _applyTagLinksToLocal(
+    Set<_TagLink> links,
+    Future<void> Function(int id, List<int> tagIds) setter,
+  ) async {
+    final byParent = <int, Set<int>>{};
+
+    for (final link in links) {
+      byParent.putIfAbsent(link.parentId, () => <int>{}).add(link.tagId);
+    }
+
+    for (final entry in byParent.entries) {
+      await setter(entry.key, entry.value.toList());
+    }
+  }
+}
+
+class _TagLink {
+  const _TagLink({required this.parentId, required this.tagId});
+
+  final int parentId;
+  final int tagId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _TagLink &&
+        other.parentId == parentId &&
+        other.tagId == tagId;
+  }
+
+  @override
+  int get hashCode => Object.hash(parentId, tagId);
 }
