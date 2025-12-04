@@ -615,9 +615,15 @@ class SupabaseSyncService {
     final remoteRows = (await _client.from(_bookTagTable).select('*'))
         as List<Map<String, dynamic>>;
 
-    final remoteLinks = _buildTagLinks(remoteRows, 'book_id');
+    final bookIdMaps = await _fetchIdMaps(_bookTable);
+
+    final remoteLinks = _mapRemoteLinks(
+      remoteRows,
+      'book_id',
+      bookIdMaps.remoteToLocal,
+    );
     final localLinks = (await _repository.getAllBookTagLinks())
-        .map((row) => _TagLink(bookId: row.bookId, tagId: row.tagId))
+        .map((row) => _TagLink(parentId: row.bookId, tagId: row.tagId))
         .toSet();
 
     final mergedLinks = {...remoteLinks, ...localLinks};
@@ -634,9 +640,12 @@ class SupabaseSyncService {
       return;
     }
 
-    final payload = missingOnRemote
-        .map((link) => {'book_id': link.parentId, 'tag_id': link.tagId})
-        .toList();
+    final payload = _buildPayload(missingOnRemote, bookIdMaps.localToRemote,
+        (remoteId, link) => {'book_id': remoteId, 'tag_id': link.tagId});
+
+    if (payload.isEmpty) {
+      return;
+    }
 
     await _client
         .from(_bookTagTable)
@@ -647,7 +656,13 @@ class SupabaseSyncService {
     final remoteRows = (await _client.from(_noteTagTable).select('*'))
         as List<Map<String, dynamic>>;
 
-    final remoteLinks = _buildTagLinks(remoteRows, 'note_id');
+    final noteIdMaps = await _fetchIdMaps(_noteTable);
+
+    final remoteLinks = _mapRemoteLinks(
+      remoteRows,
+      'note_id',
+      noteIdMaps.remoteToLocal,
+    );
     final localLinks = (await _repository.getAllNoteTagLinks())
         .map((row) => _TagLink(parentId: row.noteId, tagId: row.tagId))
         .toSet();
@@ -666,13 +681,70 @@ class SupabaseSyncService {
       return;
     }
 
-    final payload = missingOnRemote
-        .map((link) => {'note_id': link.parentId, 'tag_id': link.tagId})
-        .toList();
+    final payload = _buildPayload(missingOnRemote, noteIdMaps.localToRemote,
+        (remoteId, link) => {'note_id': remoteId, 'tag_id': link.tagId});
+
+    if (payload.isEmpty) {
+      return;
+    }
 
     await _client
         .from(_noteTagTable)
         .upsert(payload, onConflict: 'note_id,tag_id');
+  }
+
+  Future<_IdMaps> _fetchIdMaps(String table) async {
+    final rows = (await _client
+        .from(table)
+        .select('id,local_id')
+        .eq('user_id', _userId)) as List<Map<String, dynamic>>;
+
+    final localToRemote = <int, int>{};
+    final remoteToLocal = <int, int>{};
+
+    for (final row in rows) {
+      final remoteId = _parseInt(row['id']);
+      final localId = _parseInt(row['local_id']);
+
+      if (remoteId != null && localId != null) {
+        localToRemote[localId] = remoteId;
+        remoteToLocal[remoteId] = localId;
+      }
+    }
+
+    return _IdMaps(
+      localToRemote: localToRemote,
+      remoteToLocal: remoteToLocal,
+    );
+  }
+
+  Set<_TagLink> _mapRemoteLinks(
+    List<Map<String, dynamic>> rows,
+    String key,
+    Map<int, int> idMap,
+  ) {
+    return _buildTagLinks(rows, key)
+        .map((link) => _convertParentId(link, idMap))
+        .whereType<_TagLink>()
+        .toSet();
+  }
+
+  List<Map<String, int>> _buildPayload(
+    List<_TagLink> links,
+    Map<int, int> idMap,
+    Map<String, int> Function(int remoteId, _TagLink link) builder,
+  ) {
+    final payload = <Map<String, int>>[];
+
+    for (final link in links) {
+      final remoteId = idMap[link.parentId];
+
+      if (remoteId != null) {
+        payload.add(builder(remoteId, link));
+      }
+    }
+
+    return payload;
   }
 
   Set<_TagLink> _buildTagLinks(List<Map<String, dynamic>> rows, String key) {
@@ -690,6 +762,16 @@ class SupabaseSyncService {
     return links;
   }
 
+  _TagLink? _convertParentId(_TagLink link, Map<int, int> idMap) {
+    final parentId = idMap[link.parentId];
+
+    if (parentId == null) {
+      return null;
+    }
+
+    return _TagLink(parentId: parentId, tagId: link.tagId);
+  }
+
   Future<void> _applyTagLinksToLocal(
     Set<_TagLink> links,
     Future<void> Function(int id, List<int> tagIds) setter,
@@ -704,6 +786,16 @@ class SupabaseSyncService {
       await setter(entry.key, entry.value.toList());
     }
   }
+}
+
+class _IdMaps {
+  const _IdMaps({
+    required this.localToRemote,
+    required this.remoteToLocal,
+  });
+
+  final Map<int, int> localToRemote;
+  final Map<int, int> remoteToLocal;
 }
 
 class _TagLink {
