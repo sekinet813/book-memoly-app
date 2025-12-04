@@ -1157,6 +1157,17 @@ class TagDao {
         .toList(growable: false);
   }
 
+  Future<List<BookTagRow>> getAllBookTagRows(String userId) async {
+    final userTagIds = db._tagRows
+        .where((tag) => tag.userId == userId)
+        .map((tag) => tag.id)
+        .toSet();
+
+    return db._bookTagRows
+        .where((row) => userTagIds.contains(row.tagId))
+        .toList(growable: false);
+  }
+
   Future<int> insertTag(TagsCompanion entry) async {
     final newId = ++db._tagId;
     db._tagRows.add(
@@ -1204,6 +1215,35 @@ class TagDao {
 
     await db._persist();
     return 1;
+  }
+
+  Future<List<NoteTagRow>> getAllNoteTagRows(String userId) async {
+    final userTagIds = db._tagRows
+        .where((tag) => tag.userId == userId)
+        .map((tag) => tag.id)
+        .toSet();
+
+    return db._noteTagRows
+        .where((row) => userTagIds.contains(row.tagId))
+        .toList(growable: false);
+  }
+
+  Future<void> upsertFromRemote(TagRow row) async {
+    final index = db._tagRows.indexWhere(
+      (tag) => tag.id == row.id && tag.userId == row.userId,
+    );
+
+    if (index == -1) {
+      db._tagRows.add(row);
+    } else {
+      db._tagRows[index] = row;
+    }
+
+    if (db._tagId < row.id) {
+      db._tagId = row.id;
+    }
+
+    await db._persist();
   }
 
   Future<void> setTagsForBook(
