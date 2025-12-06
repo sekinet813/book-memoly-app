@@ -71,6 +71,7 @@ class AppIcons {
   static const IconData circle = Symbols.circle_rounded;
   static const IconData swapVert = Symbols.swap_vert_rounded;
   static const IconData arrowForward = Symbols.arrow_forward_rounded;
+  static const IconData update = Symbols.update_rounded;
 }
 
 class AppIconSizes {

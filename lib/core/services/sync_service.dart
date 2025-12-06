@@ -616,9 +616,10 @@ class SupabaseSyncService {
         as List<Map<String, dynamic>>;
 
     final remoteLinks = _buildTagLinks(remoteRows, 'book_id');
-    final localLinks = (await _repository.getAllBookTagLinks())
-        .map((row) => _TagLink(bookId: row.bookId, tagId: row.tagId))
-        .toSet();
+    final localLinks = <_TagLink>{
+      ...(await _repository.getAllBookTagLinks())
+          .map((row) => _TagLink(parentId: row.bookId, tagId: row.tagId))
+    };
 
     final mergedLinks = {...remoteLinks, ...localLinks};
 
