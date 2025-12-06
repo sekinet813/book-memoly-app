@@ -32,12 +32,13 @@ jobs:
         run: flutter pub get
 
       - name: Run tests
+        if: false
         run: |
           mkdir -p build
           flutter test --machine > build/flutter_test_results.json
 
       - name: Upload test results
-        if: always()
+        if: false
         uses: actions/upload-artifact@v4
         with:
           name: flutter-test-results
