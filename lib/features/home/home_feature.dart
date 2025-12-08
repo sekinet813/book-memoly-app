@@ -653,36 +653,120 @@ class _MagazineGrid extends StatelessWidget {
               return const Text('まだ本が登録されていません。検索から追加してみましょう。');
             }
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 900
-                    ? 3
-                    : constraints.maxWidth > 600
-                        ? 3
-                        : 2;
-                final childAspectRatio =
-                    constraints.maxWidth > 600 ? 0.66 : 0.62;
+            final statusCounts = {
+              for (final status in BookStatus.values) status: 0,
+            };
 
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: childAspectRatio,
+            for (final book in books) {
+              final status = bookStatusFromDbValue(book.status);
+              statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+            }
+
+            return AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ステータスごとの蔵書数',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
-                  itemCount: books.length,
-                  itemBuilder: (context, index) {
-                    final book = books[index];
-                    return _BookTile(book: book);
-                  },
-                );
-              },
+                  const SizedBox(height: 10),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 520;
+
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: isWide ? WrapAlignment.start : WrapAlignment.center,
+                        children: BookStatus.values
+                            .map(
+                              (status) => _StatusCountTile(
+                                status: status,
+                                count: statusCounts[status] ?? 0,
+                                color: _statusColor(
+                                  status,
+                                  Theme.of(context).colorScheme,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+                ],
+              ),
             );
           },
         ),
       ],
+    );
+  }
+}
+
+class _StatusCountTile extends StatelessWidget {
+  const _StatusCountTile({
+    required this.status,
+    required this.count,
+    required this.color,
+  });
+
+  final BookStatus status;
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 150),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              AppIcons.menuBook,
+              color: colorScheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                status.label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$count 冊',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
