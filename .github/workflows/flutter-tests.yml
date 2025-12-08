@@ -9,15 +9,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      actions: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create .env for CI
+        run: cp .env.example .env
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
-          channel: stable
+          channel: master
           cache: true
 
       - name: Cache pub dependencies
@@ -36,6 +42,14 @@ jobs:
         run: |
           mkdir -p build
           flutter test --machine > build/flutter_test_results.json
+
+      - name: Ensure test results file exists
+        if: always()
+        run: |
+          if [ ! -f build/flutter_test_results.json ]; then
+            mkdir -p build
+            echo '{"info":"No tests were run. Check earlier steps for details."}' > build/flutter_test_results.json
+          fi
 
       - name: Upload test results
         if: false
