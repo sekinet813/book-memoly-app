@@ -1,8 +1,33 @@
 #!/bin/bash
 
 # Script to run Flutter app with Supabase configuration from .env file
+# Usage:
+#   ./run.sh                    # Run Flutter app
+#   ./run.sh --deploy          # Deploy Supabase Edge Functions and run Flutter app
+#   ./run.sh --deploy-only     # Only deploy Supabase Edge Functions (don't run app)
 
 set -e  # Exit on error
+
+# Check for deploy flag
+DEPLOY_FUNCTIONS=false
+DEPLOY_ONLY=false
+
+for arg in "$@"; do
+  case $arg in
+    --deploy)
+      DEPLOY_FUNCTIONS=true
+      shift
+      ;;
+    --deploy-only)
+      DEPLOY_FUNCTIONS=true
+      DEPLOY_ONLY=true
+      shift
+      ;;
+    *)
+      # Keep other arguments for flutter run
+      ;;
+  esac
+done
 
 # Load environment variables from .env file
 if [ -f .env ]; then
@@ -50,6 +75,57 @@ fi
 
 if [ -n "$DEBUG_UID" ]; then
   DART_DEFINE_ARGS+=("--dart-define=DEBUG_UID=$DEBUG_UID")
+fi
+
+# Deploy Supabase Edge Functions if requested
+if [ "$DEPLOY_FUNCTIONS" = true ]; then
+  echo "🚀 Deploying Supabase Edge Functions..."
+  echo ""
+  
+  # Check if supabase CLI is installed
+  if ! command -v supabase &> /dev/null; then
+    echo "❌ Error: Supabase CLI is not installed"
+    echo ""
+    echo "Please install Supabase CLI:"
+    echo "  brew install supabase/tap/supabase"
+    echo ""
+    echo "Or visit: https://supabase.com/docs/guides/cli/getting-started"
+    exit 1
+  fi
+  
+  # Check if we're in the right directory or supabase directory exists
+  if [ ! -d "supabase" ]; then
+    echo "❌ Error: supabase directory not found"
+    echo "   Please run this script from the project root directory"
+    exit 1
+  fi
+  
+  # Deploy rakuten-books function
+  cd supabase
+  echo "📦 Deploying rakuten-books Edge Function..."
+  if supabase functions deploy rakuten-books; then
+    echo ""
+    echo "✅ Edge Function deployed successfully!"
+    echo ""
+  else
+    echo ""
+    echo "❌ Failed to deploy Edge Function"
+    echo ""
+    echo "Troubleshooting tips:"
+    echo "  1. Make sure you're logged in: supabase login"
+    echo "  2. Link your project: cd supabase && supabase link --project-ref your-project-ref"
+    echo "  3. Check your Supabase project settings"
+    exit 1
+  fi
+  
+  cd ..
+  echo ""
+  
+  # If deploy-only, exit here
+  if [ "$DEPLOY_ONLY" = true ]; then
+    echo "✅ Deployment complete. Exiting."
+    exit 0
+  fi
 fi
 
 echo "🚀 Running Flutter app with Supabase configuration..."

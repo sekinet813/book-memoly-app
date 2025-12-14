@@ -80,6 +80,16 @@ enum OnlineSearchCategory {
   isbn,
 }
 
+enum BookSortOption {
+  relevance,
+  titleAsc,
+  titleDesc,
+  authorAsc,
+  authorDesc,
+  publishedDateDesc,
+  publishedDateAsc,
+}
+
 class BookSearchRepository {
   BookSearchRepository(this._client);
 
@@ -175,6 +185,12 @@ class SearchState {
     this.hitsPerPage = 30,
     this.loadMoreErrorMessage,
     this.searchCategory = OnlineSearchCategory.auto,
+    this.totalCount,
+    this.searchMode,
+    this.sortOption = BookSortOption.relevance,
+    this.publisherFilter,
+    this.publishedYearFilter,
+    this.unfilteredBooks,
   });
 
   static const _loadMoreErrorSentinel = Object();
@@ -188,6 +204,12 @@ class SearchState {
   final int hitsPerPage;
   final String? loadMoreErrorMessage;
   final OnlineSearchCategory searchCategory;
+  final int? totalCount;
+  final String? searchMode;
+  final BookSortOption sortOption;
+  final String? publisherFilter;
+  final int? publishedYearFilter;
+  final List<Book>? unfilteredBooks; // フィルター適用前の検索結果を保持
 
   SearchState copyWith({
     AsyncValue<List<Book>>? results,
@@ -199,6 +221,12 @@ class SearchState {
     int? hitsPerPage,
     Object? loadMoreErrorMessage = _loadMoreErrorSentinel,
     OnlineSearchCategory? searchCategory,
+    int? totalCount,
+    String? searchMode,
+    BookSortOption? sortOption,
+    String? publisherFilter,
+    int? publishedYearFilter,
+    List<Book>? unfilteredBooks,
   }) {
     return SearchState(
       results: results ?? this.results,
@@ -212,6 +240,12 @@ class SearchState {
       loadMoreErrorMessage: loadMoreErrorMessage == _loadMoreErrorSentinel
           ? this.loadMoreErrorMessage
           : loadMoreErrorMessage as String?,
+      totalCount: totalCount ?? this.totalCount,
+      searchMode: searchMode ?? this.searchMode,
+      sortOption: sortOption ?? this.sortOption,
+      publisherFilter: publisherFilter ?? this.publisherFilter,
+      publishedYearFilter: publishedYearFilter ?? this.publishedYearFilter,
+      unfilteredBooks: unfilteredBooks ?? this.unfilteredBooks,
     );
   }
 }
@@ -240,6 +274,11 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
         isLoadingMore: false,
         lastQuery: '',
         loadMoreErrorMessage: null,
+        totalCount: null,
+        searchMode: null,
+        publisherFilter: null,
+        publishedYearFilter: null,
+        unfilteredBooks: null,
       );
       return;
     }
@@ -252,6 +291,8 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
       isLoadingMore: false,
       lastQuery: trimmed,
       loadMoreErrorMessage: null,
+      totalCount: null,
+      searchMode: null,
     );
 
     try {
@@ -261,19 +302,61 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
         page: 1,
         hits: state.hitsPerPage,
       );
+      // 元の検索結果を保持し、既存のフィルターを適用
+      final filteredBooks = _applyFilters(
+        result.books,
+        state.publisherFilter,
+        state.publishedYearFilter,
+      );
       state = state.copyWith(
-        results: AsyncValue.data(result.books),
+        results: AsyncValue.data(filteredBooks),
         currentPage: result.page,
         hasMore: result.hasMore,
         loadMoreErrorMessage: null,
+        totalCount: result.totalCount,
+        searchMode: result.searchMode,
+        unfilteredBooks: result.books, // フィルター適用前の結果を保持
       );
     } catch (error, stackTrace) {
       state = state.copyWith(
         results: AsyncValue.error(error, stackTrace),
         isLoadingMore: false,
         loadMoreErrorMessage: null,
+        totalCount: null,
+        searchMode: null,
       );
     }
+  }
+
+  List<Book> _applyFilters(List<Book> books, String? publisherFilter, int? publishedYearFilter) {
+    var filtered = books;
+    
+    if (publisherFilter != null && publisherFilter.isNotEmpty) {
+      filtered = filtered.where((book) {
+        return book.publisher?.toLowerCase().contains(
+          publisherFilter.toLowerCase(),
+        ) ?? false;
+      }).toList();
+    }
+    
+    if (publishedYearFilter != null) {
+      filtered = filtered.where((book) {
+        if (book.publishedDate == null) return false;
+        final year = _extractYear(book.publishedDate!);
+        return year == publishedYearFilter;
+      }).toList();
+    }
+    
+    return filtered;
+  }
+
+  int? _extractYear(String dateString) {
+    // YYYY-MM-DD または YYYY-MM または YYYY 形式から年を抽出
+    final match = RegExp(r'^(\d{4})').firstMatch(dateString);
+    if (match != null) {
+      return int.tryParse(match.group(1)!);
+    }
+    return null;
   }
 
   Future<void> loadMore() async {
@@ -300,18 +383,23 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
         hits: state.hitsPerPage,
       );
 
-      final currentBooks = state.results.maybeWhen(
-        data: (books) => books,
-        orElse: () => const <Book>[],
+      // 元の検索結果（フィルター適用前）に新しい結果を追加
+      final unfiltered = state.unfilteredBooks ?? [];
+      final allUnfilteredBooks = [...unfiltered, ...result.books];
+      
+      // フィルターを適用
+      final filteredBooks = _applyFilters(
+        allUnfilteredBooks,
+        state.publisherFilter,
+        state.publishedYearFilter,
       );
 
-      final updatedBooks = [...currentBooks, ...result.books];
-
       state = state.copyWith(
-        results: AsyncValue.data(updatedBooks),
+        results: AsyncValue.data(filteredBooks),
         currentPage: result.page,
         hasMore: result.hasMore,
         isLoadingMore: false,
+        unfilteredBooks: allUnfilteredBooks, // フィルター適用前の結果を更新
       );
     } catch (error, stackTrace) {
       debugPrint('Error loading more books: $error');
@@ -328,6 +416,103 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
 
     if (state.hasSearched && state.lastQuery.trim().isNotEmpty) {
       unawaited(search(state.lastQuery));
+    }
+  }
+
+  void setSortOption(BookSortOption sortOption) {
+    state = state.copyWith(sortOption: sortOption);
+    
+    // 検索結果を並び替え
+    final currentBooks = state.results.maybeWhen(
+      data: (books) => books,
+      orElse: () => const <Book>[],
+    );
+    
+    if (currentBooks.isNotEmpty) {
+      final sortedBooks = _sortBooks(currentBooks, sortOption);
+      state = state.copyWith(results: AsyncValue.data(sortedBooks));
+    }
+  }
+
+  List<Book> _sortBooks(List<Book> books, BookSortOption sortOption) {
+    final sorted = List<Book>.from(books);
+    
+    switch (sortOption) {
+      case BookSortOption.relevance:
+        // 元の順序を維持（検索結果の順序）
+        return sorted;
+      case BookSortOption.titleAsc:
+        sorted.sort((a, b) => a.title.compareTo(b.title));
+        return sorted;
+      case BookSortOption.titleDesc:
+        sorted.sort((a, b) => b.title.compareTo(a.title));
+        return sorted;
+      case BookSortOption.authorAsc:
+        sorted.sort((a, b) {
+          final aAuthor = a.authors ?? '';
+          final bAuthor = b.authors ?? '';
+          return aAuthor.compareTo(bAuthor);
+        });
+        return sorted;
+      case BookSortOption.authorDesc:
+        sorted.sort((a, b) {
+          final aAuthor = a.authors ?? '';
+          final bAuthor = b.authors ?? '';
+          return bAuthor.compareTo(aAuthor);
+        });
+        return sorted;
+      case BookSortOption.publishedDateDesc:
+        sorted.sort((a, b) {
+          final aDate = a.publishedDate ?? '';
+          final bDate = b.publishedDate ?? '';
+          return bDate.compareTo(aDate);
+        });
+        return sorted;
+      case BookSortOption.publishedDateAsc:
+        sorted.sort((a, b) {
+          final aDate = a.publishedDate ?? '';
+          final bDate = b.publishedDate ?? '';
+          return aDate.compareTo(bDate);
+        });
+        return sorted;
+    }
+  }
+
+  void setPublisherFilter(String? publisher) {
+    state = state.copyWith(publisherFilter: publisher);
+    
+    // 元の検索結果（フィルター適用前）に対してフィルターを適用
+    final unfiltered = state.unfilteredBooks;
+    if (unfiltered != null && unfiltered.isNotEmpty) {
+      final filteredBooks = _applyFilters(unfiltered, publisher, state.publishedYearFilter);
+      state = state.copyWith(results: AsyncValue.data(filteredBooks));
+    } else {
+      // 元の検索結果がない場合は、現在の結果に対してフィルターを適用
+      final currentBooks = state.results.maybeWhen(
+        data: (books) => books,
+        orElse: () => const <Book>[],
+      );
+      final filteredBooks = _applyFilters(currentBooks, publisher, state.publishedYearFilter);
+      state = state.copyWith(results: AsyncValue.data(filteredBooks));
+    }
+  }
+
+  void setPublishedYearFilter(int? year) {
+    state = state.copyWith(publishedYearFilter: year);
+    
+    // 元の検索結果（フィルター適用前）に対してフィルターを適用
+    final unfiltered = state.unfilteredBooks;
+    if (unfiltered != null && unfiltered.isNotEmpty) {
+      final filteredBooks = _applyFilters(unfiltered, state.publisherFilter, year);
+      state = state.copyWith(results: AsyncValue.data(filteredBooks));
+    } else {
+      // 元の検索結果がない場合は、現在の結果に対してフィルターを適用
+      final currentBooks = state.results.maybeWhen(
+        data: (books) => books,
+        orElse: () => const <Book>[],
+      );
+      final filteredBooks = _applyFilters(currentBooks, state.publisherFilter, year);
+      state = state.copyWith(results: AsyncValue.data(filteredBooks));
     }
   }
 }
@@ -908,6 +1093,21 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
             hasSearched: searchState.hasSearched,
             isLoadingMore: searchState.isLoadingMore,
             loadMoreErrorMessage: searchState.loadMoreErrorMessage,
+            totalCount: searchState.totalCount,
+            searchMode: searchState.searchMode,
+            searchCategory: searchState.searchCategory,
+            sortOption: searchState.sortOption,
+            publisherFilter: searchState.publisherFilter,
+            publishedYearFilter: searchState.publishedYearFilter,
+            onSortChanged: (option) {
+              ref.read(searchNotifierProvider.notifier).setSortOption(option);
+            },
+            onPublisherFilterChanged: (publisher) {
+              ref.read(searchNotifierProvider.notifier).setPublisherFilter(publisher);
+            },
+            onPublishedYearFilterChanged: (year) {
+              ref.read(searchNotifierProvider.notifier).setPublishedYearFilter(year);
+            },
             onRetryLoadMore: () {
               ref.read(searchNotifierProvider.notifier).loadMore();
             },
@@ -1294,6 +1494,15 @@ class _SearchResultsSliver extends StatelessWidget {
     required this.hasSearched,
     required this.isLoadingMore,
     this.loadMoreErrorMessage,
+    this.totalCount,
+    this.searchMode,
+    this.searchCategory,
+    this.sortOption = BookSortOption.relevance,
+    this.publisherFilter,
+    this.publishedYearFilter,
+    this.onSortChanged,
+    this.onPublisherFilterChanged,
+    this.onPublishedYearFilterChanged,
     this.onRetryLoadMore,
   });
 
@@ -1301,7 +1510,48 @@ class _SearchResultsSliver extends StatelessWidget {
   final bool hasSearched;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final int? totalCount;
+  final String? searchMode;
+  final OnlineSearchCategory? searchCategory;
+  final BookSortOption sortOption;
+  final String? publisherFilter;
+  final int? publishedYearFilter;
+  final ValueChanged<BookSortOption>? onSortChanged;
+  final ValueChanged<String?>? onPublisherFilterChanged;
+  final ValueChanged<int?>? onPublishedYearFilterChanged;
   final VoidCallback? onRetryLoadMore;
+
+  String _getSearchModeLabel() {
+    if (searchMode != null) {
+      switch (searchMode) {
+        case 'title':
+          return 'タイトル検索';
+        case 'title-fallback':
+          return 'タイトル検索（フォールバック）';
+        case 'author':
+          return '著者検索';
+        case 'isbn':
+          return 'ISBN検索';
+        case 'keyword':
+        default:
+          return 'キーワード検索';
+      }
+    }
+    if (searchCategory != null) {
+      switch (searchCategory) {
+        case OnlineSearchCategory.title:
+          return 'タイトル検索';
+        case OnlineSearchCategory.author:
+          return '著者検索';
+        case OnlineSearchCategory.isbn:
+          return 'ISBN検索';
+        case OnlineSearchCategory.auto:
+        default:
+          return '自動検索';
+      }
+    }
+    return '検索';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1317,12 +1567,20 @@ class _SearchResultsSliver extends StatelessWidget {
     }
 
     if (books.isEmpty) {
-      return const SliverFillRemaining(
+      // フィルターが適用されているかどうかを確認
+      final hasActiveFilter = (publisherFilter != null && publisherFilter!.isNotEmpty) ||
+          publishedYearFilter != null;
+      
+      return SliverFillRemaining(
         hasScrollBody: false,
         child: EmptyState(
-          title: '検索結果が見つかりませんでした',
-          message: 'キーワードを少し変えて、もう一度お試しください。',
-          icon: AppIcons.manageSearch,
+          title: hasActiveFilter
+              ? 'フィルター条件に一致する結果がありませんでした'
+              : '検索結果が見つかりませんでした',
+          message: hasActiveFilter
+              ? 'フィルター条件を変更するか、キーワードを変えて再度検索してください。'
+              : 'キーワードを少し変えて、もう一度お試しください。',
+          icon: hasActiveFilter ? AppIcons.filter : AppIcons.manageSearch,
         ),
       );
     }
@@ -1343,7 +1601,157 @@ class _SearchResultsSliver extends StatelessWidget {
 
             final index = sliverIndex ~/ 2;
             if (index == 0) {
-              return const SectionHeader(title: '検索結果');
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            if (totalCount != null)
+                              Text(
+                                '検索結果: ${totalCount}件',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
+                            if (totalCount != null && searchMode != null)
+                              Text(
+                                ' • ',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                              ),
+                            if (searchMode != null)
+                              Flexible(
+                                child: Text(
+                                  _getSearchModeLabel(),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (onSortChanged != null)
+                        DropdownButton<BookSortOption>(
+                          value: sortOption,
+                          isDense: true,
+                          underline: const SizedBox.shrink(),
+                          icon: const Icon(AppIcons.swapVert, size: 18),
+                          items: const [
+                            DropdownMenuItem(
+                              value: BookSortOption.relevance,
+                              child: Text('関連度順'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.titleAsc,
+                              child: Text('タイトル（昇順）'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.titleDesc,
+                              child: Text('タイトル（降順）'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.authorAsc,
+                              child: Text('著者（昇順）'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.authorDesc,
+                              child: Text('著者（降順）'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.publishedDateDesc,
+                              child: Text('発行日（新しい順）'),
+                            ),
+                            DropdownMenuItem(
+                              value: BookSortOption.publishedDateAsc,
+                              child: Text('発行日（古い順）'),
+                            ),
+                          ],
+                          onChanged: (option) {
+                            if (option != null) {
+                              onSortChanged?.call(option);
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                  if (onPublisherFilterChanged != null || onPublishedYearFilterChanged != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(AppIcons.filter, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (onPublisherFilterChanged != null)
+                                _FilterChip(
+                                  label: publisherFilter != null && publisherFilter!.isNotEmpty
+                                      ? '出版社: $publisherFilter'
+                                      : '出版社で絞り込み',
+                                  isActive: publisherFilter != null && publisherFilter!.isNotEmpty,
+                                  onTap: () {
+                                    if (onPublisherFilterChanged != null) {
+                                      _showPublisherFilterDialog(context);
+                                    }
+                                  },
+                                ),
+                              if (onPublishedYearFilterChanged != null)
+                                _FilterChip(
+                                  label: publishedYearFilter != null
+                                      ? '発行年: ${publishedYearFilter}年'
+                                      : '発行年で絞り込み',
+                                  isActive: publishedYearFilter != null,
+                                  onTap: () {
+                                    if (onPublishedYearFilterChanged != null) {
+                                      _showYearFilterDialog(context);
+                                    }
+                                  },
+                                ),
+                              if ((publisherFilter != null && publisherFilter!.isNotEmpty) ||
+                                  publishedYearFilter != null)
+                                _FilterChip(
+                                  label: 'フィルターをクリア',
+                                  isActive: false,
+                                  onTap: () {
+                                    onPublisherFilterChanged?.call(null);
+                                    onPublishedYearFilterChanged?.call(null);
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  const SectionHeader(title: '検索結果'),
+                ],
+              );
             }
 
             final bookIndex = index - 1;
@@ -1368,6 +1776,103 @@ class _SearchResultsSliver extends StatelessWidget {
           childCount: sliverItemCount,
         ),
       ),
+    );
+  }
+
+  Future<void> _showPublisherFilterDialog(BuildContext context) async {
+    final controller = TextEditingController(text: publisherFilter ?? '');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('出版社で絞り込み'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '出版社名',
+            hintText: '出版社名を入力',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('適用'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final value = controller.text.trim();
+      onPublisherFilterChanged?.call(value.isEmpty ? null : value);
+    }
+  }
+
+  Future<void> _showYearFilterDialog(BuildContext context) async {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final years = List.generate(50, (index) => currentYear - index);
+    
+    final selectedYear = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('発行年で絞り込み'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: years.length,
+            itemBuilder: (context, index) {
+              final year = years[index];
+              return ListTile(
+                title: Text('$year年'),
+                selected: year == publishedYearFilter,
+                onTap: () => Navigator.of(context).pop(year),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('クリア'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedYear != publishedYearFilter) {
+      onPublishedYearFilterChanged?.call(selectedYear);
+    }
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: isActive,
+      onSelected: (_) => onTap(),
+      showCheckmark: false,
     );
   }
 }
@@ -1574,6 +2079,9 @@ class _BookListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return AppCard(
       onTap: () {
         Navigator.of(context).push(
@@ -1582,7 +2090,7 @@ class _BookListTile extends StatelessWidget {
           ),
         );
       },
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1590,35 +2098,52 @@ class _BookListTile extends StatelessWidget {
             bookId: book.id,
             isbn: book.isbn,
             url: book.thumbnailUrl,
+            width: 70,
+            height: 105,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   book.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (book.authors?.isNotEmpty == true)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      book.authors!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                if (book.authors?.isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        AppIcons.person,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          book.authors!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
                             height: 1.4,
                           ),
-                    ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 10),
+                ],
+                const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     if (book.publisher != null)
                       _MetaChip(
@@ -1630,11 +2155,6 @@ class _BookListTile extends StatelessWidget {
                         icon: AppIcons.calendar,
                         label: book.publishedDate!,
                       ),
-                    if (book.isbn != null)
-                      _MetaChip(
-                        icon: AppIcons.manageSearch,
-                        label: 'ISBN: ${book.isbn!}',
-                      ),
                     if (book.pageCount != null)
                       _MetaChip(
                         icon: AppIcons.book,
@@ -1642,11 +2162,23 @@ class _BookListTile extends StatelessWidget {
                       ),
                   ],
                 ),
+                if (book.isbn != null) ...[
+                  const SizedBox(height: 8),
+                  _MetaChip(
+                    icon: AppIcons.manageSearch,
+                    label: 'ISBN: ${book.isbn!}',
+                    isCompact: true,
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 6),
-          const Icon(AppIcons.chevronRight),
+          const SizedBox(width: 8),
+          Icon(
+            AppIcons.chevronRight,
+            color: colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
         ],
       ),
     );
@@ -1657,18 +2189,53 @@ class _MetaChip extends StatelessWidget {
   const _MetaChip({
     required this.icon,
     required this.label,
+    this.isCompact = false,
   });
 
   final IconData icon;
   final String label;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    if (isCompact) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
+    }
+    
     return Chip(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       visualDensity: VisualDensity.compact,
-      avatar: Icon(icon, size: AppIconSizes.small),
-      label: Text(label),
+      backgroundColor: colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      avatar: Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
+      label: Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
