@@ -73,6 +73,13 @@ class BookSearchResult {
   }
 }
 
+enum OnlineSearchCategory {
+  auto,
+  title,
+  author,
+  isbn,
+}
+
 class BookSearchRepository {
   BookSearchRepository(this._client);
 
@@ -80,6 +87,7 @@ class BookSearchRepository {
 
   Future<BookSearchResult> searchBooks(
     String keyword, {
+    OnlineSearchCategory category = OnlineSearchCategory.auto,
     int page = 1,
     int hits = 30,
   }) async {
@@ -90,8 +98,24 @@ class BookSearchRepository {
     }
 
     final isIsbn = RegExp(r'^[\d\-]+$').hasMatch(cleanedKeyword);
-    final queryType =
-        isIsbn ? RakutenSearchType.isbn : RakutenSearchType.keywords;
+    final effectiveCategory =
+        category == OnlineSearchCategory.auto && isIsbn && cleanedKeyword.isNotEmpty
+            ? OnlineSearchCategory.isbn
+            : category;
+
+    final queryType = () {
+      switch (effectiveCategory) {
+        case OnlineSearchCategory.isbn:
+          return RakutenSearchType.isbn;
+        case OnlineSearchCategory.title:
+          return RakutenSearchType.title;
+        case OnlineSearchCategory.author:
+          return RakutenSearchType.author;
+        case OnlineSearchCategory.auto:
+        default:
+          return RakutenSearchType.keywords;
+      }
+    }();
 
     debugPrint(
       'Rakuten Books API query ($queryType): $cleanedKeyword (page: $page, hits: $hits)',
@@ -150,6 +174,7 @@ class SearchState {
     this.lastQuery = '',
     this.hitsPerPage = 30,
     this.loadMoreErrorMessage,
+    this.searchCategory = OnlineSearchCategory.auto,
   });
 
   static const _loadMoreErrorSentinel = Object();
@@ -162,6 +187,7 @@ class SearchState {
   final String lastQuery;
   final int hitsPerPage;
   final String? loadMoreErrorMessage;
+  final OnlineSearchCategory searchCategory;
 
   SearchState copyWith({
     AsyncValue<List<Book>>? results,
@@ -172,6 +198,7 @@ class SearchState {
     String? lastQuery,
     int? hitsPerPage,
     Object? loadMoreErrorMessage = _loadMoreErrorSentinel,
+    OnlineSearchCategory? searchCategory,
   }) {
     return SearchState(
       results: results ?? this.results,
@@ -181,6 +208,7 @@ class SearchState {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       lastQuery: lastQuery ?? this.lastQuery,
       hitsPerPage: hitsPerPage ?? this.hitsPerPage,
+      searchCategory: searchCategory ?? this.searchCategory,
       loadMoreErrorMessage: loadMoreErrorMessage == _loadMoreErrorSentinel
           ? this.loadMoreErrorMessage
           : loadMoreErrorMessage as String?,
@@ -229,6 +257,7 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
     try {
       final result = await _repository.searchBooks(
         trimmed,
+        category: state.searchCategory,
         page: 1,
         hits: state.hitsPerPage,
       );
@@ -266,6 +295,7 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
       final nextPage = state.currentPage + 1;
       final result = await _repository.searchBooks(
         query,
+        category: state.searchCategory,
         page: nextPage,
         hits: state.hitsPerPage,
       );
@@ -290,6 +320,14 @@ class BookSearchNotifier extends StateNotifier<SearchState> {
         isLoadingMore: false,
         loadMoreErrorMessage: '追加読み込みに失敗しました。時間をおいて再試行してください。',
       );
+    }
+  }
+
+  void setSearchCategory(OnlineSearchCategory category) {
+    state = state.copyWith(searchCategory: category);
+
+    if (state.hasSearched && state.lastQuery.trim().isNotEmpty) {
+      unawaited(search(state.lastQuery));
     }
   }
 }
@@ -776,6 +814,21 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
   @override
   Widget build(BuildContext context) {
     final searchState = ref.watch(searchNotifierProvider);
+    final searchNotifier = ref.read(searchNotifierProvider.notifier);
+
+    String _hintTextForCategory(OnlineSearchCategory category) {
+      switch (category) {
+        case OnlineSearchCategory.title:
+          return 'タイトルを入力（例: 人間失格）';
+        case OnlineSearchCategory.author:
+          return '著者名を入力（例: 村上春樹）';
+        case OnlineSearchCategory.isbn:
+          return 'ISBN を入力（例: 9784041234567）';
+        case OnlineSearchCategory.auto:
+        default:
+          return 'タイトルや著者名を入力（例: Effective Dart、村上春樹）';
+      }
+    }
 
     return CustomScrollView(
       controller: _resultsScrollController,
@@ -786,12 +839,46 @@ class _OnlineSearchTabState extends ConsumerState<_OnlineSearchTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DropdownButtonFormField<OnlineSearchCategory>(
+                  value: searchState.searchCategory,
+                  decoration: const InputDecoration(
+                    labelText: '検索対象',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: OnlineSearchCategory.auto,
+                      child: Text('自動判定（キーワード）'),
+                    ),
+                    DropdownMenuItem(
+                      value: OnlineSearchCategory.title,
+                      child: Text('タイトル'),
+                    ),
+                    DropdownMenuItem(
+                      value: OnlineSearchCategory.author,
+                      child: Text('著者'),
+                    ),
+                    DropdownMenuItem(
+                      value: OnlineSearchCategory.isbn,
+                      child: Text('ISBN'),
+                    ),
+                  ],
+                  onChanged: (category) {
+                    if (category != null) {
+                      searchNotifier.setSearchCategory(category);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _keywordController,
-                  decoration: const InputDecoration(
+                  keyboardType: searchState.searchCategory ==
+                          OnlineSearchCategory.isbn
+                      ? TextInputType.number
+                      : TextInputType.text,
+                  decoration: InputDecoration(
                     labelText: 'キーワード',
-                    hintText: 'タイトルや著者名を入力（例: Effective Dart、村上春樹）',
-                    prefixIcon: Icon(AppIcons.search),
+                    prefixIcon: const Icon(AppIcons.search),
+                    hintText: _hintTextForCategory(searchState.searchCategory),
                   ),
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => _triggerSearch(),

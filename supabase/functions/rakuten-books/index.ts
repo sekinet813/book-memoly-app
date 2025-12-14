@@ -20,7 +20,14 @@ const MAX_PAGE = 100;
 const DEFAULT_PAGE = 1;
 const DEFAULT_SORT = "standard";
 
-type SearchMode = "isbn" | "author" | "keyword" | "title-fallback";
+type SearchMode =
+  | "isbn"
+  | "author"
+  | "keyword"
+  | "title"
+  | "title-fallback";
+
+type SearchType = "isbn" | "keywords" | "title" | "author";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -108,7 +115,16 @@ serve(async (req) => {
   }
 
   const query = typeof payload.query === "string" ? payload.query.trim() : "";
-  const searchType = payload.searchType === "isbn" ? "isbn" : "keywords";
+  const rawSearchType = typeof payload.searchType === "string"
+    ? (payload.searchType as string)
+    : "keywords";
+  const searchType: SearchType = rawSearchType === "isbn"
+    ? "isbn"
+    : rawSearchType === "author"
+    ? "author"
+    : rawSearchType === "title"
+    ? "title"
+    : "keywords";
   const hitsRaw = Number(payload.hits ?? DEFAULT_HITS);
   const hits = Number.isFinite(hitsRaw)
     ? Math.min(Math.max(Math.trunc(hitsRaw), 1), MAX_HITS)
@@ -132,7 +148,9 @@ serve(async (req) => {
 
   const isIsbnSearch = searchType === "isbn";
   const normalizedQuery = normalizeQuery(query, { isbn: isIsbnSearch });
-  const authorIntent = !isIsbnSearch && isLikelyAuthorQuery(normalizedQuery);
+  const authorIntent = searchType === "keywords"
+    ? isLikelyAuthorQuery(normalizedQuery)
+    : searchType === "author";
 
   if (searchType === "isbn") {
     baseParams.set("isbn", normalizedQuery);
@@ -177,6 +195,41 @@ serve(async (req) => {
       }
     } catch (error) {
       console.warn("Author search failed, falling back to keyword search", error);
+    }
+  }
+
+  if (searchType === "title") {
+    const titleParams = new URLSearchParams(baseParams);
+    titleParams.set("title", normalizedQuery);
+    titleParams.set("sort", DEFAULT_SORT);
+
+    try {
+      let searchMode: SearchMode = "title";
+      let { data, mappedItems } = await callRakutenApi(titleParams);
+
+      if (mappedItems.length === 0) {
+        const keywordParams = new URLSearchParams(baseParams);
+        keywordParams.set("keyword", normalizedQuery);
+        keywordParams.set("orFlag", "1");
+        keywordParams.set("sort", DEFAULT_SORT);
+        ({ data, mappedItems } = await callRakutenApi(keywordParams));
+        searchMode = "title-fallback";
+      }
+
+      const count = toNumber(data["count"]) ?? mappedItems.length;
+      const hitsFromApi = toNumber(data["hits"]);
+      const pageFromApi = toNumber(data["page"]);
+      const pageCount = toNumber(data["pageCount"]);
+      return jsonResponse({
+        Items: mappedItems,
+        count,
+        hits: hitsFromApi ?? hits,
+        page: pageFromApi ?? page,
+        pageCount,
+        searchMode,
+      });
+    } catch (error) {
+      return errorResponse("Failed to fetch from Rakuten Books API", 500, error);
     }
   }
 

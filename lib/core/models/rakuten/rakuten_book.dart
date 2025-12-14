@@ -1,6 +1,11 @@
 import '../book.dart';
 
-enum RakutenSearchType { keywords, isbn }
+enum RakutenSearchType {
+  keywords,
+  isbn,
+  title,
+  author,
+}
 
 class RakutenBookImages {
   const RakutenBookImages({
