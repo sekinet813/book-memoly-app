@@ -173,7 +173,8 @@ serve(async (req) => {
     }
   }
 
-  if (authorIntent) {
+  // タイトル検索が明示的に選択されている場合は、著者検索をスキップ
+  if (authorIntent && searchType !== "title") {
     const authorParams = new URLSearchParams(baseParams);
     authorParams.set("author", normalizedQuery);
     authorParams.set("sort", DEFAULT_SORT);
