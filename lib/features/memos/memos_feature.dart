@@ -174,7 +174,7 @@ class MemosPage extends ConsumerWidget {
       backgroundColor: _paperColor,
       floatingActionButton: state.selectedBookId != null
           ? FloatingActionButton(
-              onPressed: () => _showNoteDialog(context, ref),
+              onPressed: () => _openMemoEditorPage(context, ref),
               child: const Icon(AppIcons.add),
             )
           : null,
@@ -640,7 +640,7 @@ class _MemoActions extends ConsumerWidget {
           icon: const Icon(AppIcons.edit),
           onPressed: selectedBookId == null
               ? null
-              : () => _showNoteDialog(context, ref, note: note),
+              : () => _openMemoEditorPage(context, ref, note: note),
         ),
         IconButton(
           tooltip: 'アクションを作成',
@@ -659,38 +659,98 @@ class _MemoActions extends ConsumerWidget {
   }
 }
 
-Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
-    {NoteRow? note}) async {
-  final contentController = TextEditingController(text: note?.content ?? '');
-  final pageController =
-      TextEditingController(text: note?.pageNumber?.toString() ?? '');
-  final formKey = GlobalKey<FormState>();
-  final initialTagIds = note != null
-      ? ref
-              .read(memosNotifierProvider)
-              .noteTags[note.id]
-              ?.map((tag) => tag.id)
-              .toSet() ??
-          <int>{}
-      : <int>{};
-  var selectedTagIds = {...initialTagIds};
+Future<void> _openMemoEditorPage(
+  BuildContext context,
+  WidgetRef ref, {
+  NoteRow? note,
+}) {
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => MemoEditorPage(note: note),
+    ),
+  );
+}
 
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return StatefulBuilder(builder: (context, setState) {
-        return AlertDialog(
-          title: Text(note == null ? 'メモを追加' : 'メモを編集'),
-          content: Form(
-            key: formKey,
+class MemoEditorPage extends ConsumerStatefulWidget {
+  const MemoEditorPage({super.key, this.note});
+
+  final NoteRow? note;
+
+  @override
+  ConsumerState<MemoEditorPage> createState() => _MemoEditorPageState();
+}
+
+class _MemoEditorPageState extends ConsumerState<MemoEditorPage> {
+  late final TextEditingController _contentController;
+  late final TextEditingController _pageController;
+  final _formKey = GlobalKey<FormState>();
+  late Set<int> _selectedTagIds;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController =
+        TextEditingController(text: widget.note?.content ?? '');
+    _pageController = TextEditingController(
+      text: widget.note?.pageNumber?.toString() ?? '',
+    );
+    _selectedTagIds = {};
+  }
+
+  @override
+  void dispose() {
+    _contentController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized || widget.note == null) {
+      _initialized = true;
+      return;
+    }
+
+    final tags =
+        ref.read(memosNotifierProvider).noteTags[widget.note!.id] ?? const [];
+    _selectedTagIds = tags.map((tag) => tag.id).toSet();
+    _initialized = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.note != null;
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: _paperColor,
+      appBar: AppBar(
+        title: Text(isEditing ? 'メモを編集' : 'メモを追加'),
+        centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: _handleSave,
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.large),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _MarkdownToolbar(onApplyMarkup: _applyMarkup),
+                const SizedBox(height: AppSpacing.medium),
                 TextFormField(
-                  controller: contentController,
+                  controller: _contentController,
                   decoration: InputDecoration(
-                    labelText: 'メモ',
-                    hintText: '読書メモを入力してください',
+                    labelText: 'メモ (Markdown対応)',
+                    hintText: '# 見出しや - 箇条書きを入力できます',
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
@@ -700,32 +760,29 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     border: OutlineInputBorder(
                       borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
+                        color: theme.colorScheme.outlineVariant
                             .withValues(alpha: 0.6),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
+                        color: theme.colorScheme.outlineVariant
                             .withValues(alpha: 0.6),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: AppRadius.largeRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: theme.colorScheme.primary,
                         width: 1.4,
                       ),
                     ),
                     alignLabelWithHint: true,
                   ),
                   maxLines: null,
-                  minLines: 6,
+                  minLines: 12,
+                  keyboardType: TextInputType.multiline,
                   style: AppTextStyles.bodyLarge(context).copyWith(height: 1.6),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -734,9 +791,9 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     return null;
                   },
                 ),
-                const SizedBox(height: AppSpacing.medium),
+                const SizedBox(height: AppSpacing.large),
                 TextFormField(
-                  controller: pageController,
+                  controller: _pageController,
                   decoration: InputDecoration(
                     labelText: 'ページ番号 (任意)',
                     hintText: '例: 25',
@@ -749,107 +806,237 @@ Future<void> _showNoteDialog(BuildContext context, WidgetRef ref,
                     border: OutlineInputBorder(
                       borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
+                        color: theme.colorScheme.outlineVariant
                             .withValues(alpha: 0.6),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
+                        color: theme.colorScheme.outlineVariant
                             .withValues(alpha: 0.6),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: AppRadius.mediumRadius,
                       borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: theme.colorScheme.primary,
                         width: 1.2,
                       ),
                     ),
                   ),
                   keyboardType: TextInputType.number,
                 ),
-                const SizedBox(height: AppSpacing.medium),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'タグ',
-                    style: AppTextStyles.title(context)
-                        .copyWith(fontWeight: FontWeight.bold),
-                  ),
+                const SizedBox(height: AppSpacing.large),
+                Text(
+                  'タグ',
+                  style: AppTextStyles.title(context)
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: AppSpacing.small),
                 TagSelector(
-                  selectedTagIds: selectedTagIds,
+                  selectedTagIds: _selectedTagIds,
                   onSelectionChanged: (ids) {
-                    setState(() => selectedTagIds = ids);
+                    setState(() => _selectedTagIds = ids);
                   },
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('キャンセル'),
-            ),
-            PrimaryButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  Navigator.of(context).pop(true);
-                }
-              },
-              label: '保存',
-            ),
-          ],
-        );
-      });
-    },
-  );
-
-  if (confirmed != true) {
-    return;
+        ),
+      ),
+    );
   }
 
-  final selectedBookId = ref.read(memosNotifierProvider).selectedBookId;
-  if (selectedBookId == null) {
-    return;
+  void _applyMarkup(_MarkupCommand command) {
+    final selection = _contentController.selection;
+    final text = _contentController.text;
+
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+
+    final selectedText = start < end ? text.substring(start, end) : '';
+    final replacement = command.buildText(selectedText);
+
+    final newText = text.replaceRange(start, end, replacement.text);
+    final cursorPosition = start + replacement.cursorOffset;
+
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: cursorPosition.clamp(0, newText.length),
+      ),
+    );
   }
 
-  final pageNumberText = pageController.text.trim();
-  final pageNumber = int.tryParse(pageNumberText.isEmpty ? '' : pageNumberText);
-
-  if (note == null) {
-    await ref.read(memosNotifierProvider.notifier).addNote(
-          bookId: selectedBookId,
-          content: contentController.text.trim(),
-          pageNumber: pageNumber,
-          tagIds: selectedTagIds.toList(),
-        );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('メモを追加しました')),
-      );
+  Future<void> _handleSave() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
     }
-  } else {
-    await ref.read(memosNotifierProvider.notifier).updateNote(
-          noteId: note.id,
-          bookId: selectedBookId,
-          content: contentController.text.trim(),
-          pageNumber: pageNumber,
-          tagIds: selectedTagIds.toList(),
+
+    final pageNumberText = _pageController.text.trim();
+    final pageNumber = int.tryParse(pageNumberText.isEmpty ? '' : pageNumberText);
+    final content = _contentController.text.trim();
+
+    if (widget.note == null) {
+      final selectedBookId = ref.read(memosNotifierProvider).selectedBookId;
+      if (selectedBookId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('本を選択してからメモを追加してください')),
+          );
+        }
+        return;
+      }
+
+      await ref.read(memosNotifierProvider.notifier).addNote(
+            bookId: selectedBookId,
+            content: content,
+            pageNumber: pageNumber,
+            tagIds: _selectedTagIds.toList(),
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('メモを追加しました')),
         );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('メモを更新しました')),
-      );
+        Navigator.of(context).pop();
+      }
+    } else {
+      await ref.read(memosNotifierProvider.notifier).updateNote(
+            noteId: widget.note!.id,
+            bookId: widget.note!.bookId,
+            content: content,
+            pageNumber: pageNumber,
+            tagIds: _selectedTagIds.toList(),
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('メモを更新しました')),
+        );
+        Navigator.of(context).pop();
+      }
     }
   }
+}
+
+class _MarkdownToolbar extends StatelessWidget {
+  const _MarkdownToolbar({required this.onApplyMarkup});
+
+  final void Function(_MarkupCommand command) onApplyMarkup;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: AppSpacing.small,
+      runSpacing: AppSpacing.small,
+      children: [
+        _ToolbarButton(
+          icon: Icons.title,
+          label: '見出し',
+          onPressed: () =>
+              onApplyMarkup(_MarkupCommand.heading(level: 2, placeholder: '見出し')),
+          background: colorScheme.primaryContainer,
+        ),
+        _ToolbarButton(
+          icon: Icons.format_list_bulleted,
+          label: '箇条書き',
+          onPressed: () =>
+              onApplyMarkup(_MarkupCommand.list(prefix: '- ', placeholder: '項目')),
+          background: colorScheme.secondaryContainer,
+        ),
+        _ToolbarButton(
+          icon: Icons.check_box_outlined,
+          label: 'チェック',
+          onPressed: () => onApplyMarkup(
+            _MarkupCommand.list(prefix: '- [ ] ', placeholder: 'タスク'),
+          ),
+          background: colorScheme.tertiaryContainer,
+        ),
+      ],
+    );
+  }
+}
+
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    required this.background,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return FilledButton.icon(
+      style: FilledButton.styleFrom(
+        backgroundColor: background,
+        foregroundColor: colorScheme.onSurface,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.medium,
+          vertical: AppSpacing.small,
+        ),
+      ),
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label),
+    );
+  }
+}
+
+class _MarkupCommand {
+  const _MarkupCommand._({
+    required this.prefix,
+    required this.suffix,
+    this.placeholder,
+  });
+
+  final String prefix;
+  final String suffix;
+  final String? placeholder;
+
+  static _MarkupCommand heading({int level = 2, String? placeholder}) {
+    return _MarkupCommand._(
+      prefix: '${'#' * level} ',
+      suffix: '',
+      placeholder: placeholder,
+    );
+  }
+
+  static _MarkupCommand list({required String prefix, String? placeholder}) {
+    return _MarkupCommand._(
+      prefix: prefix,
+      suffix: '',
+      placeholder: placeholder,
+    );
+  }
+
+  _MarkupResult buildText(String currentSelection) {
+    final text =
+        currentSelection.isNotEmpty ? currentSelection : (placeholder ?? '');
+    final inserted = '$prefix$text$suffix';
+    return _MarkupResult(
+      text: inserted,
+      cursorOffset: inserted.length,
+    );
+  }
+}
+
+class _MarkupResult {
+  const _MarkupResult({
+    required this.text,
+    required this.cursorOffset,
+  });
+
+  final String text;
+  final int cursorOffset;
 }
 
 Future<void> _confirmDelete(BuildContext context, WidgetRef ref,
